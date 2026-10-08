@@ -326,12 +326,87 @@ export class StreamingToolExecutor {
   }
 }
 
+export interface CustomToolDef {
+  name: string;
+  label?: string;
+  description: string;
+  parameters: any;
+  execution_type?: 'mock' | 'webhook';
+  mock_response?: string;
+  webhook_url?: string;
+  handler?: (args: any) => Promise<any>;
+  is_custom?: boolean;
+}
+
+const customToolsStore: Map<string, CustomToolDef> = new Map();
+
+// Helper to register a custom tool
+export function registerCustomTool(tool: CustomToolDef): void {
+  const handler = async (args: any) => {
+    if (tool.execution_type === 'webhook' && tool.webhook_url) {
+      try {
+        const res = await axios.post(tool.webhook_url, args, { timeout: 8000 });
+        return res.data;
+      } catch (err: any) {
+        return { error: `Webhook failed: ${err.message}` };
+      }
+    }
+    // Mock response handler
+    if (tool.mock_response) {
+      try {
+        const parsed = JSON.parse(tool.mock_response);
+        return { ...parsed, ...args };
+      } catch {
+        return { result: tool.mock_response, ...args };
+      }
+    }
+    return { status: 'success', executed: tool.name, args };
+  };
+
+  customToolsStore.set(tool.name, {
+    ...tool,
+    is_custom: true,
+    handler,
+  });
+}
+
+export function deleteCustomTool(name: string): boolean {
+  return customToolsStore.delete(name);
+}
+
+export function getCustomTools(): CustomToolDef[] {
+  return Array.from(customToolsStore.values());
+}
+
+// Pre-register an example custom tool: check_order
+registerCustomTool({
+  name: 'check_order',
+  label: '📦 Order Status Tracker',
+  description: 'Lookup order delivery status, items, and tracking details by order ID',
+  parameters: {
+    type: 'object',
+    properties: {
+      order_id: { type: 'string', description: 'Order ID or number, e.g. ORD-8821' },
+    },
+    required: ['order_id'],
+  },
+  execution_type: 'mock',
+  mock_response: JSON.stringify({
+    status: 'Out for Delivery',
+    carrier: 'FedEx Express',
+    estimated_delivery: 'Today by 5:00 PM',
+    items_count: 2,
+    destination: 'Los Angeles, CA',
+  }),
+});
+
 // Demo Tools
 export function createDemoTools(): Map<string, any> {
   const tools = new Map();
 
   tools.set('get_weather', {
     name: 'get_weather',
+    label: '🌤️ Live Weather',
     description: 'Get current weather for a location',
     parameters: {
       type: 'object',
@@ -353,6 +428,7 @@ export function createDemoTools(): Map<string, any> {
 
   tools.set('check_booking', {
     name: 'check_booking',
+    label: '📋 Booking Lookup',
     description: 'Check booking status by ID',
     parameters: {
       type: 'object',
@@ -375,6 +451,7 @@ export function createDemoTools(): Map<string, any> {
 
   tools.set('transfer_call', {
     name: 'transfer_call',
+    label: '📞 Call Transfer',
     description: 'Transfer call to a department',
     parameters: {
       type: 'object',
@@ -393,4 +470,12 @@ export function createDemoTools(): Map<string, any> {
   });
 
   return tools;
+}
+
+export function getAllToolsMap(): Map<string, any> {
+  const all = createDemoTools();
+  customToolsStore.forEach((tool, name) => {
+    all.set(name, tool);
+  });
+  return all;
 }

@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import config from '../config';
 import { OpenAILLM } from '../services/llm';
-import { createDemoTools } from '../services/tools';
+import { getAllToolsMap } from '../services/tools';
 
 const router = Router();
 
@@ -68,7 +68,7 @@ router.post(
     const startTime = Date.now();
     let reply = '';
     const executedToolCalls: any[] = [];
-    const toolsMap = createDemoTools();
+    const toolsMap = getAllToolsMap();
     let toolsList = Array.from(toolsMap.values());
     if (Array.isArray(assigned_tools) && assigned_tools.length > 0) {
       toolsList = toolsList.filter(t => assigned_tools.includes(t.name));
@@ -179,6 +179,26 @@ router.post(
               timestamp: Date.now(),
             });
             reply = `I am transferring your call to Customer Support now. The estimated wait time is two minutes.`;
+          }
+        }
+
+        // Custom tools fallback matching
+        if (executedToolCalls.length === 0) {
+          for (const tool of toolsList) {
+            const nameParts = (tool.name || '').toLowerCase().split('_');
+            const matches = nameParts.some((part: string) => part.length > 2 && lower.includes(part));
+            if (matches && tool.handler) {
+              const res = await tool.handler({ query: text, input: text });
+              executedToolCalls.push({
+                tool_name: tool.name,
+                args: { query: text },
+                result: res,
+                status: 'success',
+                timestamp: Date.now(),
+              });
+              reply = `I executed ${tool.label || tool.name} for you. Result: ${JSON.stringify(res)}`;
+              break;
+            }
           }
         }
       }

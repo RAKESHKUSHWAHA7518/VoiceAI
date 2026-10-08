@@ -67,6 +67,21 @@ export interface ToolCall {
   timestamp: number;
 }
 
+export interface ToolItem {
+  name: string;
+  label?: string;
+  description: string;
+  parameters: {
+    type?: string;
+    properties?: Record<string, { type: string; description: string }>;
+    required?: string[];
+  };
+  execution_type?: 'mock' | 'webhook';
+  mock_response?: string;
+  webhook_url?: string;
+  is_custom?: boolean;
+}
+
 export interface MetricsData {
   vad_p50?: number;
   vad_p95?: number;

@@ -2,8 +2,8 @@
 // Agents Studio Component
 // ============================================================================
 
-import React, { useState } from 'react';
-import type { Agent } from '../../types';
+import React, { useState, useEffect } from 'react';
+import type { Agent, ToolItem } from '../../types';
 
 interface AgentsTabProps {
   agents: Agent[];
@@ -17,10 +17,10 @@ interface AgentsTabProps {
   setIsCreatingNew?: (val: boolean) => void;
 }
 
-const AVAILABLE_TOOLS = [
-  { id: 'get_weather', name: 'get_weather', label: '🌤️ Live Weather', desc: 'Real-time forecasts and weather conditions' },
-  { id: 'check_booking', name: 'check_booking', label: '📋 Booking Lookup', desc: 'Verify reservations, dates, and party sizes' },
-  { id: 'transfer_call', name: 'transfer_call', label: '📞 Call Transfer', desc: 'Route caller to specific departments' },
+const DEFAULT_TOOLS = [
+  { name: 'get_weather', label: '🌤️ Live Weather', description: 'Real-time forecasts and weather conditions' },
+  { name: 'check_booking', label: '📋 Booking Lookup', description: 'Verify reservations, dates, and party sizes' },
+  { name: 'transfer_call', label: '📞 Call Transfer', description: 'Route caller to specific departments' },
 ];
 
 const PRESET_AVATARS = ['🎧', '🌤️', '🏨', '🩺', '🚀', '💼', '🤖', '🎯', '⚖️', '🧑‍🏫', '🛍️', '💡'];
@@ -44,6 +44,19 @@ export function AgentsTab({
 }: AgentsTabProps) {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [showModal, setShowModal] = useState(isCreatingNew || false);
+  const [toolsList, setToolsList] = useState<ToolItem[]>(DEFAULT_TOOLS as any);
+
+  // Load active tools (built-in + custom)
+  useEffect(() => {
+    fetch('/api/tools')
+      .then(r => r.json())
+      .then(data => {
+        if (data.tools && Array.isArray(data.tools)) {
+          setToolsList(data.tools);
+        }
+      })
+      .catch(console.error);
+  }, [showModal]);
 
   // Form state
   const [formId, setFormId] = useState<string>('');
@@ -360,20 +373,28 @@ export function AgentsTab({
 
               {/* Tool Assignments */}
               <div className="form-group">
-                <label className="form-label">Assigned Function Tools</label>
+                <label className="form-label">Assigned Function Tools (Built-in & Custom)</label>
                 <div className="tools-selection-grid">
-                  {AVAILABLE_TOOLS.map(t => {
-                    const checked = formTools.includes(t.id);
+                  {toolsList.map(t => {
+                    const toolId = t.name;
+                    const checked = formTools.includes(toolId);
                     return (
-                      <label key={t.id} className={`tool-select-card ${checked ? 'selected' : ''}`}>
+                      <label key={toolId} className={`tool-select-card ${checked ? 'selected' : ''}`}>
                         <input
                           type="checkbox"
                           checked={checked}
-                          onChange={() => handleToggleTool(t.id)}
+                          onChange={() => handleToggleTool(toolId)}
                         />
                         <div className="tool-select-meta">
-                          <span className="tool-select-title">{t.label}</span>
-                          <span className="tool-select-desc">{t.desc}</span>
+                          <span className="tool-select-title">
+                            {t.label || toolId}
+                            {t.is_custom && (
+                              <span style={{ marginLeft: '0.4rem', background: '#3b82f6', color: '#fff', fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                                Custom
+                              </span>
+                            )}
+                          </span>
+                          <span className="tool-select-desc">{t.description}</span>
                         </div>
                       </label>
                     );
