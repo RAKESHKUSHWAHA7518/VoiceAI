@@ -47,7 +47,16 @@ router.post(
 router.post(
   '/test',
   async (req: Request, res: Response) => {
-    const { text } = req.body;
+    const { 
+      text, 
+      voice_id, 
+      system_prompt, 
+      llm_model, 
+      llm_temperature, 
+      assigned_tools, 
+      agent_id, 
+      agent_name 
+    } = req.body;
     
     if (!text || text.trim().length === 0) {
       return res.status(400).json({
@@ -60,15 +69,24 @@ router.post(
     let reply = '';
     const executedToolCalls: any[] = [];
     const toolsMap = createDemoTools();
-    const toolsList = Array.from(toolsMap.values());
+    let toolsList = Array.from(toolsMap.values());
+    if (Array.isArray(assigned_tools) && assigned_tools.length > 0) {
+      toolsList = toolsList.filter(t => assigned_tools.includes(t.name));
+    }
+
+    const effectiveSystemPrompt = system_prompt || currentConfig.system_prompt;
+    const effectiveVoiceId = voice_id || currentConfig.voice_id;
+    const effectiveModel = llm_model || currentConfig.llm_model || 'gpt-4o-mini';
+    const effectiveTemp = typeof llm_temperature === 'number' ? llm_temperature : currentConfig.llm_temperature;
 
     // If OpenAI API key is present, generate response with tool calling!
     if (config.apiKeys?.openai) {
       try {
-        const llm = new OpenAILLM(config.apiKeys.openai, currentConfig.llm_model || 'gpt-4o-mini');
-        llm.setSystemPrompt(currentConfig.system_prompt);
+        const llm = new OpenAILLM(config.apiKeys.openai, effectiveModel);
+        llm.setSystemPrompt(effectiveSystemPrompt);
+        llm.setTemperature(effectiveTemp);
 
-        for await (const chunk of llm.streamChat([{ role: 'system', content: currentConfig.system_prompt }], text, toolsList)) {
+        for await (const chunk of llm.streamChat([{ role: 'system', content: effectiveSystemPrompt }], text, toolsList)) {
           if (chunk.isToolCall && chunk.toolName) {
             const tool = toolsMap.get(chunk.toolName);
             let args: any = {};
@@ -101,7 +119,7 @@ router.post(
             .join('; ');
 
           for await (const chunk of llm.streamChat([
-            { role: 'system', content: currentConfig.system_prompt },
+            { role: 'system', content: effectiveSystemPrompt },
             { role: 'user', content: text },
             { role: 'assistant', content: `I looked that up: ${toolResultsStr}` }
           ], `Please provide a concise spoken response answering the user's question "${text}" based on the tool results: ${toolResultsStr}`)) {
@@ -186,7 +204,7 @@ router.post(
             transcript: reply,
             voice: {
               mode: 'id',
-              id: currentConfig.voice_id || 'a0e99841-438c-4a64-b679-ae501e7d6091',
+              id: effectiveVoiceId,
             },
             output_format: {
               container: 'wav',
@@ -227,9 +245,16 @@ router.post(
       output: reply,
       audio_url: audioUrl,
       audioUrl,
+      agent_id: agent_id || 'default',
+      agent_name: agent_name || 'Voice Assistant',
       tool_calls: executedToolCalls,
       toolCalls: executedToolCalls,
-      config_snapshot: currentConfig,
+      config_snapshot: {
+        ...currentConfig,
+        voice_id: effectiveVoiceId,
+        system_prompt: effectiveSystemPrompt,
+        llm_model: effectiveModel,
+      },
     };
 
     testHistory.unshift(testResult);

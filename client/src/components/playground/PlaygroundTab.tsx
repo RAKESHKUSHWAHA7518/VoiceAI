@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { useState, useCallback } from 'react';
-import type { PlaygroundConfig, PlaygroundTest } from '../../types';
+import type { PlaygroundConfig, PlaygroundTest, Agent } from '../../types';
 
 interface PlaygroundTabProps {
   config: PlaygroundConfig;
@@ -13,6 +13,9 @@ interface PlaygroundTabProps {
   onRunTest?: (input: string) => Promise<PlaygroundTest | undefined>;
   onPlayVoice?: (text: string, audioUrl?: string) => void;
   testActive?: boolean;
+  activeAgent?: Agent | null;
+  agents?: Agent[];
+  onSelectAgent?: (agent: Agent) => void;
 }
 
 export function PlaygroundTab({
@@ -23,6 +26,9 @@ export function PlaygroundTab({
   onRunTest,
   onPlayVoice,
   testActive,
+  activeAgent,
+  agents,
+  onSelectAgent,
 }: PlaygroundTabProps) {
   const [testInput, setTestInput] = useState('Hello, how are you?');
   const [playgroundTests, setPlaygroundTests] = useState<PlaygroundTest[]>([]);
@@ -48,7 +54,16 @@ export function PlaygroundTab({
         const res = await fetch('/api/playground/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: testInput }),
+          body: JSON.stringify({ 
+            text: testInput,
+            agent_id: activeAgent?.id,
+            agent_name: activeAgent?.name,
+            voice_id: config.voice_id,
+            system_prompt: config.system_prompt,
+            llm_model: config.llm_model,
+            llm_temperature: config.llm_temperature,
+            assigned_tools: activeAgent?.assigned_tools,
+          }),
         });
         const data = await res.json();
         if (data.test) {
@@ -63,7 +78,7 @@ export function PlaygroundTab({
     } finally {
       setPlaygroundTestActive(false);
     }
-  }, [testInput, onRunTest, onPlayVoice]);
+  }, [testInput, onRunTest, onPlayVoice, activeAgent, config]);
 
   const resetPlaygroundConfig = useCallback(() => {
     fetch('/api/playground/config')
@@ -101,6 +116,46 @@ export function PlaygroundTab({
 
   return (
     <>
+      {/* Active Agent Banner */}
+      {activeAgent && (
+        <div className="active-agent-banner">
+          <div className="agent-banner-info">
+            <span className="agent-banner-avatar">{activeAgent.avatar || '🤖'}</span>
+            <div>
+              <div className="agent-banner-title">
+                Active Testing Agent: <strong>{activeAgent.name}</strong>
+              </div>
+              <div className="agent-banner-role">
+                {activeAgent.role} • Model: <span className="banner-tag">{activeAgent.llm_model}</span>
+                {activeAgent.assigned_tools && activeAgent.assigned_tools.length > 0 && (
+                  <span className="banner-tools"> • Tools: {activeAgent.assigned_tools.join(', ')}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {agents && agents.length > 1 && onSelectAgent && (
+            <div className="agent-banner-switch">
+              <label>Switch Agent:</label>
+              <select
+                className="form-select form-select-sm"
+                value={activeAgent.id}
+                onChange={e => {
+                  const found = agents.find(a => a.id === e.target.value);
+                  if (found) onSelectAgent(found);
+                }}
+              >
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.avatar} {a.name} ({a.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="playground-grid">
         {/* Configuration Panel */}
         <div className="playground-panel">

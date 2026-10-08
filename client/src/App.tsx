@@ -3,19 +3,24 @@
 // ============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { Header } from './components/layout/Header';
-import { Tabs } from './components/layout/Tabs';
+import { Sidebar } from './components/layout/Sidebar';
+import { TopBar } from './components/layout/TopBar';
+import { AgentsTab } from './components/agents/AgentsTab';
 import { MonitorTab } from './components/monitor/MonitorTab';
 import { PlaygroundTab } from './components/playground/PlaygroundTab';
 import { InspectorTab } from './components/inspector/InspectorTab';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useDashboardState } from './hooks/useDashboardState';
-import type { TabName } from './types';
+import type { TabName, Agent } from './types';
 import './index.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<TabName>('monitor');
+  const [activeTab, setActiveTab] = useState<TabName>('agents');
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [activeAgent, setActiveAgent] = useState<Agent | null>(null);
+  const [isCreatingNewAgent, setIsCreatingNewAgent] = useState<boolean>(false);
+
   const { 
     userLevel, 
     agentLevel,
@@ -124,8 +129,76 @@ function App() {
     onError: (error) => console.error('WebSocket error:', error),
   });
 
+  const handleSelectAgent = useCallback((agent: Agent) => {
+    setActiveAgent(agent);
+    setPlaygroundConfig(prev => ({
+      ...prev,
+      voice_id: agent.voice_id,
+      system_prompt: agent.system_prompt,
+      llm_model: agent.llm_model,
+      llm_temperature: agent.llm_temperature,
+    }));
+  }, [setPlaygroundConfig]);
+
+  const handleSaveAgent = useCallback(async (agentData: Partial<Agent>) => {
+    try {
+      const res = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(agentData),
+      });
+      const data = await res.json();
+      if (data.agents) {
+        setAgents(data.agents);
+        if (data.agent) {
+          handleSelectAgent(data.agent);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save agent:', err);
+    }
+  }, [handleSelectAgent]);
+
+  const handleDeleteAgent = useCallback(async (agentId: string) => {
+    try {
+      const res = await fetch(`/api/agents/${agentId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.agents) {
+        setAgents(data.agents);
+        if (activeAgent?.id === agentId && data.agents.length > 0) {
+          handleSelectAgent(data.agents[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete agent:', err);
+    }
+  }, [activeAgent, handleSelectAgent]);
+
+  const handleTestAgent = useCallback((agent: Agent) => {
+    handleSelectAgent(agent);
+    setActiveTab('playground');
+  }, [handleSelectAgent]);
+
   // Fetch initial data
   useEffect(() => {
+    // Load agents
+    fetch('/api/agents')
+      .then(r => r.json())
+      .then(data => {
+        if (data.agents && data.agents.length > 0) {
+          setAgents(data.agents);
+          setActiveAgent(data.agents[0]);
+          setPlaygroundConfig(prev => ({
+            ...prev,
+            voice_id: data.agents[0].voice_id,
+            system_prompt: data.agents[0].system_prompt,
+            llm_model: data.agents[0].llm_model,
+            llm_temperature: data.agents[0].llm_temperature,
+          }));
+        }
+      })
+      .catch(console.error);
+
     fetch('/api/playground/config')
       .then(r => r.json())
       .then(config => setPlaygroundConfig(config))
@@ -167,10 +240,6 @@ function App() {
     return () => clearInterval(interval);
   }, [setPlaygroundConfig, setPlaygroundTests, updateMetrics, setDashboardState]);
 
-  const savePlaygroundConfig = useCallback(() => {
-    sendControl('update_playground_config', { config: playgroundConfig });
-  }, [sendControl, playgroundConfig]);
-
   const runPlaygroundTestWithInput = useCallback(async (input: string) => {
     if (!input.trim()) return;
 
@@ -179,7 +248,16 @@ function App() {
       const res = await fetch('/api/playground/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: input }),
+        body: JSON.stringify({ 
+          text: input,
+          agent_id: activeAgent?.id,
+          agent_name: activeAgent?.name,
+          voice_id: playgroundConfig.voice_id,
+          system_prompt: playgroundConfig.system_prompt,
+          llm_model: playgroundConfig.llm_model,
+          llm_temperature: playgroundConfig.llm_temperature,
+          assigned_tools: activeAgent?.assigned_tools,
+        }),
       });
       const data = await res.json();
 
@@ -241,19 +319,21 @@ function App() {
     } finally {
       setPlaygroundTestActive(false);
     }
-  }, [setPlaygroundTests, setPlaygroundTestActive, addTranscript, addToolCall, updateMetrics, playVoice]);
+  }, [setPlaygroundTests, setPlaygroundTestActive, addTranscript, addToolCall, updateMetrics, playVoice, activeAgent, playgroundConfig]);
 
   const renderTabContent = useCallback(() => {
     switch (activeTab) {
-      case 'monitor':
+      case 'agents':
         return (
-          <MonitorTab
-            metrics={metrics}
-            transcripts={transcripts}
-            bargeInEvents={bargeInEvents}
-            toolCalls={toolCalls}
-            audioLevelUser={userLevel}
-            audioLevelAgent={agentLevel}
+          <AgentsTab
+            agents={agents}
+            activeAgent={activeAgent}
+            onSelectAgent={handleSelectAgent}
+            onSaveAgent={handleSaveAgent}
+            onDeleteAgent={handleDeleteAgent}
+            onTestAgent={handleTestAgent}
+            isCreatingNew={isCreatingNewAgent}
+            setIsCreatingNew={setIsCreatingNewAgent}
           />
         );
       case 'playground':
@@ -266,6 +346,20 @@ function App() {
             onRunTest={runPlaygroundTestWithInput}
             onPlayVoice={playVoice}
             testActive={playgroundTestActive}
+            activeAgent={activeAgent}
+            agents={agents}
+            onSelectAgent={handleSelectAgent}
+          />
+        );
+      case 'monitor':
+        return (
+          <MonitorTab
+            metrics={metrics}
+            transcripts={transcripts}
+            bargeInEvents={bargeInEvents}
+            toolCalls={toolCalls}
+            audioLevelUser={userLevel}
+            audioLevelAgent={agentLevel}
           />
         );
       case 'inspector':
@@ -281,8 +375,13 @@ function App() {
     }
   }, [
     activeTab,
-    connected,
-    dashboardState,
+    agents,
+    activeAgent,
+    handleSelectAgent,
+    handleSaveAgent,
+    handleDeleteAgent,
+    handleTestAgent,
+    isCreatingNewAgent,
     metrics,
     transcripts,
     bargeInEvents,
@@ -293,16 +392,37 @@ function App() {
     userLevel,
     agentLevel,
     runPlaygroundTestWithInput,
-    savePlaygroundConfig,
+    playVoice,
+    sendControl,
+    setPlaygroundConfig,
   ]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#e2e8f0' }}>
-      <Header connected={connected} dashboardState={dashboardState} />
-      <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
-      <main style={{ padding: '1.5rem', maxWidth: '1800px', margin: '0 auto' }}>
-        {renderTabContent()}
-      </main>
+    <div className="app-layout">
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        agents={agents}
+        activeAgent={activeAgent}
+        onSelectAgent={handleSelectAgent}
+        onCreateAgent={() => {
+          setActiveTab('agents');
+          setIsCreatingNewAgent(true);
+        }}
+        connected={connected}
+        dashboardState={dashboardState}
+      />
+      <div className="main-wrapper">
+        <TopBar
+          activeTab={activeTab}
+          activeAgent={activeAgent}
+          onOpenAgentsTab={() => setActiveTab('agents')}
+          connected={connected}
+        />
+        <main className="content-container">
+          {renderTabContent()}
+        </main>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,20 @@ export interface DashboardState {
   tool_calls_count: number;
 }
 
+export interface Agent {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  voice_id: string;
+  voice_name?: string;
+  llm_model: string;
+  llm_temperature: number;
+  system_prompt: string;
+  assigned_tools: string[];
+  is_default?: boolean;
+}
+
 export interface PlaygroundConfig {
   voice_id: string;
   vad_threshold: number;
@@ -29,6 +43,8 @@ export interface PlaygroundTest {
   output?: string;
   latency_ms?: number;
   audio_url?: string;
+  agent_id?: string;
+  agent_name?: string;
   error?: string;
 }
 
@@ -64,7 +80,7 @@ export interface MetricsData {
   interruption_rate?: number;
 }
 
-export type TabName = 'monitor' | 'playground' | 'inspector';
+export type TabName = 'agents' | 'playground' | 'monitor' | 'inspector';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,

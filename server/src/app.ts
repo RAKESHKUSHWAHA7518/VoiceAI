@@ -21,6 +21,7 @@ import toolRoutes from './routes/tools';
 import metricsRoutes from './routes/metrics';
 import playgroundRoutes from './routes/playground';
 import adminRoutes from './routes/admin';
+import agentRoutes from './routes/agents';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
@@ -60,6 +61,7 @@ app.use('/api/transcripts', transcriptRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/playground', playgroundRoutes);
+app.use('/api/agents', agentRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/state', (req, res) => {
