@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "isolatedModules": true,
+    "downlevelIteration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["server/src/*"],
+      "@config/*": ["server/src/config/*"],
+      "@controllers/*": ["server/src/controllers/*"],
+      "@services/*": ["server/src/services/*"],
+      "@routes/*": ["server/src/routes/*"],
+      "@models/*": ["server/src/models/*"],
+      "@middleware/*": ["server/src/middleware/*"],
+      "@utils/*": ["server/src/utils/*"],
+      "@websocket/*": ["server/src/websocket/*"],
+      "@types/*": ["server/src/types/*"]
+    }
+  },
+  "include": ["server/src/**/*", "server/tests/**/*"],
+  "exclude": ["node_modules", "dist", "client"]
+}

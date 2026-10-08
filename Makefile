@@ -1,35 +1,134 @@
-.PHONY: dev test lint typecheck benchmark clean install
+.PHONY: install dev test lint typecheck benchmark load-test clean build start-prod
 
-UV := uv
-UV_RUN := $(UV) run
-
-dev:
-	$(UV_RUN) uvicorn server.app.main:app --reload --host 0.0.0.0 --port 8000 --log-level info
+# ============================================
+# Development Commands
+# ============================================
 
 install:
-	$(UV) sync --all-extras
+	npm ci
+
+dev:
+	npm run dev
+
+build:
+	npm run build
+
+start-prod:
+	npm run start:prod
+
+# ============================================
+# Testing Commands
+# ============================================
 
 test:
-	$(UV_RUN) pytest
+	npm run test
+
+test-coverage:
+	npm run test -- --coverage
+
+test-watch:
+	npm run test:watch
+
+# ============================================
+# Code Quality
+# ============================================
 
 lint:
-	$(UV_RUN) ruff check .
+	npm run lint
 
 lint-fix:
-	$(UV_RUN) ruff check --fix .
+	npm run lint:fix
 
 typecheck:
-	$(UV_RUN) mypy server
+	npm run typecheck
 
 format:
-	$(UV_RUN) ruff format .
+	npm run format
+
+# ============================================
+# Benchmarking & Load Testing
+# ============================================
 
 benchmark:
-	$(UV_RUN) python -m server.benchmark.latency_harness
+	npm run benchmark
+
+load-test:
+	npm run load-test
+
+# Locust load test (50 users, 60s)
+load-test-full:
+	cd server/benchmark && locust -f locustfile.py --host=ws://localhost:8000 --users=50 --spawn-rate=5 --run-time=60s --headless --csv=load_test_results
+
+# ============================================
+# Docker
+# ============================================
+
+docker-build:
+	docker build -t voiceai:latest .
+
+docker-run:
+	docker run -p 8000:8000 --env-file .env voiceai:latest
+
+docker-compose-up:
+	docker compose up -d
+
+docker-compose-down:
+	docker compose down
+
+docker-compose-logs:
+	docker compose logs -f
+
+# ============================================
+# Database
+# ============================================
+
+db-up:
+	docker compose up -d postgres redis
+
+db-down:
+	docker compose down
+
+db-migrate:
+	# Add migration commands here
+
+# ============================================
+# Utilities
+# ============================================
 
 clean:
-	rm -rf .venv __pycache__ .pytest_cache .mypy_cache .ruff_cache dist build *.egg-info
+	rm -rf dist node_modules coverage .nyc_output
 
-check: lint typecheck test
+reset: clean install
 
-ci: install check
+logs:
+	docker compose logs -f voiceai
+
+shell:
+	docker exec -it voiceai sh
+
+# ============================================
+# CI/CD Helpers
+# ============================================
+
+ci: lint typecheck test
+
+pre-commit: lint-fix format
+
+# ============================================
+# Development Helpers
+# ============================================
+
+# Start everything for local development
+dev-all: db-up dev
+
+# Quick health check
+health:
+	curl -s http://localhost:8000/health | jq .
+
+# Open dashboard
+open-dashboard:
+	open http://localhost:8000
+
+# API documentation
+open-docs:
+	open http://localhost:8000/docs

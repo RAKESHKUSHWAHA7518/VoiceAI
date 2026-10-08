@@ -1,46 +1,152 @@
 version: '3.8'
 
 services:
+  voiceai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voiceai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - HOST=0.0.0.0
+      # API Keys (set in .env or secrets)
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CARTESIA_API_KEY=${CARTESIA_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # Database
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=voiceai
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=voiceai
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # LiveKit
+      - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      # Twilio
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - SIP_WEBHOOK_URL=${SIP_WEBHOOK_URL}
+      # Langfuse
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      # JWT
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      # Redis
+      - REDIS_URL=redis://redis:6379
+      # Postgres
+      - POSTGRES_URL=postgresql://voiceai:${DB_PASSWORD}@postgres:5432/voiceai
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - voiceai-network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: voiceai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: voiceai
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: voiceai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voiceai -d voiceai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voiceai-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    container_name: voiceai-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 3s
       retries: 5
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: voiceai
-    ports:
-      - "5432:5432"
+    networks:
+      - voiceai-network
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      - redis_data:/data
 
-  # langfuse:
-  #   image: langfuse/langfuse:2
-  #   environment:
-  #     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/langfuse
-  #     NEXTAUTH_SECRET: changeme
-  #     SALT: changeme
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
+  # Optional: Langfuse for observability
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: voiceai-langfuse
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=http://localhost:3000
+      - SALT=${LANGFUSE_SALT}
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - voiceai-network
+
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: voiceai-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - voiceai-network
+
+networks:
+  voiceai-network:
+    driver: bridge
 
 volumes:
-  redis_data:
   postgres_data:
+  redis_data:
+  langfuse_data:
