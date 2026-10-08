@@ -9,6 +9,7 @@ import { AgentsTab } from './components/agents/AgentsTab';
 import { MonitorTab } from './components/monitor/MonitorTab';
 import { PlaygroundTab } from './components/playground/PlaygroundTab';
 import { InspectorTab } from './components/inspector/InspectorTab';
+import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useDashboardState } from './hooks/useDashboardState';
@@ -20,6 +21,8 @@ function App() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null);
   const [isCreatingNewAgent, setIsCreatingNewAgent] = useState<boolean>(false);
+  const [isCallModalOpen, setIsCallModalOpen] = useState<boolean>(false);
+  const [callAgent, setCallAgent] = useState<Agent | null>(null);
 
   const { 
     userLevel, 
@@ -179,6 +182,15 @@ function App() {
     setActiveTab('playground');
   }, [handleSelectAgent]);
 
+  const handleStartVoiceCall = useCallback((agentToCall?: Agent | null) => {
+    const target = agentToCall || activeAgent;
+    if (target) {
+      setCallAgent(target);
+      handleSelectAgent(target);
+      setIsCallModalOpen(true);
+    }
+  }, [activeAgent, handleSelectAgent]);
+
   // Fetch initial data
   useEffect(() => {
     // Load agents
@@ -332,6 +344,7 @@ function App() {
             onSaveAgent={handleSaveAgent}
             onDeleteAgent={handleDeleteAgent}
             onTestAgent={handleTestAgent}
+            onStartVoiceCall={handleStartVoiceCall}
             isCreatingNew={isCreatingNewAgent}
             setIsCreatingNew={setIsCreatingNewAgent}
           />
@@ -349,6 +362,7 @@ function App() {
             activeAgent={activeAgent}
             agents={agents}
             onSelectAgent={handleSelectAgent}
+            onStartVoiceCall={handleStartVoiceCall}
           />
         );
       case 'monitor':
@@ -381,6 +395,7 @@ function App() {
     handleSaveAgent,
     handleDeleteAgent,
     handleTestAgent,
+    handleStartVoiceCall,
     isCreatingNewAgent,
     metrics,
     transcripts,
@@ -417,12 +432,20 @@ function App() {
           activeTab={activeTab}
           activeAgent={activeAgent}
           onOpenAgentsTab={() => setActiveTab('agents')}
+          onStartVoiceCall={() => handleStartVoiceCall(activeAgent)}
           connected={connected}
         />
         <main className="content-container">
           {renderTabContent()}
         </main>
       </div>
+
+      <LiveVoiceCallModal
+        isOpen={isCallModalOpen}
+        onClose={() => setIsCallModalOpen(false)}
+        agent={callAgent || activeAgent}
+        onRunTest={runPlaygroundTestWithInput}
+      />
     </div>
   );
 }

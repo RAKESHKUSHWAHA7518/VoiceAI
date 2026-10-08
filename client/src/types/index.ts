@@ -21,6 +21,7 @@ export interface Agent {
   llm_temperature: number;
   system_prompt: string;
   assigned_tools: string[];
+  greeting?: string;
   is_default?: boolean;
 }
 

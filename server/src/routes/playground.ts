@@ -270,6 +270,54 @@ router.post(
   }
 );
 
+router.post(
+  '/speak',
+  async (req: Request, res: Response) => {
+    const { text, voice_id } = req.body;
+    if (!text) {
+      return res.status(400).json({ success: false, error: { message: 'Text is required' } });
+    }
+
+    let audioUrl: string | null = null;
+    const effectiveVoiceId = voice_id || currentConfig.voice_id;
+
+    if (config.apiKeys?.cartesia) {
+      try {
+        const cartesiaRes = await axios.post(
+          'https://api.cartesia.ai/tts/bytes',
+          {
+            model_id: 'sonic-3.6',
+            transcript: text,
+            voice: { mode: 'id', id: effectiveVoiceId },
+            output_format: { container: 'wav', encoding: 'pcm_s16le', sample_rate: 24000 },
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${config.apiKeys.cartesia}`,
+              'Cartesia-Version': '2024-06-10',
+              'Content-Type': 'application/json',
+            },
+            responseType: 'arraybuffer',
+            timeout: 10000,
+          }
+        );
+        if (cartesiaRes.data) {
+          const base64Audio = Buffer.from(cartesiaRes.data).toString('base64');
+          audioUrl = `data:audio/wav;base64,${base64Audio}`;
+        }
+      } catch (err: any) {
+        console.warn('Cartesia TTS error in /speak:', err?.message || err);
+      }
+    }
+
+    res.json({
+      success: true,
+      audio_url: audioUrl,
+      audioUrl,
+    });
+  }
+);
+
 router.get(
   '/history',
   async (req: Request, res: Response) => {

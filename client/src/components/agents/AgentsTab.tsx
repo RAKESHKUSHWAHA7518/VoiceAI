@@ -12,6 +12,7 @@ interface AgentsTabProps {
   onSaveAgent: (agent: Partial<Agent>) => Promise<void>;
   onDeleteAgent: (agentId: string) => Promise<void>;
   onTestAgent: (agent: Agent) => void;
+  onStartVoiceCall?: (agent: Agent) => void;
   isCreatingNew?: boolean;
   setIsCreatingNew?: (val: boolean) => void;
 }
@@ -37,6 +38,7 @@ export function AgentsTab({
   onSaveAgent,
   onDeleteAgent,
   onTestAgent,
+  onStartVoiceCall,
   isCreatingNew,
   setIsCreatingNew,
 }: AgentsTabProps) {
@@ -52,6 +54,7 @@ export function AgentsTab({
   const [formModel, setFormModel] = useState<string>('gpt-4o-mini');
   const [formTemp, setFormTemp] = useState<number>(0.3);
   const [formPrompt, setFormPrompt] = useState<string>('');
+  const [formGreeting, setFormGreeting] = useState<string>('');
   const [formTools, setFormTools] = useState<string[]>(['get_weather', 'check_booking']);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -65,6 +68,7 @@ export function AgentsTab({
     setFormModel('gpt-4o-mini');
     setFormTemp(0.3);
     setFormPrompt('You are a helpful voice assistant. Speak naturally in short, conversational sentences.');
+    setFormGreeting('Hello! How can I assist you today?');
     setFormTools(['get_weather', 'check_booking']);
     setShowModal(true);
     setIsCreatingNew?.(true);
@@ -80,6 +84,7 @@ export function AgentsTab({
     setFormModel(agent.llm_model);
     setFormTemp(agent.llm_temperature);
     setFormPrompt(agent.system_prompt);
+    setFormGreeting(agent.greeting || `Hello! I am ${agent.name}. How can I assist you today?`);
     setFormTools(agent.assigned_tools || []);
     setShowModal(true);
   };
@@ -111,6 +116,7 @@ export function AgentsTab({
         llm_model: formModel,
         llm_temperature: formTemp,
         system_prompt: formPrompt,
+        greeting: formGreeting,
         assigned_tools: formTools,
       });
       closeModal();
@@ -157,6 +163,13 @@ export function AgentsTab({
                 "{agent.system_prompt}"
               </div>
 
+              {agent.greeting && (
+                <div className="agent-card-greeting">
+                  <span className="spec-label">🗣️ Speaks First:</span>
+                  <div className="greeting-text">"{agent.greeting}"</div>
+                </div>
+              )}
+
               <div className="agent-card-specs">
                 <div className="spec-item">
                   <span className="spec-label">Model:</span>
@@ -186,9 +199,17 @@ export function AgentsTab({
               </div>
 
               <div className="agent-card-actions">
+                <button 
+                  className="btn btn-primary btn-sm" 
+                  onClick={() => onStartVoiceCall ? onStartVoiceCall(agent) : onTestAgent(agent)}
+                  style={{ background: '#2563eb', fontWeight: 600 }}
+                  title="Start live two-way conversational voice call"
+                >
+                  📞 Live Call
+                </button>
                 {!isActive ? (
-                  <button className="btn btn-primary btn-sm" onClick={() => onSelectAgent(agent)}>
-                    Select Agent
+                  <button className="btn btn-outline btn-sm" onClick={() => onSelectAgent(agent)}>
+                    Select
                   </button>
                 ) : (
                   <button className="btn btn-success btn-sm" disabled>
@@ -196,7 +217,7 @@ export function AgentsTab({
                   </button>
                 )}
                 <button className="btn btn-secondary btn-sm" onClick={() => onTestAgent(agent)}>
-                  🧪 Test Agent
+                  🧪 Playground
                 </button>
                 <button className="btn btn-outline btn-sm" onClick={() => openEditModal(agent)}>
                   ✏️ Edit
@@ -308,6 +329,21 @@ export function AgentsTab({
                     onChange={e => setFormTemp(parseFloat(e.target.value))}
                   />
                 </div>
+              </div>
+
+              {/* Initial Greeting (Agent Speaks First) */}
+              <div className="form-group">
+                <label className="form-label">🗣️ Initial Greeting (Agent Speaks First)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Hello! How can I assist you today?"
+                  value={formGreeting}
+                  onChange={e => setFormGreeting(e.target.value)}
+                />
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem', display: 'block' }}>
+                  The agent speaks this greeting aloud first when a call begins before listening to the user.
+                </span>
               </div>
 
               {/* System Prompt */}

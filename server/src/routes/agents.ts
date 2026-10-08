@@ -11,6 +11,7 @@ export interface AgentModel {
   llm_temperature: number;
   system_prompt: string;
   assigned_tools: string[];
+  greeting: string;
   is_default?: boolean;
 }
 
@@ -26,6 +27,7 @@ const defaultAgents: AgentModel[] = [
     llm_temperature: 0.3,
     system_prompt: 'You are Maya, a helpful and empathetic customer support specialist. Speak warmly and concisely in spoken-language sentences. When users ask for bookings or transfers, use the available tools.',
     assigned_tools: ['check_booking', 'transfer_call'],
+    greeting: "Hello! I'm Maya, your customer support specialist. How can I help you today?",
     is_default: true,
   },
   {
@@ -39,6 +41,7 @@ const defaultAgents: AgentModel[] = [
     llm_temperature: 0.2,
     system_prompt: 'You are Alex, an upbeat travel concierge and weather reporter. Provide accurate real-time forecasts and travel guidance using your weather tools.',
     assigned_tools: ['get_weather'],
+    greeting: "Hi there! I'm Alex, your concierge and weather guide. What city or forecast can I look up for you?",
     is_default: true,
   },
   {
@@ -52,6 +55,7 @@ const defaultAgents: AgentModel[] = [
     llm_temperature: 0.3,
     system_prompt: 'You are Elena, a 5-star hotel front desk assistant. Handle reservations, dining bookings, and weather checks with elegance and grace.',
     assigned_tools: ['check_booking', 'get_weather'],
+    greeting: "Good day! I am Elena from hospitality reservations. How may I assist with your stay or dining today?",
     is_default: true,
   },
   {
@@ -65,6 +69,7 @@ const defaultAgents: AgentModel[] = [
     llm_temperature: 0.2,
     system_prompt: 'You are Dr. Marcus, a calm and clinical medical receptionist. Help patients check appointment status, verify bookings, or transfer to the emergency nurse line.',
     assigned_tools: ['check_booking', 'transfer_call'],
+    greeting: "Hello, this is Dr. Marcus at the clinic desk. How may I assist you with your appointment or health inquiry today?",
     is_default: true,
   },
 ];
@@ -81,7 +86,7 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 router.post('/', (req: Request, res: Response) => {
-  const { name, role, avatar, voice_id, voice_name, llm_model, llm_temperature, system_prompt, assigned_tools, id } = req.body;
+  const { name, role, avatar, voice_id, voice_name, llm_model, llm_temperature, system_prompt, assigned_tools, greeting, id } = req.body;
   if (!name) {
     return res.status(400).json({ success: false, error: { message: 'Agent name is required' } });
   }
@@ -100,6 +105,7 @@ router.post('/', (req: Request, res: Response) => {
     llm_temperature: typeof llm_temperature === 'number' ? llm_temperature : 0.3,
     system_prompt: system_prompt || 'You are a helpful voice assistant.',
     assigned_tools: Array.isArray(assigned_tools) ? assigned_tools : ['get_weather', 'check_booking', 'transfer_call'],
+    greeting: greeting || `Hello! I am ${name}. How can I assist you today?`,
     is_default: false,
   };
 

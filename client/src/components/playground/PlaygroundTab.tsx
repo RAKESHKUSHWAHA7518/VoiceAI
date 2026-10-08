@@ -16,6 +16,7 @@ interface PlaygroundTabProps {
   activeAgent?: Agent | null;
   agents?: Agent[];
   onSelectAgent?: (agent: Agent) => void;
+  onStartVoiceCall?: (agent: Agent) => void;
 }
 
 export function PlaygroundTab({
@@ -29,6 +30,7 @@ export function PlaygroundTab({
   activeAgent,
   agents,
   onSelectAgent,
+  onStartVoiceCall,
 }: PlaygroundTabProps) {
   const [testInput, setTestInput] = useState('Hello, how are you?');
   const [playgroundTests, setPlaygroundTests] = useState<PlaygroundTest[]>([]);
@@ -152,6 +154,31 @@ export function PlaygroundTab({
                 ))}
               </select>
             </div>
+          )}
+
+          {onStartVoiceCall && (
+            <button
+              className="btn btn-primary"
+              onClick={() => onStartVoiceCall(activeAgent)}
+              style={{
+                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                border: 'none',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                padding: '0.55rem 1.1rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                boxShadow: '0 4px 14px rgba(22, 163, 74, 0.4)',
+                cursor: 'pointer',
+              }}
+              title="Start two-way conversational voice call: Agent speaks first, listens to your mic, and answers aloud"
+            >
+              <span>📞</span>
+              <span>Start Live Voice Call</span>
+            </button>
           )}
         </div>
       )}
@@ -289,6 +316,16 @@ export function PlaygroundTab({
               <button className="btn btn-success" onClick={handleRunTest} disabled={isRunning}>
                 {isRunning ? 'Running...' : 'Run Test'}
               </button>
+              {onStartVoiceCall && activeAgent && (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => onStartVoiceCall(activeAgent)}
+                  style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', border: 'none', color: '#fff', fontWeight: 600 }}
+                  title="Start live voice call where agent speaks first, listens to you, and answers back"
+                >
+                  📞 Live Voice Call
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={() => { setPlaygroundTests([]); }}>Clear View</button>
             </div>
           </div>
