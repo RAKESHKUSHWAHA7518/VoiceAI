@@ -22,6 +22,7 @@ import metricsRoutes from './routes/metrics';
 import playgroundRoutes from './routes/playground';
 import adminRoutes from './routes/admin';
 import agentRoutes from './routes/agents';
+import callRoutes from './routes/calls';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
@@ -63,6 +64,7 @@ app.use('/api/metrics', metricsRoutes);
 app.use('/api/playground', playgroundRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/calls', callRoutes);
 
 app.get('/api/state', (req, res) => {
   res.json({
@@ -86,52 +88,27 @@ async function initialize() {
     logger.info('Pipeline initialized');
   } catch (error) {
     logger.error('Failed to initialize pipeline', { error });
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
   }
 }
 
-// Initialize on startup
-initialize().catch((err) => {
-  logger.error('Failed to initialize', { err });
-  process.exit(1);
-});
-
-// Error handling
-app.use(notFoundHandler);
-app.use(errorHandler);
-
-// Graceful shutdown
-const gracefulShutdown = async (signal: string) => {
-  logger.info('Shutting down gracefully', { signal });
-  
-  // Close WebSocket connections
-  wss.clients.forEach((ws) => ws.close(1001, 'Server shutting down'));
-  
-  // Close HTTP server
-  server.close(async () => {
-    try {
-      await pipelineManager.shutdown();
-      logger.info('Shutdown complete');
-      process.exit(0);
-    } catch (error) {
-      logger.error('Error during shutdown', { error });
-      process.exit(1);
-    }
+// Start server and initialize only if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  initialize().catch((err) => {
+    logger.error('Failed to initialize', { err });
+    process.exit(1);
   });
-};
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Start server
-const PORT = config.port;
-const HOST = config.host;
-
-server.listen(PORT, config.host, () => {
-  logger.info(`VoiceAI server running on http://${config.host}:${config.port}`);
-  logger.info(`WebSocket server running on ws://${config.host}:${config.port}/ws`);
-  logger.info(`Dashboard available at http://${config.host}:${config.port}`);
-  logger.info(`API docs available at http://${config.host}:${config.port}/docs`);
-});
+  // Start server
+  const PORT = config.port;
+  server.listen(PORT, config.host, () => {
+    logger.info(`VoiceAI server running on http://${config.host}:${config.port}`);
+    logger.info(`WebSocket server running on ws://${config.host}:${config.port}/ws`);
+    logger.info(`Dashboard available at http://${config.host}:${config.port}`);
+    logger.info(`API docs available at http://${config.host}:${config.port}/docs`);
+  });
+}
 
 export default app;

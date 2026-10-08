@@ -318,3 +318,51 @@ describe('Rate Limiter', () => {
     }
   });
 });
+
+describe('Call History & Post-Call Analytics', () => {
+  test('should retrieve call history and analyze a completed call', async () => {
+    const request = require('supertest');
+    const app = require('../src/app').default;
+
+    // 1. GET /api/calls
+    const getRes = await request(app).get('/api/calls');
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.success).toBe(true);
+    expect(Array.isArray(getRes.body.calls)).toBe(true);
+    expect(getRes.body.calls.length).toBeGreaterThanOrEqual(1);
+
+    // 2. POST /api/calls/analyze with conversation
+    const analyzeRes = await request(app)
+      .post('/api/calls/analyze')
+      .send({
+        agentId: 'agent_support',
+        agentName: 'Maya',
+        agentRole: 'Customer Support Lead',
+        durationSeconds: 45,
+        messages: [
+          { role: 'assistant', text: 'Hello, how can I assist you with your booking today?' },
+          { role: 'user', text: 'Please check my booking BK-101 and status.' },
+          { role: 'assistant', text: 'Your booking BK-101 is confirmed for 4 guests. Thank you!' }
+        ]
+      });
+
+    expect(analyzeRes.status).toBe(200);
+    expect(analyzeRes.body.success).toBe(true);
+    const record = analyzeRes.body.record || analyzeRes.body.call;
+    expect(record).toBeDefined();
+    expect(record.summary).toBeDefined();
+    expect(record.sentiment).toBeDefined();
+    expect(record.qa_scores).toBeDefined();
+    expect(record.qa_scores.overall_score).toBeGreaterThan(0);
+    expect(record.transcripts.length).toBe(3);
+
+    // 3. GET /api/calls/:id
+    const singleRes = await request(app).get(`/api/calls/${record.id}`);
+    expect(singleRes.status).toBe(200);
+    expect(singleRes.body.call.id).toBe(record.id);
+
+    // 4. Clean up: DELETE /api/calls/:id
+    const delRes = await request(app).delete(`/api/calls/${record.id}`);
+    expect(delRes.status).toBe(200);
+  });
+});

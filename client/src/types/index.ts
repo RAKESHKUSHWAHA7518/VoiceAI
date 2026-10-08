@@ -96,7 +96,39 @@ export interface MetricsData {
   interruption_rate?: number;
 }
 
-export type TabName = 'agents' | 'playground' | 'monitor' | 'inspector';
+export interface CallQAscore {
+  overall_score: number;
+  empathy: number;
+  clarity: number;
+  tool_accuracy: number;
+  response_speed: number;
+}
+
+export interface CallAnalyticsRecord {
+  id: string;
+  session_id: string;
+  agent_id: string;
+  agent_name: string;
+  agent_avatar?: string;
+  agent_role: string;
+  timestamp: number;
+  duration_seconds: number;
+  summary: string;
+  sentiment: 'Positive' | 'Neutral' | 'Frustrated' | 'Curious';
+  sentiment_score: number;
+  resolution_status: 'Resolved' | 'Needs Follow-Up' | 'Escalated' | 'Unresolved';
+  topics: string[];
+  action_items: string[];
+  qa_scores: CallQAscore;
+  transcripts: Array<{
+    role: string;
+    text: string;
+    timestamp?: string | number;
+  }>;
+  tool_calls_count: number;
+}
+
+export type TabName = 'agents' | 'playground' | 'monitor' | 'inspector' | 'analytics';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,

@@ -10,6 +10,7 @@ import { MonitorTab } from './components/monitor/MonitorTab';
 import { PlaygroundTab } from './components/playground/PlaygroundTab';
 import { InspectorTab } from './components/inspector/InspectorTab';
 import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
+import { AnalyticsTab } from './components/analytics/AnalyticsTab';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useDashboardState } from './hooks/useDashboardState';
@@ -384,6 +385,13 @@ function App() {
             toolCalls={toolCalls}
           />
         );
+      case 'analytics':
+        return (
+          <AnalyticsTab
+            agents={agents}
+            onStartVoiceCall={handleStartVoiceCall}
+          />
+        );
       default:
         return null;
     }
@@ -445,6 +453,10 @@ function App() {
         onClose={() => setIsCallModalOpen(false)}
         agent={callAgent || activeAgent}
         onRunTest={runPlaygroundTestWithInput}
+        onViewAnalytics={() => {
+          setIsCallModalOpen(false);
+          setActiveTab('analytics');
+        }}
       />
     </div>
   );

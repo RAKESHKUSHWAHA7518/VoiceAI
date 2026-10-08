@@ -1,0 +1,103 @@
+[
+  {
+    "id": "call_demo_101",
+    "session_id": "sess_982a",
+    "agent_id": "agent_support",
+    "agent_name": "Maya",
+    "agent_avatar": "🎧",
+    "agent_role": "Customer Support Lead",
+    "timestamp": 1791463170812,
+    "duration_seconds": 74,
+    "summary": "Caller inquired about booking reference BK-9842. Maya confirmed the reservation for 4 guests on Dec 25 and answered questions promptly.",
+    "sentiment": "Positive",
+    "sentiment_score": 92,
+    "resolution_status": "Resolved",
+    "topics": [
+      "Booking Status",
+      "Reservation Verification",
+      "Party Size"
+    ],
+    "action_items": [
+      "Send booking confirmation SMS to caller",
+      "Ensure high chair is noted for party"
+    ],
+    "qa_scores": {
+      "overall_score": 95,
+      "empathy": 96,
+      "clarity": 98,
+      "tool_accuracy": 100,
+      "response_speed": 92
+    },
+    "transcripts": [
+      {
+        "role": "assistant",
+        "text": "Hello! I'm Maya, your customer support specialist. How can I help you today?"
+      },
+      {
+        "role": "user",
+        "text": "Hi Maya, can you check my booking reference BK-9842?"
+      },
+      {
+        "role": "assistant",
+        "text": "I found your booking BK-9842. The status is confirmed for a party of 4 on 2024-12-25 at 14:30."
+      },
+      {
+        "role": "user",
+        "text": "That sounds perfect, thank you so much!"
+      },
+      {
+        "role": "assistant",
+        "text": "You are very welcome! Have a wonderful day."
+      }
+    ],
+    "tool_calls_count": 1
+  },
+  {
+    "id": "call_demo_102",
+    "session_id": "sess_441b",
+    "agent_id": "agent_weather",
+    "agent_name": "Alex",
+    "agent_avatar": "🌤️",
+    "agent_role": "Concierge & Weather Specialist",
+    "timestamp": 1791452370812,
+    "duration_seconds": 48,
+    "summary": "User requested live weather conditions for Tokyo. Alex retrieved real-time temperature (18°C) and clear sunny conditions.",
+    "sentiment": "Positive",
+    "sentiment_score": 88,
+    "resolution_status": "Resolved",
+    "topics": [
+      "Weather Forecast",
+      "Tokyo Travel",
+      "Temperature"
+    ],
+    "action_items": [
+      "User advised to carry light jacket for evening travel"
+    ],
+    "qa_scores": {
+      "overall_score": 92,
+      "empathy": 90,
+      "clarity": 95,
+      "tool_accuracy": 100,
+      "response_speed": 94
+    },
+    "transcripts": [
+      {
+        "role": "assistant",
+        "text": "Hi there! I'm Alex, your concierge and weather guide. What city or forecast can I look up for you?"
+      },
+      {
+        "role": "user",
+        "text": "What's the weather in Tokyo right now?"
+      },
+      {
+        "role": "assistant",
+        "text": "The current weather in Tokyo is sunny and 18 degrees with 45 percent humidity."
+      },
+      {
+        "role": "user",
+        "text": "Great, thanks Alex!"
+      }
+    ],
+    "tool_calls_count": 1
+  }
+]

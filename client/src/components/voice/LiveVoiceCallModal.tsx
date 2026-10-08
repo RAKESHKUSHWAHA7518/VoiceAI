@@ -4,13 +4,14 @@
 // ============================================================================
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Agent, PlaygroundTest } from '../../types';
+import type { Agent, PlaygroundTest, CallAnalyticsRecord } from '../../types';
 
 interface LiveVoiceCallModalProps {
   isOpen: boolean;
   onClose: () => void;
   agent: Agent | null;
   onRunTest: (input: string) => Promise<PlaygroundTest | undefined>;
+  onViewAnalytics?: () => void;
 }
 
 type CallPhase = 
@@ -34,6 +35,7 @@ export function LiveVoiceCallModal({
   onClose,
   agent,
   onRunTest,
+  onViewAnalytics,
 }: LiveVoiceCallModalProps) {
   const [phase, setPhase] = useState<CallPhase>('CONNECTING');
   const [messages, setMessages] = useState<MessageItem[]>([]);
@@ -42,6 +44,8 @@ export function LiveVoiceCallModal({
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [manualInput, setManualInput] = useState<string>('');
   const [audioWaves, setAudioWaves] = useState<number[]>([15, 25, 45, 60, 35, 20]);
+  const [analyzingScorecard, setAnalyzingScorecard] = useState<boolean>(false);
+  const [scorecardResult, setScorecardResult] = useState<CallAnalyticsRecord | null>(null);
 
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -322,6 +326,8 @@ export function LiveVoiceCallModal({
     setMessages([]);
     setLiveTranscript('');
     setPhase('AGENT_SPEAKING_FIRST');
+    setAnalyzingScorecard(false);
+    setScorecardResult(null);
 
     const greetingText = agent.greeting || `Hello! I'm ${agent.name}, ${agent.role}. How can I assist you today?`;
 
@@ -354,17 +360,192 @@ export function LiveVoiceCallModal({
     startListening();
   };
 
-  // End Call
-  const handleEndCall = () => {
+  // End Call & Trigger AI Scorecard Analysis
+  const handleEndCall = async () => {
     stopAllAudio();
     stopListening();
     setPhase('ENDED');
-    setTimeout(() => {
-      onClose();
-    }, 400);
+
+    const hasUserMessages = messages.some(m => m.sender === 'user');
+    // If user never spoke or very short test, simply close
+    if (!hasUserMessages && messages.length <= 1) {
+      setTimeout(() => {
+        onClose();
+      }, 400);
+      return;
+    }
+
+    // Call has conversation content: generate AI Post-Call Intelligence Scorecard!
+    setAnalyzingScorecard(true);
+    try {
+      const res = await fetch('/api/calls/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_id: agent?.id,
+          agentId: agent?.id,
+          agent_name: agent?.name,
+          agentName: agent?.name,
+          agent_avatar: agent?.avatar,
+          agent_role: agent?.role,
+          duration_seconds: callDuration || 14,
+          durationSeconds: callDuration || 14,
+          transcripts: messages.map(m => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            text: m.text,
+            timestamp: m.timestamp,
+          })),
+          messages: messages.map(m => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            text: m.text,
+            content: m.text,
+            timestamp: m.timestamp,
+          })),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const record = data.record || data.call;
+        if (record) {
+          setScorecardResult(record);
+          setAnalyzingScorecard(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to analyze call scorecard:', err);
+    }
+
+    setAnalyzingScorecard(false);
+    onClose();
   };
 
   if (!isOpen || !agent) return null;
+
+  if (analyzingScorecard) {
+    return (
+      <div className="modal-overlay">
+        <div className="voice-call-modal scorecard-loading-modal">
+          <div className="scorecard-loading-content">
+            <div className="scorecard-pulse-icon">📋</div>
+            <div className="scorecard-loading-spinner"></div>
+            <h3 style={{ margin: '16px 0 8px 0', color: '#f8fafc', fontSize: '18px' }}>
+              Generating Post-Call AI Intelligence...
+            </h3>
+            <p style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '360px', margin: '0 auto' }}>
+              Evaluating conversation sentiment, tool execution accuracy, resolution status, and QA compliance score...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (scorecardResult) {
+    return (
+      <div className="modal-overlay">
+        <div className="voice-call-modal scorecard-modal-dialog">
+          <div className="call-header">
+            <div className="call-header-agent">
+              <span className="call-avatar-pulse">📋</span>
+              <div>
+                <h2 className="call-agent-name">Post-Call AI Intelligence & QA Scorecard</h2>
+                <span className="call-agent-role">
+                  Agent: {agent.name} • Call Duration: {formatDuration(scorecardResult.duration_seconds)}
+                </span>
+              </div>
+            </div>
+            <button className="call-close-btn" onClick={onClose} title="Close">✕</button>
+          </div>
+
+          <div className="scorecard-modal-body">
+            {/* Top Score Banner */}
+            <div className="scorecard-top-banner">
+              <div className="scorecard-big-badge">
+                <span className="score-num">{scorecardResult.qa_scores.overall_score}%</span>
+                <span className="score-tag">Overall QA Score</span>
+              </div>
+
+              <div className="scorecard-meta-chips">
+                <span className={`badge badge-sentiment-${scorecardResult.sentiment.toLowerCase()}`}>
+                  Sentiment: {scorecardResult.sentiment}
+                </span>
+                <span className={`badge badge-resolution-${scorecardResult.resolution_status.toLowerCase().replace(/[\s_]+/g, '-')}`}>
+                  Status: {scorecardResult.resolution_status}
+                </span>
+                <span className="badge badge-neutral">
+                  Topic: {scorecardResult.topics[0] || 'General Assistance'}
+                </span>
+              </div>
+            </div>
+
+            {/* QA Breakdown Metrics */}
+            <div className="scorecard-breakdown-grid">
+              <div className="metric-chip">
+                <span className="lbl">Empathy & Tone</span>
+                <span className="val">{scorecardResult.qa_scores.empathy}%</span>
+              </div>
+              <div className="metric-chip">
+                <span className="lbl">Clarity & Accuracy</span>
+                <span className="val">{scorecardResult.qa_scores.clarity}%</span>
+              </div>
+              <div className="metric-chip">
+                <span className="lbl">Tool Execution</span>
+                <span className="val">{scorecardResult.qa_scores.tool_accuracy}%</span>
+              </div>
+              <div className="metric-chip">
+                <span className="lbl">Response Latency</span>
+                <span className="val">{scorecardResult.qa_scores.response_speed}%</span>
+              </div>
+            </div>
+
+            {/* AI Summary */}
+            <div className="scorecard-summary-box">
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Executive AI Summary
+              </h4>
+              <p style={{ margin: 0, fontSize: '13px', color: '#cbd5e1', lineHeight: '1.5' }}>
+                {scorecardResult.summary}
+              </p>
+            </div>
+
+            {/* Action Items */}
+            {scorecardResult.action_items && scorecardResult.action_items.length > 0 && (
+              <div className="scorecard-action-box">
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Next Follow-up Action Items
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: '#e2e8f0', fontSize: '13px' }}>
+                  {scorecardResult.action_items.map((item: string, idx: number) => (
+                    <li key={idx} style={{ marginBottom: '4px' }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Actions */}
+          <div className="scorecard-modal-footer">
+            <button className="btn btn-secondary" onClick={onClose}>
+              Done
+            </button>
+            {onViewAnalytics && (
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  onClose();
+                  onViewAnalytics();
+                }}
+              >
+                Open Full Intelligence Dashboard 📋
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getPhaseDescription = () => {
     switch (phase) {

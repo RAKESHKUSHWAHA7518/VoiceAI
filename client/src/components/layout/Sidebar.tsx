@@ -28,6 +28,7 @@ export function Sidebar({
   const navItems: { id: TabName; label: string; icon: string; badge?: string }[] = [
     { id: 'agents', label: 'Agents Studio', icon: '🤖', badge: `${agents.length}` },
     { id: 'playground', label: 'Playground', icon: '🧪' },
+    { id: 'analytics', label: 'Call History & QA', icon: '📋' },
     { id: 'monitor', label: 'Live Monitor', icon: '📊' },
     { id: 'inspector', label: 'Inspector & Tools', icon: '🔍' },
   ];
