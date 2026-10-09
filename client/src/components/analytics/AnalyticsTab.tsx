@@ -1,10 +1,45 @@
 // ============================================================================
 // Call Analytics & Post-Call Intelligence Tab Component
 // Master-Detail Architecture: Call History Table -> Detailed Conversation & Recording
+// Fully Vectorized: Enterprise SVG Logos & Icons (Zero Emojis)
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { CallAnalyticsRecord, Agent } from '../../types';
+import {
+  IconPhone,
+  IconPhoneIncoming,
+  IconStar,
+  IconCheck,
+  IconCheckCircle,
+  IconClock,
+  IconMic,
+  IconAudioWave,
+  IconSearch,
+  IconClose,
+  IconTrash,
+  IconArrowLeft,
+  IconArrowRight,
+  IconDownload,
+  IconSquare,
+  IconVolume,
+  IconMessageSquare,
+  IconCopy,
+  IconUser,
+  IconRefresh,
+  IconSparkles,
+  IconShieldCheck,
+  IconHeart,
+  IconMessageCircle,
+  IconTarget,
+  IconZap,
+  IconFileText,
+  IconSmile,
+  IconTag,
+  IconListCheck,
+  IconLightbulb,
+  PersonaAvatar,
+} from '../common/Icons';
 
 interface AnalyticsTabProps {
   agents: Agent[];
@@ -331,7 +366,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               }}
               title="Return to full Call History list"
             >
-              <span className="back-arrow">←</span>
+              <IconArrowLeft size={16} />
               <span className="back-label">Back to Call History</span>
             </button>
             <div className="call-breadcrumb-trail">
@@ -339,24 +374,27 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 Call History
               </span>
               <span className="crumb-sep">/</span>
-              <span className="crumb-current">
-                {selectedCall.agent_avatar || '🤖'} {selectedCall.agent_name} ({selectedCall.id})
+              <span className="crumb-current" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                <PersonaAvatar name={selectedCall.agent_name} role={selectedCall.agent_role} size={22} />
+                {selectedCall.agent_name} ({selectedCall.id})
               </span>
             </div>
           </div>
 
           <div className="top-nav-actions">
-            <button className="btn btn-outline btn-sm" onClick={() => exportReport(selectedCall)}>
-              📥 Export JSON
+            <button className="btn btn-outline btn-sm" onClick={() => exportReport(selectedCall)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <IconDownload size={14} />
+              <span>Export JSON</span>
             </button>
             {selectedCall.audio_url && (
               <a 
                 href={selectedCall.audio_url} 
                 download={`${selectedCall.id}.webm`} 
                 className="btn btn-outline btn-sm"
-                style={{ textDecoration: 'none' }}
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
               >
-                🎙️ Download Audio
+                <IconMic size={14} />
+                <span>Download Audio</span>
               </a>
             )}
             {onStartVoiceCall && (
@@ -366,16 +404,20 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                   const target = agents.find(a => a.id === selectedCall.agent_id || a.name === selectedCall.agent_name);
                   if (target) onStartVoiceCall(target);
                 }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
               >
-                📞 Call Again
+                <IconPhone size={14} />
+                <span>Call Again</span>
               </button>
             )}
             <button 
               className="btn btn-danger-outline btn-sm" 
               onClick={() => handleDeleteCall(selectedCall.id)}
               title="Delete this call record"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
             >
-              🗑️ Delete
+              <IconTrash size={14} />
+              <span>Delete</span>
             </button>
           </div>
         </div>
@@ -383,7 +425,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         {/* Hero Call Metadata Header Card */}
         <div className="call-detail-hero-card">
           <div className="hero-agent-col">
-            <div className="hero-avatar">{selectedCall.agent_avatar || '🤖'}</div>
+            <PersonaAvatar name={selectedCall.agent_name} role={selectedCall.agent_role} size={54} />
             <div className="hero-agent-meta">
               <div className="hero-agent-name-row">
                 <h2>{selectedCall.agent_name}</h2>
@@ -402,12 +444,16 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
           <div className="hero-stats-row">
             <div className="hero-stat-box">
               <span className="stat-label">Duration</span>
-              <span className="stat-val">⏱️ {formatDuration(selectedCall.duration_seconds)}</span>
+              <span className="stat-val" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <IconClock size={13} color="#94a3b8" />
+                {formatDuration(selectedCall.duration_seconds)}
+              </span>
             </div>
             <div className="hero-stat-box">
               <span className="stat-label">QA Compliance</span>
-              <span className="stat-val" style={{ color: getQAColor(overallScore) }}>
-                ⭐ {overallScore}%
+              <span className="stat-val" style={{ color: getQAColor(overallScore), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <IconStar size={13} color={getQAColor(overallScore)} />
+                {overallScore}%
               </span>
             </div>
             <div className="hero-stat-box">
@@ -429,7 +475,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         <div className="call-recording-hero-card">
           <div className="recording-card-header">
             <div className="recording-title-wrap">
-              <span className="rec-icon">🎙️</span>
+              <span className="rec-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                <IconAudioWave size={26} color="#38bdf8" />
+              </span>
               <div>
                 <h3 className="rec-heading">Call Audio Recording & Playback</h3>
                 <span className="rec-sub">
@@ -440,7 +488,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               </div>
             </div>
             {selectedCall.audio_url ? (
-              <span className="rec-badge-active">● HD Audio Recording</span>
+              <span className="rec-badge-active" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <IconMic size={13} />
+                <span>HD Audio Recording</span>
+              </span>
             ) : (
               <span className="rec-badge-simulated">Synthesized Replay Mode</span>
             )}
@@ -456,7 +507,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                   preload="metadata"
                 />
                 <div className="audio-details-footnote">
-                  <span>🎧 File available at: <code>{selectedCall.audio_url}</code></span>
+                  <span>Audio source: <code>{selectedCall.audio_url}</code></span>
                   <span>Duration: {formatDuration(selectedCall.duration_seconds)}</span>
                 </div>
               </div>
@@ -465,13 +516,25 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 <button 
                   className={`btn ${isPlayingAudio ? 'btn-danger' : 'btn-success'} btn-md`}
                   onClick={() => playFullTranscriptSpeech(selectedCall)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
                 >
-                  {isPlayingAudio ? '⏹️ Stop Dialogue Playback' : '🔊 Playback Dialogue (Speech Synth)'}
+                  {isPlayingAudio ? (
+                    <>
+                      <IconSquare size={14} />
+                      <span>Stop Dialogue Playback</span>
+                    </>
+                  ) : (
+                    <>
+                      <IconVolume size={15} />
+                      <span>Play Dialogue (Speech Synth)</span>
+                    </>
+                  )}
                 </button>
                 <div className="synth-status-text">
                   {isPlayingAudio ? (
-                    <span className="active-speaking-indicator">
-                      <span className="pulsing-mic">🎙️</span> Speaking turn {activeSpeechTurnIndex !== null ? `#${activeSpeechTurnIndex + 1}` : ''}...
+                    <span className="active-speaking-indicator" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <IconMic size={14} color="#38bdf8" />
+                      Speaking turn {activeSpeechTurnIndex !== null ? `#${activeSpeechTurnIndex + 1}` : ''}...
                     </span>
                   ) : (
                     <span>Listen to the dialogue spoken aloud turn-by-turn with distinct user/agent pitch modulation.</span>
@@ -489,7 +552,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
             <div className="detail-section-card transcript-card-container">
               <div className="card-section-header">
                 <div className="section-title-wrap">
-                  <span className="section-icon">💬</span>
+                  <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                    <IconMessageSquare size={18} color="#38bdf8" />
+                  </span>
                   <div>
                     <h3 className="section-title">Conversation Transcript</h3>
                     <span className="section-count">{transcriptsList.length} total dialogue turns</span>
@@ -501,8 +566,19 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                     className="btn btn-outline btn-sm copy-btn"
                     onClick={() => copyTranscriptToClipboard(selectedCall)}
                     title="Copy transcript to clipboard"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                   >
-                    {copiedTranscript ? '✓ Copied!' : '📋 Copy Text'}
+                    {copiedTranscript ? (
+                      <>
+                        <IconCheck size={13} color="#22c55e" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <IconCopy size={13} />
+                        <span>Copy Text</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -517,7 +593,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                   onChange={e => setTranscriptSearch(e.target.value)}
                 />
                 {transcriptSearch && (
-                  <button className="clear-search-btn" onClick={() => setTranscriptSearch('')}>✕</button>
+                  <button className="clear-search-btn" onClick={() => setTranscriptSearch('')}>
+                    <IconClose size={13} />
+                  </button>
                 )}
               </div>
 
@@ -537,8 +615,12 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                         key={idx} 
                         className={`dialogue-turn-row ${isUser ? 'turn-user' : 'turn-agent'} ${isSpeakingThis ? 'turn-currently-speaking' : ''}`}
                       >
-                        <div className="turn-avatar-badge">
-                          {isUser ? '👤' : (selectedCall.agent_avatar || '🤖')}
+                        <div className="turn-avatar-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {isUser ? (
+                            <IconUser size={18} color="#94a3b8" />
+                          ) : (
+                            <PersonaAvatar name={selectedCall.agent_name} role={selectedCall.agent_role} size={32} />
+                          )}
                         </div>
 
                         <div className="turn-bubble-wrapper">
@@ -551,8 +633,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                               className="turn-speak-mini-btn"
                               title="Listen to this line"
                               onClick={() => playSingleTurnSpeech(turn.text, turn.role, idx)}
+                              style={{ display: 'inline-flex', alignItems: 'center' }}
                             >
-                              🔊
+                              <IconVolume size={13} />
                             </button>
                           </div>
 
@@ -574,7 +657,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
             <div className="detail-section-card qa-audit-card">
               <div className="card-section-header">
                 <div className="section-title-wrap">
-                  <span className="section-icon">⭐</span>
+                  <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                    <IconShieldCheck size={20} color="#22c55e" />
+                  </span>
                   <div>
                     <h3 className="section-title">QA Compliance & Audit Scorecard</h3>
                     <span className="section-count">{gradeText}</span>
@@ -601,7 +686,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="qa-bars-list">
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
-                    <span className="qa-metric-name">🤝 Empathy & Tone</span>
+                    <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <IconHeart size={14} color="#38bdf8" />
+                      <span>Empathy & Tone</span>
+                    </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.empathy || 90}%</span>
                   </div>
                   <div className="qa-progress-bg">
@@ -611,7 +699,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
-                    <span className="qa-metric-name">🗣️ Response Clarity & Conciseness</span>
+                    <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <IconMessageCircle size={14} color="#22c55e" />
+                      <span>Response Clarity & Conciseness</span>
+                    </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.clarity || 94}%</span>
                   </div>
                   <div className="qa-progress-bg">
@@ -621,7 +712,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
-                    <span className="qa-metric-name">🎯 Tool & Function Accuracy</span>
+                    <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <IconTarget size={14} color="#a855f7" />
+                      <span>Tool & Function Accuracy</span>
+                    </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.tool_accuracy || 98}%</span>
                   </div>
                   <div className="qa-progress-bg">
@@ -631,7 +725,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
-                    <span className="qa-metric-name">⚡ Response Speed & Fluency</span>
+                    <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <IconZap size={14} color="#fbbf24" />
+                      <span>Response Speed & Fluency</span>
+                    </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.response_speed || 92}%</span>
                   </div>
                   <div className="qa-progress-bg">
@@ -645,7 +742,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
             <div className="detail-section-card">
               <div className="card-section-header">
                 <div className="section-title-wrap">
-                  <span className="section-icon">📋</span>
+                  <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                    <IconFileText size={18} color="#38bdf8" />
+                  </span>
                   <h3 className="section-title">Executive Summary</h3>
                 </div>
               </div>
@@ -658,7 +757,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
             <div className="detail-section-card">
               <div className="card-section-header">
                 <div className="section-title-wrap">
-                  <span className="section-icon">🎭</span>
+                  <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                    <IconSmile size={18} color="#fbbf24" />
+                  </span>
                   <h3 className="section-title">Sentiment & Resolution Analysis</h3>
                 </div>
               </div>
@@ -689,7 +790,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="detail-section-card">
                 <div className="card-section-header">
                   <div className="section-title-wrap">
-                    <span className="section-icon">🏷️</span>
+                    <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                      <IconTag size={17} color="#38bdf8" />
+                    </span>
                     <h3 className="section-title">Key Topics Discussed</h3>
                   </div>
                 </div>
@@ -706,7 +809,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="detail-section-card">
                 <div className="card-section-header">
                   <div className="section-title-wrap">
-                    <span className="section-icon">✅</span>
+                    <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                      <IconListCheck size={18} color="#22c55e" />
+                    </span>
                     <h3 className="section-title">Follow-up Action Items</h3>
                   </div>
                 </div>
@@ -748,7 +853,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       {/* Page Header */}
       <div className="analytics-header-banner">
         <div className="header-text-block">
-          <div className="header-badge-tag">Voice AI Intelligence</div>
+          <div className="header-badge-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <IconSparkles size={13} color="#38bdf8" />
+            <span>Voice AI Intelligence</span>
+          </div>
           <h1 className="header-title">Call History & Post-Call QA</h1>
           <p className="header-subtitle">
             Review logged customer conversations, automated QA compliance scorecards, and high-definition call recordings.
@@ -756,8 +864,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         </div>
 
         <div className="header-actions">
-          <button className="btn btn-outline" onClick={fetchCalls} title="Reload call records from server">
-            🔄 Refresh Records
+          <button className="btn btn-outline" onClick={fetchCalls} title="Reload call records from server" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+            <IconRefresh size={14} />
+            <span>Refresh Records</span>
           </button>
         </div>
       </div>
@@ -766,7 +875,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       <div className="analytics-kpi-grid">
         <div className="analytics-kpi-card">
           <div className="kpi-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8' }}>
-            📞
+            <IconPhone size={22} color="#38bdf8" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Total Calls Logged</span>
@@ -777,7 +886,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
         <div className="analytics-kpi-card">
           <div className="kpi-icon-wrap" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22c55e' }}>
-            ⭐
+            <IconStar size={22} color="#22c55e" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Average QA Score</span>
@@ -790,7 +899,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
         <div className="analytics-kpi-card">
           <div className="kpi-icon-wrap" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7' }}>
-            ✓
+            <IconCheckCircle size={22} color="#a855f7" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">First-Call Resolution</span>
@@ -801,7 +910,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
         <div className="analytics-kpi-card">
           <div className="kpi-icon-wrap" style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}>
-            ⏱️
+            <IconClock size={22} color="#fbbf24" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Avg Handle Time</span>
@@ -812,7 +921,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
         <div className="analytics-kpi-card">
           <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#f87171' }}>
-            🎙️
+            <IconAudioWave size={22} color="#f87171" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Recorded Calls</span>
@@ -825,7 +934,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       {/* Modern Filter & Search Toolbar */}
       <div className="analytics-toolbar">
         <div className="search-input-wrap">
-          <span className="search-icon">🔍</span>
+          <span className="search-icon">
+            <IconSearch size={16} />
+          </span>
           <input
             type="text"
             className="search-input"
@@ -835,7 +946,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
           />
           {searchQuery && (
             <button className="clear-search-btn" onClick={() => setSearchQuery('')} title="Clear search">
-              ✕
+              <IconClose size={13} />
             </button>
           )}
         </div>
@@ -850,7 +961,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
             >
               <option value="all">All Agents ({agents.length})</option>
               {agents.map(a => (
-                <option key={a.id} value={a.name}>{a.avatar} {a.name}</option>
+                <option key={a.id} value={a.name}>{a.name}</option>
               ))}
             </select>
           </div>
@@ -905,7 +1016,8 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               checked={audioOnlyFilter} 
               onChange={e => setAudioOnlyFilter(e.target.checked)} 
             />
-            <span>🎙️ HD Audio Only</span>
+            <IconMic size={13} color="#4ade80" />
+            <span>HD Audio Only</span>
           </label>
 
           {isFiltersActive && (
@@ -929,7 +1041,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
           </div>
         ) : filteredCalls.length === 0 ? (
           <div className="analytics-empty-state">
-            <div className="empty-icon">📞</div>
+            <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}>
+              <IconPhoneIncoming size={48} color="#64748b" />
+            </div>
             <h3>No Call Records Found</h3>
             <p>
               {isFiltersActive 
@@ -941,8 +1055,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 Reset All Filters
               </button>
             ) : onStartVoiceCall && agents.length > 0 ? (
-              <button className="btn btn-primary" onClick={() => onStartVoiceCall(agents[0])}>
-                📞 Start First Voice Call
+              <button className="btn btn-primary" onClick={() => onStartVoiceCall(agents[0])} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                <IconPhone size={14} />
+                <span>Start First Voice Call</span>
               </button>
             ) : null}
           </div>
@@ -974,7 +1089,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                     {/* Agent & Persona Cell */}
                     <td>
                       <div className="table-agent-cell">
-                        <div className="agent-avatar-circle">{c.agent_avatar || '🤖'}</div>
+                        <PersonaAvatar name={c.agent_name} role={c.agent_role} size={38} />
                         <div className="agent-name-meta">
                           <span className="agent-primary-name">{c.agent_name}</span>
                           <span className="agent-secondary-role">{c.agent_role}</span>
@@ -993,7 +1108,10 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                     {/* Duration Cell */}
                     <td>
                       <div className="table-duration-cell">
-                        <span className="duration-pill">⏱️ {formatDuration(c.duration_seconds)}</span>
+                        <span className="duration-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <IconClock size={11} color="#94a3b8" />
+                          <span>{formatDuration(c.duration_seconds)}</span>
+                        </span>
                       </div>
                     </td>
 
@@ -1017,8 +1135,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                     {/* QA Score Cell */}
                     <td>
                       <div className="table-qa-cell">
-                        <span className="qa-score-badge" style={{ color: getQAColor(score), borderColor: getQAColor(score) }}>
-                          ⭐ {score}%
+                        <span className="qa-score-badge" style={{ color: getQAColor(score), borderColor: getQAColor(score), display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <IconStar size={12} color={getQAColor(score)} />
+                          <span>{score}%</span>
                         </span>
                       </div>
                     </td>
@@ -1027,23 +1146,27 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                     <td style={{ textAlign: 'right' }}>
                       <div className="table-actions-cell" onClick={e => e.stopPropagation()}>
                         {c.audio_url && (
-                          <span className="table-audio-indicator" title="Audio recording available">
-                            🎙️ Rec
+                          <span className="table-audio-indicator" title="Audio recording available" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <IconAudioWave size={11} color="#4ade80" />
+                            <span>Audio</span>
                           </span>
                         )}
                         <button 
                           className="btn-view-details"
                           onClick={() => setSelectedCallId(c.id)}
                           title="Open full conversation and recording"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                         >
-                          View Details →
+                          <span>View Details</span>
+                          <IconArrowRight size={12} />
                         </button>
                         <button 
                           className="btn-delete-row"
                           onClick={(e) => handleDeleteCall(c.id, e)}
                           title="Delete call record"
+                          style={{ display: 'inline-flex', alignItems: 'center' }}
                         >
-                          🗑️
+                          <IconTrash size={14} />
                         </button>
                       </div>
                     </td>
@@ -1056,8 +1179,9 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       </div>
 
       {/* Quick Helper Banner */}
-      <div className="call-history-footer-hint">
-        💡 <strong>Tip:</strong> Click anywhere on a call row to open its conversation transcript dialogue bubbles and audio player.
+      <div className="call-history-footer-hint" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+        <IconLightbulb size={15} color="#fbbf24" />
+        <span><strong>Tip:</strong> Click anywhere on a call row to open its conversation transcript dialogue bubbles and audio player.</span>
       </div>
     </div>
   );

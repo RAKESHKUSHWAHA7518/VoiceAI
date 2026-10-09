@@ -3,6 +3,7 @@
 // ============================================================================
 
 import type { TabName, Agent } from '../../types';
+import { IconPhone, PersonaAvatar } from '../common/Icons';
 
 interface TopBarProps {
   activeTab: TabName;
@@ -54,7 +55,7 @@ export function TopBar({
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem',
+              gap: '0.45rem',
               boxShadow: '0 2px 8px rgba(22, 163, 74, 0.4)',
               cursor: 'pointer',
               padding: '0.4rem 0.85rem',
@@ -62,14 +63,14 @@ export function TopBar({
             }}
             title="Start live conversational voice call with active agent"
           >
-            <span>📞</span>
+            <IconPhone size={14} color="#ffffff" />
             <span>Call {activeAgent.name}</span>
           </button>
         )}
 
         {activeAgent && (
           <div className="active-agent-badge" onClick={onOpenAgentsTab} title="Click to manage agents">
-            <span className="badge-avatar">{activeAgent.avatar || '🤖'}</span>
+            <PersonaAvatar name={activeAgent.name} role={activeAgent.role} size={28} />
             <div className="badge-info">
               <span className="badge-name">{activeAgent.name}</span>
               <span className="badge-role">{activeAgent.role}</span>

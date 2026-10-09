@@ -1,8 +1,19 @@
 // ============================================================================
 // Modern Sidebar Navigation Component
+// Enterprise logo & SVG navigation icons (no emojis)
 // ============================================================================
 
+import React from 'react';
 import type { TabName, Agent, DashboardState } from '../../types';
+import {
+  LogoVoiceAI,
+  IconBot,
+  IconFlask,
+  IconHistory,
+  IconActivity,
+  IconInspector,
+  PersonaAvatar,
+} from '../common/Icons';
 
 interface SidebarProps {
   activeTab: TabName;
@@ -25,19 +36,21 @@ export function Sidebar({
   connected,
   dashboardState,
 }: SidebarProps) {
-  const navItems: { id: TabName; label: string; icon: string; badge?: string }[] = [
-    { id: 'agents', label: 'Agents Studio', icon: '🤖', badge: `${agents.length}` },
-    { id: 'playground', label: 'Playground', icon: '🧪' },
-    { id: 'analytics', label: 'Call History & QA', icon: '📋' },
-    { id: 'monitor', label: 'Live Monitor', icon: '📊' },
-    { id: 'inspector', label: 'Inspector & Tools', icon: '🔍' },
+  const navItems: { id: TabName; label: string; icon: React.ReactNode; badge?: string }[] = [
+    { id: 'agents', label: 'Agents Studio', icon: <IconBot size={18} />, badge: `${agents.length}` },
+    { id: 'playground', label: 'Playground', icon: <IconFlask size={18} /> },
+    { id: 'analytics', label: 'Call History & QA', icon: <IconHistory size={18} /> },
+    { id: 'monitor', label: 'Live Monitor', icon: <IconActivity size={18} /> },
+    { id: 'inspector', label: 'Inspector & Tools', icon: <IconInspector size={18} /> },
   ];
 
   return (
     <aside className="sidebar">
-      {/* Brand Header */}
+      {/* Brand Header with Vector Logo */}
       <div className="sidebar-brand">
-        <div className="brand-icon">🎙️</div>
+        <div className="brand-icon-wrap" style={{ display: 'flex', alignItems: 'center' }}>
+          <LogoVoiceAI size={38} />
+        </div>
         <div className="brand-info">
           <h2>VoiceAI</h2>
           <span className="brand-subtitle">Agent Studio</span>
@@ -54,7 +67,7 @@ export function Sidebar({
               className={`sidebar-nav-item ${activeTab === id ? 'active' : ''}`}
               onClick={() => onTabChange(id)}
             >
-              <span className="nav-icon">{icon}</span>
+              <span className="nav-icon" style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
               <span className="nav-label">{label}</span>
               {badge && <span className="nav-badge">{badge}</span>}
             </button>
@@ -84,7 +97,7 @@ export function Sidebar({
                 className={`sidebar-agent-item ${isSelected ? 'active' : ''}`}
                 onClick={() => onSelectAgent(agent)}
               >
-                <span className="agent-avatar">{agent.avatar || '🤖'}</span>
+                <PersonaAvatar name={agent.name} role={agent.role} size={28} />
                 <div className="agent-meta">
                   <div className="agent-name">{agent.name}</div>
                   <div className="agent-role">{agent.role}</div>
