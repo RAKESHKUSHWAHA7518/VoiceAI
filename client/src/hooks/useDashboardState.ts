@@ -88,6 +88,10 @@ export function useDashboardState() {
     setPlaygroundTests(Array.isArray(tests) ? tests : (tests as any)?.tests || []);
   }, [setPlaygroundTests]);
 
+  const rewindTranscripts = useCallback((toIndex: number) => {
+    setTranscripts(prev => (Array.isArray(prev) ? prev.slice(0, toIndex + 1) : []));
+  }, []);
+
   const setSessionStart = useCallback((sessionId: string) => {
     setDashboardState(prev => ({ ...prev, session_id: sessionId }));
   }, []);
@@ -118,5 +122,6 @@ export function useDashboardState() {
     setMetrics,
     updateMetrics,
     setSessionStart,
+    rewindTranscripts,
   };
 }

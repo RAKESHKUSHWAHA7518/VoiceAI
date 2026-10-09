@@ -1,8 +1,9 @@
 // ============================================================================
 // Call Analytics & Post-Call Intelligence Tab Component
+// Master-Detail Architecture: Call History Table -> Detailed Conversation & Recording
 // ============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { CallAnalyticsRecord, Agent } from '../../types';
 
 interface AnalyticsTabProps {
@@ -14,9 +15,23 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
   const [calls, setCalls] = useState<CallAnalyticsRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [agentFilter, setAgentFilter] = useState<string>('all');
   const [resolutionFilter, setResolutionFilter] = useState<string>('all');
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
+  const [audioOnlyFilter, setAudioOnlyFilter] = useState<boolean>(false);
+  const [sortBy, setSortBy] = useState<'recent' | 'score' | 'duration' | 'score_asc'>('recent');
+
+  // Detail View State
+  const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+  const [activeSpeechTurnIndex, setActiveSpeechTurnIndex] = useState<number | null>(null);
+  const [transcriptSearch, setTranscriptSearch] = useState<string>('');
+  const [copiedTranscript, setCopiedTranscript] = useState<boolean>(false);
+  const [actionItemChecks, setActionItemChecks] = useState<Record<string, boolean>>({});
+
+  const isSpeakingRef = useRef<boolean>(false);
 
   const fetchCalls = async () => {
     try {
@@ -25,9 +40,6 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       const data = await res.json();
       if (data.calls && Array.isArray(data.calls)) {
         setCalls(data.calls);
-        if (data.calls.length > 0 && !selectedCallId) {
-          setSelectedCallId(data.calls[0].id);
-        }
       }
     } catch (err) {
       console.error('Failed to fetch call analytics:', err);
@@ -40,48 +52,68 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
     fetchCalls();
   }, []);
 
-  const handleDeleteCall = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('Delete this call analytics record?')) return;
+  // Cleanup speech synthesis on unmount or call switch
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      isSpeakingRef.current = false;
+    };
+  }, [selectedCallId]);
+
+  const handleDeleteCall = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!confirm('Are you sure you want to permanently delete this call record and its recording?')) return;
     try {
       await fetch(`/api/calls/${id}`, { method: 'DELETE' });
       const remaining = calls.filter(c => c.id !== id);
       setCalls(remaining);
       if (selectedCallId === id) {
-        setSelectedCallId(remaining.length > 0 ? remaining[0].id : null);
+        setSelectedCallId(null);
       }
     } catch (err) {
       console.error('Failed to delete call:', err);
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'recent' | 'score' | 'duration'>('recent');
+  // Filtered & Sorted Call History List
+  const filteredCalls = useMemo(() => {
+    return calls
+      .filter(call => {
+        if (agentFilter !== 'all' && call.agent_name !== agentFilter && call.agent_id !== agentFilter) return false;
+        if (resolutionFilter !== 'all' && call.resolution_status !== resolutionFilter) return false;
+        if (sentimentFilter !== 'all' && call.sentiment !== sentimentFilter) return false;
+        if (audioOnlyFilter && !call.audio_url) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchesSummary = call.summary?.toLowerCase().includes(q);
+          const matchesAgent = call.agent_name?.toLowerCase().includes(q);
+          const matchesRole = call.agent_role?.toLowerCase().includes(q);
+          const matchesId = call.id?.toLowerCase().includes(q) || call.session_id?.toLowerCase().includes(q);
+          const matchesTopics = (call.topics || []).some(t => t.toLowerCase().includes(q));
+          const matchesTranscripts = (call.transcripts || []).some(t => t.text.toLowerCase().includes(q));
+          if (!matchesSummary && !matchesAgent && !matchesRole && !matchesId && !matchesTopics && !matchesTranscripts) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'score') return (b.qa_scores?.overall_score || 0) - (a.qa_scores?.overall_score || 0);
+        if (sortBy === 'score_asc') return (a.qa_scores?.overall_score || 0) - (b.qa_scores?.overall_score || 0);
+        if (sortBy === 'duration') return b.duration_seconds - a.duration_seconds;
+        return b.timestamp - a.timestamp;
+      });
+  }, [calls, agentFilter, resolutionFilter, sentimentFilter, audioOnlyFilter, searchQuery, sortBy]);
 
-  const filteredCalls = calls
-    .filter(call => {
-      if (agentFilter !== 'all' && call.agent_name !== agentFilter && call.agent_id !== agentFilter) return false;
-      if (resolutionFilter !== 'all' && call.resolution_status !== resolutionFilter) return false;
-      if (sentimentFilter !== 'all' && call.sentiment !== sentimentFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesSummary = call.summary.toLowerCase().includes(q);
-        const matchesAgent = call.agent_name.toLowerCase().includes(q);
-        const matchesTopics = (call.topics || []).some(t => t.toLowerCase().includes(q));
-        const matchesTranscripts = (call.transcripts || []).some(t => t.text.toLowerCase().includes(q));
-        if (!matchesSummary && !matchesAgent && !matchesTopics && !matchesTranscripts) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'score') return (b.qa_scores?.overall_score || 0) - (a.qa_scores?.overall_score || 0);
-      if (sortBy === 'duration') return b.duration_seconds - a.duration_seconds;
-      return b.timestamp - a.timestamp;
-    });
+  // Selected Call object for Detail View
+  const selectedCall = useMemo(() => {
+    if (!selectedCallId) return null;
+    return calls.find(c => c.id === selectedCallId) || null;
+  }, [calls, selectedCallId]);
 
-  const selectedCall = calls.find(c => c.id === selectedCallId) || (filteredCalls.length > 0 ? filteredCalls[0] : null);
-
-  // Compute KPI metrics
+  // Executive KPI summary calculations
   const totalCalls = calls.length;
   const avgQAScore = totalCalls > 0 
     ? Math.round(calls.reduce((acc, c) => acc + (c.qa_scores?.overall_score || 90), 0) / totalCalls) 
@@ -91,16 +123,36 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
   const avgDuration = totalCalls > 0 
     ? Math.round(calls.reduce((acc, c) => acc + c.duration_seconds, 0) / totalCalls) 
     : 0;
+  const callsWithAudioCount = calls.filter(c => !!c.audio_url).length;
 
-  const exportReport = (call: CallAnalyticsRecord) => {
-    const reportStr = JSON.stringify(call, null, 2);
-    const blob = new Blob([reportStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `call_report_${call.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // Formatting helpers
+  const formatDuration = (seconds: number) => {
+    if (!seconds || seconds <= 0) return '0s';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins === 0) return `${secs}s`;
+    return `${mins}m ${secs}s`;
+  };
+
+  const formatDate = (timestamp: number) => {
+    const d = new Date(timestamp);
+    return {
+      date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      time: d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+    };
+  };
+
+  const formatRelativeTime = (timestamp: number) => {
+    const diffMs = Date.now() - timestamp;
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return 'Just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}h ago`;
+    const diffDays = Math.floor(diffHour / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   const getSentimentColor = (sentiment: string) => {
@@ -113,7 +165,22 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
     }
   };
 
-  const getResolutionBadge = (status: string) => {
+  const getQAColor = (score: number) => {
+    if (score >= 90) return '#22c55e';
+    if (score >= 80) return '#38bdf8';
+    if (score >= 70) return '#fbbf24';
+    return '#ef4444';
+  };
+
+  const getQAGrade = (score: number) => {
+    if (score >= 95) return 'A+ • Exceptional';
+    if (score >= 90) return 'A • Excellent';
+    if (score >= 80) return 'B • High Quality';
+    if (score >= 70) return 'C • Standard';
+    return 'D • Needs Review';
+  };
+
+  const getResolutionBadgeClass = (status: string) => {
     switch (status) {
       case 'Resolved': return 'badge-resolved';
       case 'Needs Follow-Up': return 'badge-followup';
@@ -122,349 +189,875 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
     }
   };
 
+  // Speech replay functions
+  const playFullTranscriptSpeech = (call: CallAnalyticsRecord) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    if (isPlayingAudio) {
+      setIsPlayingAudio(false);
+      setActiveSpeechTurnIndex(null);
+      isSpeakingRef.current = false;
+      return;
+    }
+
+    setIsPlayingAudio(true);
+    isSpeakingRef.current = true;
+    const turns = call.transcripts || [];
+    let turnIdx = 0;
+
+    const speakNextTurn = () => {
+      if (!isSpeakingRef.current || turnIdx >= turns.length) {
+        setIsPlayingAudio(false);
+        setActiveSpeechTurnIndex(null);
+        isSpeakingRef.current = false;
+        return;
+      }
+      setActiveSpeechTurnIndex(turnIdx);
+      const turn = turns[turnIdx];
+      const utterance = new SpeechSynthesisUtterance(turn.text);
+      utterance.rate = 1.0;
+      utterance.pitch = turn.role === 'user' ? 0.95 : 1.1;
+      utterance.onend = () => {
+        if (!isSpeakingRef.current) return;
+        turnIdx++;
+        setTimeout(speakNextTurn, 400);
+      };
+      utterance.onerror = () => {
+        setIsPlayingAudio(false);
+        setActiveSpeechTurnIndex(null);
+        isSpeakingRef.current = false;
+      };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    speakNextTurn();
+  };
+
+  const stopSpeechPlayback = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingAudio(false);
+    setActiveSpeechTurnIndex(null);
+    isSpeakingRef.current = false;
+  };
+
+  const playSingleTurnSpeech = (text: string, role: string, index: number) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    setActiveSpeechTurnIndex(index);
+    setIsPlayingAudio(true);
+    isSpeakingRef.current = true;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = role === 'user' ? 0.95 : 1.1;
+    utterance.onend = () => {
+      setActiveSpeechTurnIndex(null);
+      setIsPlayingAudio(false);
+      isSpeakingRef.current = false;
+    };
+    utterance.onerror = () => {
+      setActiveSpeechTurnIndex(null);
+      setIsPlayingAudio(false);
+      isSpeakingRef.current = false;
+    };
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const exportReport = (call: CallAnalyticsRecord) => {
+    const reportStr = JSON.stringify(call, null, 2);
+    const blob = new Blob([reportStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `call_report_${call.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyTranscriptToClipboard = (call: CallAnalyticsRecord) => {
+    const transcriptText = (call.transcripts || [])
+      .map(t => `[${t.role === 'user' ? 'Caller' : call.agent_name}]: ${t.text}`)
+      .join('\n\n');
+    navigator.clipboard.writeText(transcriptText);
+    setCopiedTranscript(true);
+    setTimeout(() => setCopiedTranscript(false), 2000);
+  };
+
+  const toggleActionItem = (key: string) => {
+    setActionItemChecks(prev => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setAgentFilter('all');
+    setResolutionFilter('all');
+    setSentimentFilter('all');
+    setAudioOnlyFilter(false);
+    setSortBy('recent');
+  };
+
+  const isFiltersActive = searchQuery !== '' || agentFilter !== 'all' || resolutionFilter !== 'all' || sentimentFilter !== 'all' || audioOnlyFilter;
+
+  // ==========================================================================
+  // VIEW 2: DEDICATED CALL DETAILS & RECORDING VIEW
+  // Activated only when user clicks a specific call row
+  // ==========================================================================
+  if (selectedCallId && selectedCall) {
+    const timeInfo = formatDate(selectedCall.timestamp);
+    const overallScore = selectedCall.qa_scores?.overall_score || 90;
+    const gradeText = getQAGrade(overallScore);
+    const transcriptsList = selectedCall.transcripts || [];
+
+    const filteredTranscripts = transcriptsList.filter(t => {
+      if (!transcriptSearch.trim()) return true;
+      return t.text.toLowerCase().includes(transcriptSearch.toLowerCase());
+    });
+
+    return (
+      <div className="analytics-page call-detail-page">
+        {/* Top Navigation & Breadcrumb Bar */}
+        <div className="call-detail-top-nav">
+          <div className="top-nav-left">
+            <button 
+              className="btn btn-back-call" 
+              onClick={() => {
+                stopSpeechPlayback();
+                setSelectedCallId(null);
+              }}
+              title="Return to full Call History list"
+            >
+              <span className="back-arrow">←</span>
+              <span className="back-label">Back to Call History</span>
+            </button>
+            <div className="call-breadcrumb-trail">
+              <span className="crumb-root" onClick={() => { stopSpeechPlayback(); setSelectedCallId(null); }}>
+                Call History
+              </span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">
+                {selectedCall.agent_avatar || '🤖'} {selectedCall.agent_name} ({selectedCall.id})
+              </span>
+            </div>
+          </div>
+
+          <div className="top-nav-actions">
+            <button className="btn btn-outline btn-sm" onClick={() => exportReport(selectedCall)}>
+              📥 Export JSON
+            </button>
+            {selectedCall.audio_url && (
+              <a 
+                href={selectedCall.audio_url} 
+                download={`${selectedCall.id}.webm`} 
+                className="btn btn-outline btn-sm"
+                style={{ textDecoration: 'none' }}
+              >
+                🎙️ Download Audio
+              </a>
+            )}
+            {onStartVoiceCall && (
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  const target = agents.find(a => a.id === selectedCall.agent_id || a.name === selectedCall.agent_name);
+                  if (target) onStartVoiceCall(target);
+                }}
+              >
+                📞 Call Again
+              </button>
+            )}
+            <button 
+              className="btn btn-danger-outline btn-sm" 
+              onClick={() => handleDeleteCall(selectedCall.id)}
+              title="Delete this call record"
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+
+        {/* Hero Call Metadata Header Card */}
+        <div className="call-detail-hero-card">
+          <div className="hero-agent-col">
+            <div className="hero-avatar">{selectedCall.agent_avatar || '🤖'}</div>
+            <div className="hero-agent-meta">
+              <div className="hero-agent-name-row">
+                <h2>{selectedCall.agent_name}</h2>
+                <span className="hero-role-pill">{selectedCall.agent_role}</span>
+              </div>
+              <div className="hero-session-meta">
+                <span>Session: <code>{selectedCall.session_id}</code></span>
+                <span>•</span>
+                <span>{timeInfo.date} at {timeInfo.time}</span>
+                <span>•</span>
+                <span>{formatRelativeTime(selectedCall.timestamp)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="hero-stats-row">
+            <div className="hero-stat-box">
+              <span className="stat-label">Duration</span>
+              <span className="stat-val">⏱️ {formatDuration(selectedCall.duration_seconds)}</span>
+            </div>
+            <div className="hero-stat-box">
+              <span className="stat-label">QA Compliance</span>
+              <span className="stat-val" style={{ color: getQAColor(overallScore) }}>
+                ⭐ {overallScore}%
+              </span>
+            </div>
+            <div className="hero-stat-box">
+              <span className="stat-label">Sentiment</span>
+              <span className="stat-val" style={{ color: getSentimentColor(selectedCall.sentiment) }}>
+                ● {selectedCall.sentiment} ({selectedCall.sentiment_score}%)
+              </span>
+            </div>
+            <div className="hero-stat-box">
+              <span className="stat-label">Resolution</span>
+              <span className={`status-pill ${getResolutionBadgeClass(selectedCall.resolution_status)}`}>
+                {selectedCall.resolution_status}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Audio Recording Card */}
+        <div className="call-recording-hero-card">
+          <div className="recording-card-header">
+            <div className="recording-title-wrap">
+              <span className="rec-icon">🎙️</span>
+              <div>
+                <h3 className="rec-heading">Call Audio Recording & Playback</h3>
+                <span className="rec-sub">
+                  {selectedCall.audio_url 
+                    ? 'High-Definition Audio Recording (48kHz Opus WebM) logged during the conversation' 
+                    : 'Audio recording file was not saved for this call. Use speech synthesized dialogue replay below.'}
+                </span>
+              </div>
+            </div>
+            {selectedCall.audio_url ? (
+              <span className="rec-badge-active">● HD Audio Recording</span>
+            ) : (
+              <span className="rec-badge-simulated">Synthesized Replay Mode</span>
+            )}
+          </div>
+
+          <div className="recording-player-body">
+            {selectedCall.audio_url ? (
+              <div className="audio-player-container">
+                <audio 
+                  controls 
+                  src={selectedCall.audio_url} 
+                  className="modern-audio-element" 
+                  preload="metadata"
+                />
+                <div className="audio-details-footnote">
+                  <span>🎧 File available at: <code>{selectedCall.audio_url}</code></span>
+                  <span>Duration: {formatDuration(selectedCall.duration_seconds)}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="speech-synth-player-bar">
+                <button 
+                  className={`btn ${isPlayingAudio ? 'btn-danger' : 'btn-success'} btn-md`}
+                  onClick={() => playFullTranscriptSpeech(selectedCall)}
+                >
+                  {isPlayingAudio ? '⏹️ Stop Dialogue Playback' : '🔊 Playback Dialogue (Speech Synth)'}
+                </button>
+                <div className="synth-status-text">
+                  {isPlayingAudio ? (
+                    <span className="active-speaking-indicator">
+                      <span className="pulsing-mic">🎙️</span> Speaking turn {activeSpeechTurnIndex !== null ? `#${activeSpeechTurnIndex + 1}` : ''}...
+                    </span>
+                  ) : (
+                    <span>Listen to the dialogue spoken aloud turn-by-turn with distinct user/agent pitch modulation.</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main 2-Column Split: Detailed Conversation Transcript (Left) + Intelligence Scorecard (Right) */}
+        <div className="call-detail-two-col-grid">
+          {/* Left Column: Full Conversation Transcript */}
+          <div className="call-detail-transcript-col">
+            <div className="detail-section-card transcript-card-container">
+              <div className="card-section-header">
+                <div className="section-title-wrap">
+                  <span className="section-icon">💬</span>
+                  <div>
+                    <h3 className="section-title">Conversation Transcript</h3>
+                    <span className="section-count">{transcriptsList.length} total dialogue turns</span>
+                  </div>
+                </div>
+
+                <div className="transcript-header-actions">
+                  <button 
+                    className="btn btn-outline btn-sm copy-btn"
+                    onClick={() => copyTranscriptToClipboard(selectedCall)}
+                    title="Copy transcript to clipboard"
+                  >
+                    {copiedTranscript ? '✓ Copied!' : '📋 Copy Text'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Transcript Search */}
+              <div className="transcript-search-bar">
+                <input
+                  type="text"
+                  className="form-input form-input-sm"
+                  placeholder="Filter dialogue keywords (e.g. price, booking, thank you)..."
+                  value={transcriptSearch}
+                  onChange={e => setTranscriptSearch(e.target.value)}
+                />
+                {transcriptSearch && (
+                  <button className="clear-search-btn" onClick={() => setTranscriptSearch('')}>✕</button>
+                )}
+              </div>
+
+              {/* Transcript Speech Bubbles Stream */}
+              <div className="conversation-bubbles-stream">
+                {filteredTranscripts.length === 0 ? (
+                  <div className="empty-transcript-hint">
+                    {transcriptSearch ? 'No dialogue turns match your keyword filter.' : 'No dialogue recorded for this session.'}
+                  </div>
+                ) : (
+                  filteredTranscripts.map((turn, idx) => {
+                    const isUser = turn.role === 'user';
+                    const isSpeakingThis = isPlayingAudio && activeSpeechTurnIndex === idx;
+
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`dialogue-turn-row ${isUser ? 'turn-user' : 'turn-agent'} ${isSpeakingThis ? 'turn-currently-speaking' : ''}`}
+                      >
+                        <div className="turn-avatar-badge">
+                          {isUser ? '👤' : (selectedCall.agent_avatar || '🤖')}
+                        </div>
+
+                        <div className="turn-bubble-wrapper">
+                          <div className="turn-speaker-meta">
+                            <span className="turn-speaker-name">
+                              {isUser ? 'Caller (You)' : selectedCall.agent_name}
+                            </span>
+                            {!isUser && <span className="turn-speaker-role">{selectedCall.agent_role}</span>}
+                            <button 
+                              className="turn-speak-mini-btn"
+                              title="Listen to this line"
+                              onClick={() => playSingleTurnSpeech(turn.text, turn.role, idx)}
+                            >
+                              🔊
+                            </button>
+                          </div>
+
+                          <div className="turn-bubble-body">
+                            {turn.text}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: QA Intelligence & Audit Scorecard */}
+          <div className="call-detail-scorecard-col">
+            {/* QA Scorecard Radial & Bar Breakdown */}
+            <div className="detail-section-card qa-audit-card">
+              <div className="card-section-header">
+                <div className="section-title-wrap">
+                  <span className="section-icon">⭐</span>
+                  <div>
+                    <h3 className="section-title">QA Compliance & Audit Scorecard</h3>
+                    <span className="section-count">{gradeText}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="qa-hero-score-banner">
+                <div className="qa-big-circle" style={{ borderColor: getQAColor(overallScore) }}>
+                  <span className="qa-big-num" style={{ color: getQAColor(overallScore) }}>{overallScore}%</span>
+                  <span className="qa-circle-sub">Overall QA</span>
+                </div>
+                <div className="qa-summary-text-block">
+                  <div className="qa-grade-badge" style={{ background: `${getQAColor(overallScore)}20`, color: getQAColor(overallScore) }}>
+                    {gradeText}
+                  </div>
+                  <p className="qa-summary-p">
+                    Evaluated across conversational tone, response clarity, tool correctness, and turn latency.
+                  </p>
+                </div>
+              </div>
+
+              {/* Breakdown Metric Progress Bars */}
+              <div className="qa-bars-list">
+                <div className="qa-bar-item">
+                  <div className="qa-bar-row">
+                    <span className="qa-metric-name">🤝 Empathy & Tone</span>
+                    <span className="qa-metric-val">{selectedCall.qa_scores?.empathy || 90}%</span>
+                  </div>
+                  <div className="qa-progress-bg">
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.empathy || 90}%`, background: '#38bdf8' }} />
+                  </div>
+                </div>
+
+                <div className="qa-bar-item">
+                  <div className="qa-bar-row">
+                    <span className="qa-metric-name">🗣️ Response Clarity & Conciseness</span>
+                    <span className="qa-metric-val">{selectedCall.qa_scores?.clarity || 94}%</span>
+                  </div>
+                  <div className="qa-progress-bg">
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.clarity || 94}%`, background: '#22c55e' }} />
+                  </div>
+                </div>
+
+                <div className="qa-bar-item">
+                  <div className="qa-bar-row">
+                    <span className="qa-metric-name">🎯 Tool & Function Accuracy</span>
+                    <span className="qa-metric-val">{selectedCall.qa_scores?.tool_accuracy || 98}%</span>
+                  </div>
+                  <div className="qa-progress-bg">
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.tool_accuracy || 98}%`, background: '#a855f7' }} />
+                  </div>
+                </div>
+
+                <div className="qa-bar-item">
+                  <div className="qa-bar-row">
+                    <span className="qa-metric-name">⚡ Response Speed & Fluency</span>
+                    <span className="qa-metric-val">{selectedCall.qa_scores?.response_speed || 92}%</span>
+                  </div>
+                  <div className="qa-progress-bg">
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.response_speed || 92}%`, background: '#fbbf24' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Executive Call Summary */}
+            <div className="detail-section-card">
+              <div className="card-section-header">
+                <div className="section-title-wrap">
+                  <span className="section-icon">📋</span>
+                  <h3 className="section-title">Executive Summary</h3>
+                </div>
+              </div>
+              <p className="executive-summary-text">
+                {selectedCall.summary || 'Summary generated automatically from call dialogue.'}
+              </p>
+            </div>
+
+            {/* Sentiment & Resolution Matrix */}
+            <div className="detail-section-card">
+              <div className="card-section-header">
+                <div className="section-title-wrap">
+                  <span className="section-icon">🎭</span>
+                  <h3 className="section-title">Sentiment & Resolution Analysis</h3>
+                </div>
+              </div>
+              <div className="sentiment-status-grid">
+                <div className="sentiment-stat-card">
+                  <span className="label">Caller Sentiment</span>
+                  <div className="val-row">
+                    <span className="sentiment-pill-lg" style={{ color: getSentimentColor(selectedCall.sentiment), borderColor: getSentimentColor(selectedCall.sentiment) }}>
+                      ● {selectedCall.sentiment}
+                    </span>
+                    <span className="score-pct">{selectedCall.sentiment_score}% confidence</span>
+                  </div>
+                </div>
+
+                <div className="sentiment-stat-card">
+                  <span className="label">Resolution Status</span>
+                  <div className="val-row">
+                    <span className={`status-pill status-pill-lg ${getResolutionBadgeClass(selectedCall.resolution_status)}`}>
+                      {selectedCall.resolution_status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Topics Discussed */}
+            {selectedCall.topics && selectedCall.topics.length > 0 && (
+              <div className="detail-section-card">
+                <div className="card-section-header">
+                  <div className="section-title-wrap">
+                    <span className="section-icon">🏷️</span>
+                    <h3 className="section-title">Key Topics Discussed</h3>
+                  </div>
+                </div>
+                <div className="topics-pill-cloud">
+                  {selectedCall.topics.map((t, idx) => (
+                    <span key={idx} className="topic-chip">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Extracted Action Items & Follow-up Checklist */}
+            {selectedCall.action_items && selectedCall.action_items.length > 0 && (
+              <div className="detail-section-card">
+                <div className="card-section-header">
+                  <div className="section-title-wrap">
+                    <span className="section-icon">✅</span>
+                    <h3 className="section-title">Follow-up Action Items</h3>
+                  </div>
+                </div>
+                <div className="action-items-checklist">
+                  {selectedCall.action_items.map((item, idx) => {
+                    const key = `${selectedCall.id}_action_${idx}`;
+                    const isChecked = !!actionItemChecks[key];
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`action-item-check-row ${isChecked ? 'action-item-done' : ''}`}
+                        onClick={() => toggleActionItem(key)}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked} 
+                          onChange={() => {}} 
+                          className="action-checkbox"
+                        />
+                        <span className="action-text">{item}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // VIEW 1: MASTER CALL HISTORY PAGE (ONLY CALL HISTORY)
+  // Dedicated, full-width, clean table view with search & filters
+  // ==========================================================================
   return (
     <div className="analytics-page">
-      {/* Top KPI Cards Row */}
+      {/* Page Header */}
+      <div className="analytics-header-banner">
+        <div className="header-text-block">
+          <div className="header-badge-tag">Voice AI Intelligence</div>
+          <h1 className="header-title">Call History & Post-Call QA</h1>
+          <p className="header-subtitle">
+            Review logged customer conversations, automated QA compliance scorecards, and high-definition call recordings.
+          </p>
+        </div>
+
+        <div className="header-actions">
+          <button className="btn btn-outline" onClick={fetchCalls} title="Reload call records from server">
+            🔄 Refresh Records
+          </button>
+        </div>
+      </div>
+
+      {/* Top Executive KPI Cards */}
       <div className="analytics-kpi-grid">
         <div className="analytics-kpi-card">
-          <div className="kpi-icon">📞</div>
-          <div>
-            <div className="kpi-label">Total Calls Analyzed</div>
-            <div className="kpi-value">{totalCalls}</div>
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8' }}>
+            📞
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Total Calls Logged</span>
+            <span className="kpi-value">{totalCalls}</span>
+            <span className="kpi-subtext">Across all configured agents</span>
           </div>
         </div>
+
         <div className="analytics-kpi-card">
-          <div className="kpi-icon" style={{ color: '#22c55e' }}>⭐</div>
-          <div>
-            <div className="kpi-label">Average QA Score</div>
-            <div className="kpi-value">{avgQAScore}%</div>
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22c55e' }}>
+            ⭐
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Average QA Score</span>
+            <span className="kpi-value" style={{ color: getQAColor(avgQAScore) }}>
+              {avgQAScore}%
+            </span>
+            <span className="kpi-subtext">{getQAGrade(avgQAScore)}</span>
           </div>
         </div>
+
         <div className="analytics-kpi-card">
-          <div className="kpi-icon" style={{ color: '#38bdf8' }}>✓</div>
-          <div>
-            <div className="kpi-label">First-Call Resolution</div>
-            <div className="kpi-value">{resolutionRate}%</div>
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7' }}>
+            ✓
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">First-Call Resolution</span>
+            <span className="kpi-value" style={{ color: '#a855f7' }}>{resolutionRate}%</span>
+            <span className="kpi-subtext">{resolvedCount} of {totalCalls} calls resolved</span>
           </div>
         </div>
+
         <div className="analytics-kpi-card">
-          <div className="kpi-icon" style={{ color: '#fbbf24' }}>⏱️</div>
-          <div>
-            <div className="kpi-label">Average Handle Time</div>
-            <div className="kpi-value">{avgDuration}s</div>
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}>
+            ⏱️
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Avg Handle Time</span>
+            <span className="kpi-value">{formatDuration(avgDuration)}</span>
+            <span className="kpi-subtext">Duration per interaction</span>
+          </div>
+        </div>
+
+        <div className="analytics-kpi-card">
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#f87171' }}>
+            🎙️
+          </div>
+          <div className="kpi-content">
+            <span className="kpi-label">Recorded Calls</span>
+            <span className="kpi-value">{callsWithAudioCount}</span>
+            <span className="kpi-subtext">HD audio available for playback</span>
           </div>
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="analytics-filters-bar">
-        <div className="filter-group" style={{ flex: '1 1 200px' }}>
-          <label>🔍 Search:</label>
+      {/* Modern Filter & Search Toolbar */}
+      <div className="analytics-toolbar">
+        <div className="search-input-wrap">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
-            className="form-input form-input-sm"
-            placeholder="Search transcripts, topics, summary..."
+            className="search-input"
+            placeholder="Search calls by summary, agent, topic, or dialogue..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ width: '100%' }}
           />
+          {searchQuery && (
+            <button className="clear-search-btn" onClick={() => setSearchQuery('')} title="Clear search">
+              ✕
+            </button>
+          )}
         </div>
 
-        <div className="filter-group">
-          <label>Agent:</label>
-          <select 
-            className="form-select form-select-sm" 
-            value={agentFilter} 
-            onChange={e => setAgentFilter(e.target.value)}
-          >
-            <option value="all">All Agents</option>
-            {agents.map(a => (
-              <option key={a.id} value={a.name}>{a.avatar} {a.name}</option>
-            ))}
-          </select>
-        </div>
+        <div className="toolbar-filters-row">
+          <div className="filter-select-item">
+            <label>Agent:</label>
+            <select 
+              className="form-select form-select-sm" 
+              value={agentFilter} 
+              onChange={e => setAgentFilter(e.target.value)}
+            >
+              <option value="all">All Agents ({agents.length})</option>
+              {agents.map(a => (
+                <option key={a.id} value={a.name}>{a.avatar} {a.name}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label>Resolution:</label>
-          <select 
-            className="form-select form-select-sm" 
-            value={resolutionFilter} 
-            onChange={e => setResolutionFilter(e.target.value)}
-          >
-            <option value="all">All Resolutions</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Needs Follow-Up">Needs Follow-Up</option>
-            <option value="Escalated">Escalated</option>
-            <option value="Unresolved">Unresolved</option>
-          </select>
-        </div>
+          <div className="filter-select-item">
+            <label>Resolution:</label>
+            <select 
+              className="form-select form-select-sm" 
+              value={resolutionFilter} 
+              onChange={e => setResolutionFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Needs Follow-Up">Needs Follow-Up</option>
+              <option value="Escalated">Escalated</option>
+              <option value="Unresolved">Unresolved</option>
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label>Sentiment:</label>
-          <select 
-            className="form-select form-select-sm" 
-            value={sentimentFilter} 
-            onChange={e => setSentimentFilter(e.target.value)}
-          >
-            <option value="all">All Sentiments</option>
-            <option value="Positive">Positive</option>
-            <option value="Neutral">Neutral</option>
-            <option value="Curious">Curious</option>
-            <option value="Frustrated">Frustrated</option>
-          </select>
-        </div>
+          <div className="filter-select-item">
+            <label>Sentiment:</label>
+            <select 
+              className="form-select form-select-sm" 
+              value={sentimentFilter} 
+              onChange={e => setSentimentFilter(e.target.value)}
+            >
+              <option value="all">All Sentiments</option>
+              <option value="Positive">Positive</option>
+              <option value="Neutral">Neutral</option>
+              <option value="Curious">Curious</option>
+              <option value="Frustrated">Frustrated</option>
+            </select>
+          </div>
 
-        <div className="filter-group">
-          <label>Sort:</label>
-          <select 
-            className="form-select form-select-sm" 
-            value={sortBy} 
-            onChange={e => setSortBy(e.target.value as any)}
-          >
-            <option value="recent">Most Recent</option>
-            <option value="score">Highest QA Score</option>
-            <option value="duration">Longest Call</option>
-          </select>
-        </div>
+          <div className="filter-select-item">
+            <label>Sort By:</label>
+            <select 
+              className="form-select form-select-sm" 
+              value={sortBy} 
+              onChange={e => setSortBy(e.target.value as any)}
+            >
+              <option value="recent">Most Recent</option>
+              <option value="score">Highest QA Score</option>
+              <option value="score_asc">Lowest QA Score</option>
+              <option value="duration">Longest Call</option>
+            </select>
+          </div>
 
-        <button className="btn btn-outline btn-sm" onClick={fetchCalls} style={{ marginLeft: 'auto' }}>
-          🔄 Refresh
-        </button>
+          <label className="audio-toggle-filter" title="Show only calls with recorded audio">
+            <input 
+              type="checkbox" 
+              checked={audioOnlyFilter} 
+              onChange={e => setAudioOnlyFilter(e.target.checked)} 
+            />
+            <span>🎙️ HD Audio Only</span>
+          </label>
+
+          {isFiltersActive && (
+            <button className="btn btn-outline btn-sm reset-filter-btn" onClick={resetAllFilters}>
+              Clear Filters
+            </button>
+          )}
+
+          <div className="filter-counter">
+            Showing <strong>{filteredCalls.length}</strong> of {totalCalls}
+          </div>
+        </div>
       </div>
 
-      {/* Main Split Content: Call Records List + Detailed Intelligence Scorecard */}
-      <div className="analytics-content-split">
-        {/* Left Side: Call Records List */}
-        <div className="analytics-call-list">
-          {loading ? (
-            <div style={{ color: '#64748b', padding: '2rem', textAlign: 'center' }}>Loading call records...</div>
-          ) : filteredCalls.length === 0 ? (
-            <div style={{ color: '#64748b', padding: '2rem', textAlign: 'center' }}>
-              No call records matching filters. Start a call in Playground or Agents Studio to see intelligence scorecards here.
-            </div>
-          ) : (
-            filteredCalls.map(c => {
-              const isSelected = selectedCall?.id === c.id;
-              return (
-                <div 
-                  key={c.id} 
-                  className={`call-record-item ${isSelected ? 'call-record-selected' : ''}`}
-                  onClick={() => setSelectedCallId(c.id)}
-                >
-                  <div className="record-header">
-                    <span className="record-avatar">{c.agent_avatar || '🤖'}</span>
-                    <div className="record-info">
-                      <div className="record-name">{c.agent_name}</div>
-                      <div className="record-role">{c.agent_role}</div>
-                    </div>
-                    <div className="record-score-badge">
-                      <span className="score-num">{c.qa_scores?.overall_score || 90}</span>
-                      <span className="score-sub">QA</span>
-                    </div>
-                  </div>
+      {/* Master Call History Data Table */}
+      <div className="call-history-table-container">
+        {loading ? (
+          <div className="table-loading-state">
+            <div className="loading-spinner" />
+            <p>Loading call history records...</p>
+          </div>
+        ) : filteredCalls.length === 0 ? (
+          <div className="analytics-empty-state">
+            <div className="empty-icon">📞</div>
+            <h3>No Call Records Found</h3>
+            <p>
+              {isFiltersActive 
+                ? 'No calls match the filters or search terms you entered.' 
+                : 'No voice conversations have been recorded yet. Start a call in Playground or Agents Studio to generate call logs!'}
+            </p>
+            {isFiltersActive ? (
+              <button className="btn btn-outline" onClick={resetAllFilters}>
+                Reset All Filters
+              </button>
+            ) : onStartVoiceCall && agents.length > 0 ? (
+              <button className="btn btn-primary" onClick={() => onStartVoiceCall(agents[0])}>
+                📞 Start First Voice Call
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <table className="call-history-table">
+            <thead>
+              <tr>
+                <th style={{ width: '24%' }}>Agent & Role</th>
+                <th style={{ width: '16%' }}>Date & Time</th>
+                <th style={{ width: '11%' }}>Duration</th>
+                <th style={{ width: '12%' }}>Sentiment</th>
+                <th style={{ width: '13%' }}>Resolution</th>
+                <th style={{ width: '10%' }}>QA Score</th>
+                <th style={{ width: '14%', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCalls.map(c => {
+                const timeInfo = formatDate(c.timestamp);
+                const score = c.qa_scores?.overall_score || 90;
 
-                  <p className="record-summary-preview">
-                    {c.summary}
-                  </p>
+                return (
+                  <tr 
+                    key={c.id} 
+                    className="call-history-row"
+                    onClick={() => setSelectedCallId(c.id)}
+                    title="Click row to inspect full conversation transcript and audio recording"
+                  >
+                    {/* Agent & Persona Cell */}
+                    <td>
+                      <div className="table-agent-cell">
+                        <div className="agent-avatar-circle">{c.agent_avatar || '🤖'}</div>
+                        <div className="agent-name-meta">
+                          <span className="agent-primary-name">{c.agent_name}</span>
+                          <span className="agent-secondary-role">{c.agent_role}</span>
+                        </div>
+                      </div>
+                    </td>
 
-                  <div className="record-footer">
-                    <span className="record-time">
-                      {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {c.duration_seconds}s
-                    </span>
-                    <div className="record-tags">
+                    {/* Date & Time Cell */}
+                    <td>
+                      <div className="table-time-cell">
+                        <span className="time-primary">{timeInfo.date}</span>
+                        <span className="time-secondary">{timeInfo.time} ({formatRelativeTime(c.timestamp)})</span>
+                      </div>
+                    </td>
+
+                    {/* Duration Cell */}
+                    <td>
+                      <div className="table-duration-cell">
+                        <span className="duration-pill">⏱️ {formatDuration(c.duration_seconds)}</span>
+                      </div>
+                    </td>
+
+                    {/* Sentiment Cell */}
+                    <td>
                       <span 
                         className="sentiment-pill"
                         style={{ color: getSentimentColor(c.sentiment), borderColor: getSentimentColor(c.sentiment) }}
                       >
                         ● {c.sentiment}
                       </span>
-                      <span className={`status-pill ${getResolutionBadge(c.resolution_status)}`}>
+                    </td>
+
+                    {/* Resolution Status Cell */}
+                    <td>
+                      <span className={`status-pill ${getResolutionBadgeClass(c.resolution_status)}`}>
                         {c.resolution_status}
                       </span>
-                    </div>
-                    <button 
-                      className="record-delete-btn" 
-                      onClick={(e) => handleDeleteCall(c.id, e)}
-                      title="Delete record"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                    </td>
 
-        {/* Right Side: Detailed Intelligence & QA Scorecard */}
-        <div className="analytics-scorecard-panel">
-          {selectedCall ? (
-            <div className="scorecard-container">
-              {/* Header */}
-              <div className="scorecard-header">
-                <div className="scorecard-agent-meta">
-                  <span className="scorecard-avatar">{selectedCall.agent_avatar || '🤖'}</span>
-                  <div>
-                    <h2 className="scorecard-title">Call with {selectedCall.agent_name}</h2>
-                    <span className="scorecard-meta-text">
-                      Session ID: <code>{selectedCall.session_id}</code> • {new Date(selectedCall.timestamp).toLocaleString()} • Duration: {selectedCall.duration_seconds}s
-                    </span>
-                  </div>
-                </div>
-
-                <div className="scorecard-top-actions">
-                  <button className="btn btn-outline btn-sm" onClick={() => exportReport(selectedCall)}>
-                    📥 Export Report
-                  </button>
-                  {onStartVoiceCall && (
-                    <button 
-                      className="btn btn-primary btn-sm"
-                      onClick={() => {
-                        const target = agents.find(a => a.id === selectedCall.agent_id || a.name === selectedCall.agent_name);
-                        if (target) onStartVoiceCall(target);
-                      }}
-                    >
-                      📞 Call Again
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* QA Scorecard Ring & Breakdown */}
-              <div className="qa-score-section">
-                <div className="qa-main-score-circle">
-                  <div className="qa-circle-value">{selectedCall.qa_scores?.overall_score || 92}%</div>
-                  <div className="qa-circle-label">Overall QA Score</div>
-                </div>
-
-                <div className="qa-breakdown-bars">
-                  <div className="qa-bar-item">
-                    <div className="qa-bar-label">
-                      <span>Empathy & Tone</span>
-                      <span>{selectedCall.qa_scores?.empathy || 90}%</span>
-                    </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${selectedCall.qa_scores?.empathy || 90}%`, background: '#38bdf8' }} />
-                    </div>
-                  </div>
-
-                  <div className="qa-bar-item">
-                    <div className="qa-bar-label">
-                      <span>Response Clarity</span>
-                      <span>{selectedCall.qa_scores?.clarity || 94}%</span>
-                    </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${selectedCall.qa_scores?.clarity || 94}%`, background: '#22c55e' }} />
-                    </div>
-                  </div>
-
-                  <div className="qa-bar-item">
-                    <div className="qa-bar-label">
-                      <span>Tool Execution Accuracy</span>
-                      <span>{selectedCall.qa_scores?.tool_accuracy || 98}%</span>
-                    </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${selectedCall.qa_scores?.tool_accuracy || 98}%`, background: '#a855f7' }} />
-                    </div>
-                  </div>
-
-                  <div className="qa-bar-item">
-                    <div className="qa-bar-label">
-                      <span>Response Speed & Fluency</span>
-                      <span>{selectedCall.qa_scores?.response_speed || 92}%</span>
-                    </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${selectedCall.qa_scores?.response_speed || 92}%`, background: '#fbbf24' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Executive Summary */}
-              <div className="scorecard-box">
-                <h3 className="box-title">📋 Executive Call Summary</h3>
-                <p className="summary-paragraph">{selectedCall.summary}</p>
-              </div>
-
-              {/* Sentiment & Status Row */}
-              <div className="scorecard-two-col">
-                <div className="scorecard-box">
-                  <h3 className="box-title">🎭 Caller Sentiment</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.4rem' }}>
-                    <span 
-                      className="sentiment-tag-lg"
-                      style={{ color: getSentimentColor(selectedCall.sentiment), borderColor: getSentimentColor(selectedCall.sentiment) }}
-                    >
-                      {selectedCall.sentiment} ({selectedCall.sentiment_score}%)
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                      Caller mood was maintained effectively.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="scorecard-box">
-                  <h3 className="box-title">🎯 Resolution Status</h3>
-                  <div style={{ marginTop: '0.4rem' }}>
-                    <span className={`status-pill status-pill-lg ${getResolutionBadge(selectedCall.resolution_status)}`}>
-                      {selectedCall.resolution_status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Topics Discussed */}
-              {selectedCall.topics && selectedCall.topics.length > 0 && (
-                <div className="scorecard-box">
-                  <h3 className="box-title">🏷️ Topics Discussed</h3>
-                  <div className="topics-tags-list">
-                    {selectedCall.topics.map((t, idx) => (
-                      <span key={idx} className="topic-pill">{t}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Items */}
-              {selectedCall.action_items && selectedCall.action_items.length > 0 && (
-                <div className="scorecard-box">
-                  <h3 className="box-title">✅ Extracted Action Items & Follow-ups</h3>
-                  <ul className="action-items-list">
-                    {selectedCall.action_items.map((item, idx) => (
-                      <li key={idx} className="action-item-row">
-                        <input type="checkbox" defaultChecked={false} />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Full Transcript Inspection */}
-              <div className="scorecard-box">
-                <h3 className="box-title">💬 Conversation Transcript ({selectedCall.transcripts?.length || 0} turns)</h3>
-                <div className="scorecard-transcript-stream">
-                  {selectedCall.transcripts && selectedCall.transcripts.length > 0 ? (
-                    selectedCall.transcripts.map((t, idx) => (
-                      <div key={idx} className={`transcript-bubble-row ${t.role === 'user' ? 'bubble-user' : 'bubble-agent'}`}>
-                        <span className="bubble-speaker">
-                          {t.role === 'user' ? '👤 You' : (selectedCall.agent_avatar || '🤖') + ' ' + selectedCall.agent_name}
+                    {/* QA Score Cell */}
+                    <td>
+                      <div className="table-qa-cell">
+                        <span className="qa-score-badge" style={{ color: getQAColor(score), borderColor: getQAColor(score) }}>
+                          ⭐ {score}%
                         </span>
-                        <div className="bubble-content">{t.text}</div>
                       </div>
-                    ))
-                  ) : (
-                    <div style={{ color: '#64748b', fontStyle: 'italic' }}>No transcript logged for this session.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ color: '#64748b', padding: '3rem', textAlign: 'center' }}>
-              Select a call record from the left to view the complete QA scorecard and intelligence analysis.
-            </div>
-          )}
-        </div>
+                    </td>
+
+                    {/* Actions Cell */}
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="table-actions-cell" onClick={e => e.stopPropagation()}>
+                        {c.audio_url && (
+                          <span className="table-audio-indicator" title="Audio recording available">
+                            🎙️ Rec
+                          </span>
+                        )}
+                        <button 
+                          className="btn-view-details"
+                          onClick={() => setSelectedCallId(c.id)}
+                          title="Open full conversation and recording"
+                        >
+                          View Details →
+                        </button>
+                        <button 
+                          className="btn-delete-row"
+                          onClick={(e) => handleDeleteCall(c.id, e)}
+                          title="Delete call record"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Quick Helper Banner */}
+      <div className="call-history-footer-hint">
+        💡 <strong>Tip:</strong> Click anywhere on a call row to open its conversation transcript dialogue bubbles and audio player.
       </div>
     </div>
   );

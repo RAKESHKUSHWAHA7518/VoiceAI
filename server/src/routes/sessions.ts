@@ -99,6 +99,35 @@ router.post(
 );
 
 router.post(
+  '/:sessionId/rewind',
+  asyncHandler(async (req: any, res: any) => {
+    const session = sessionManager.getSession(req.params.sessionId);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Session not found' },
+      });
+    }
+
+    const { turnIndex } = req.body;
+    const idx = Number(turnIndex);
+    if (isNaN(idx) || idx < 0 || idx >= session.turnHistory.length) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_TURN_INDEX', message: `turnIndex must be between 0 and ${Math.max(0, session.turnHistory.length - 1)}` },
+      });
+    }
+
+    const result = sessionManager.rewindToTurn(req.params.sessionId, idx);
+    res.json({
+      success: true,
+      message: `Session ${req.params.sessionId} rewound to turn ${idx}`,
+      result,
+    });
+  })
+);
+
+router.post(
   '/:sessionId/end',
   asyncHandler(async (req: any, res: any) => {
     const session = sessionManager.getSession(req.params.sessionId);
@@ -110,8 +139,7 @@ router.post(
       });
     }
     
-    // End session
-    // sessionManager.endSession(req.params.sessionId);
+    sessionManager.endSession(req.params.sessionId);
     
     res.json({
       success: true,

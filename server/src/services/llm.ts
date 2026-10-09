@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { LLMStreamChunk } from '../types';
+import { guardrailsEngine } from './guardrails';
 
 export class OpenAILLM {
   private client: any;
@@ -42,13 +43,16 @@ export class OpenAILLM {
   }
 
   private buildMessages(history: any[], userText: string): any[] {
+    const inspection = guardrailsEngine.inspect(userText);
+    const sanitizedUserText = inspection.sanitizedText;
+
     const messages = [
       { role: 'system', content: this.systemPrompt },
       ...history.map(t => ({
         role: t.role === 'user' ? 'user' : 'assistant',
         content: t.user_transcript || t.content,
       })),
-      { role: 'user', content: userText },
+      { role: 'user', content: sanitizedUserText },
     ];
     return messages;
   }

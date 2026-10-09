@@ -53,6 +53,9 @@ export function LiveVoiceCallModal({
   const waveIntervalRef = useRef<any>(null);
   const silenceTimeoutRef = useRef<any>(null);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -329,6 +332,35 @@ export function LiveVoiceCallModal({
     setAnalyzingScorecard(false);
     setScorecardResult(null);
 
+    // Initialize media recorder for call audio
+    audioChunksRef.current = [];
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        if (!isMounted) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        audioStreamRef.current = stream;
+        try {
+          const mimeType = (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+            ? 'audio/webm;codecs=opus'
+            : (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+          const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              audioChunksRef.current.push(e.data);
+            }
+          };
+          recorder.start(500);
+          mediaRecorderRef.current = recorder;
+        } catch (e) {
+          console.warn('MediaRecorder init error:', e);
+        }
+      }).catch(err => {
+        console.warn('Microphone stream access for recording:', err);
+      });
+    }
+
     const greetingText = agent.greeting || `Hello! I'm ${agent.name}, ${agent.role}. How can I assist you today?`;
 
     // Add greeting to transcript
@@ -351,6 +383,12 @@ export function LiveVoiceCallModal({
       isMounted = false;
       stopAllAudio();
       stopListening();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch {}
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(t => t.stop());
+      }
     };
   }, [isOpen, agent]);
 
@@ -365,6 +403,30 @@ export function LiveVoiceCallModal({
     stopAllAudio();
     stopListening();
     setPhase('ENDED');
+
+    let audioBase64: string | undefined = undefined;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(t => t.stop());
+    }
+
+    if (audioChunksRef.current.length > 0) {
+      try {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioBlob.size > 300) {
+          audioBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(audioBlob);
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to encode audio recording:', e);
+      }
+    }
 
     const hasUserMessages = messages.some(m => m.sender === 'user');
     // If user never spoke or very short test, simply close
@@ -390,6 +452,7 @@ export function LiveVoiceCallModal({
           agent_role: agent?.role,
           duration_seconds: callDuration || 14,
           durationSeconds: callDuration || 14,
+          audio_base64: audioBase64,
           transcripts: messages.map(m => ({
             role: m.sender === 'user' ? 'user' : 'assistant',
             text: m.text,

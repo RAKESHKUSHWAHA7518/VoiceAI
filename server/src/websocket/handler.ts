@@ -144,6 +144,15 @@ export class WebSocketHandler {
             audioBuffer.length = 0;
             await components.tts.close();
             components.tts = await this.recreateTTS(components);
+          } else if (ctype === 'rewind') {
+            const turnIndex = Number(control.turnIndex ?? control.turn_index ?? 0);
+            const { sessionManager } = require('../services/session');
+            const rewindResult = sessionManager.rewindToTurn(sessionId, turnIndex);
+            await ws.send(create_control_frame(ControlType.FLUSH_BUFFER, {}, sessionData.sequence));
+            sessionData.sequence++;
+            audioBuffer.length = 0;
+            await ws.send(create_control_frame('session_rewound', { turnIndex, rewindResult }, sessionData.sequence));
+            sessionData.sequence++;
           } else if (ctype === 'ping') {
             await ws.send(create_control_frame('pong', {}, sessionData.sequence));
           }

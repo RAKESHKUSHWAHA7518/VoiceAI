@@ -9,9 +9,10 @@ interface InspectorTabProps {
   transcripts: TranscriptMsg[];
   bargeInEvents: BargeInEvent[];
   toolCalls: ToolCall[];
+  onRewind?: (turnIndex: number) => void;
 }
 
-export function InspectorTab({ transcripts, bargeInEvents, toolCalls }: InspectorTabProps) {
+export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }: InspectorTabProps) {
   const [tools, setTools] = useState<ToolItem[]>([]);
   const [loadingTools, setLoadingTools] = useState<boolean>(true);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -286,7 +287,12 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls }: Inspecto
 
       {/* Live Transcript */}
       <div className="card" style={{ gridColumn: '1 / -1' }}>
-        <h2>Live Transcript Inspector</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h2 style={{ margin: 0 }}>Live Transcript & Time-Travel Inspector</h2>
+          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+            Click ⏪ on prior turns to time-travel rewind conversation state
+          </span>
+        </div>
         <div className="transcript-list" id="transcriptList">
           {transcripts.length === 0 ? (
             <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
@@ -294,13 +300,25 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls }: Inspecto
             </div>
           ) : (
             transcripts.map((t, i) => (
-              <div key={i} className="transcript-item">
-                <span className={`transcript-role ${t.role}`}>
-                  {t.role === 'user' ? '👤 User' : t.role === 'assistant' ? '🤖 Agent' : '⚙️ System'}
-                </span>
-                <span className="transcript-text">
-                  {t.text} {t.is_final ? '' : ' <span class="barge-in-badge">interim</span>'}
-                </span>
+              <div key={i} className="transcript-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                  <span className={`transcript-role ${t.role}`}>
+                    {t.role === 'user' ? '👤 User' : t.role === 'assistant' ? '🤖 Agent' : '⚙️ System'}
+                  </span>
+                  <span className="transcript-text">
+                    {t.text} {t.is_final ? '' : ' (interim)'}
+                  </span>
+                </div>
+                {onRewind && i < transcripts.length - 1 && (
+                  <button
+                    className="btn btn-outline btn-xs"
+                    style={{ marginLeft: 'auto', fontSize: '0.72rem', padding: '0.2rem 0.55rem', borderRadius: '4px' }}
+                    title="Time-Travel: Rewind conversation to this turn"
+                    onClick={() => onRewind(i)}
+                  >
+                    ⏪ Rewind Here
+                  </button>
+                )}
               </div>
             ))
           )}

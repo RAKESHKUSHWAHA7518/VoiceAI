@@ -30,8 +30,17 @@ import { WebSocketHandler } from './websocket/handler';
 // Pipeline
 import { PipelineManager } from './services/pipeline';
 
+import fs from 'fs';
+import path from 'path';
+
 const app = express();
 const server = createServer(app);
+
+// Recordings directory
+const recordingsDir = path.join(__dirname, '../data/recordings');
+if (!fs.existsSync(recordingsDir)) {
+  fs.mkdirSync(recordingsDir, { recursive: true });
+}
 
 // Initialize pipeline manager
 const pipelineManager = new PipelineManager();
@@ -46,8 +55,9 @@ app.use(cors({
   credentials: true,
 }));
 app.use(compression());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use('/recordings', express.static(recordingsDir));
 app.use(morgan('combined', { stream: morganStream }));
 
 // Rate limiting

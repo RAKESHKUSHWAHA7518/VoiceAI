@@ -126,6 +126,7 @@ export interface CallAnalyticsRecord {
     timestamp?: string | number;
   }>;
   tool_calls_count: number;
+  audio_url?: string;
 }
 
 export type TabName = 'agents' | 'playground' | 'monitor' | 'inspector' | 'analytics';

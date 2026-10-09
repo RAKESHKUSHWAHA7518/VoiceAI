@@ -52,6 +52,7 @@ function App() {
     metrics,
     updateMetrics,
     setSessionStart,
+    rewindTranscripts,
   } = useDashboardState();
 
   const fallbackSpeech = useCallback((text: string) => {
@@ -132,6 +133,24 @@ function App() {
     onDashboardState: setDashboardState,
     onError: (error) => console.error('WebSocket error:', error),
   });
+
+  const handleRewind = useCallback(async (turnIndex: number) => {
+    rewindTranscripts(turnIndex);
+    if (sendControl) {
+      sendControl('rewind', { turnIndex });
+    }
+    if (dashboardState.session_id) {
+      try {
+        await fetch(`/api/sessions/${dashboardState.session_id}/rewind`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ turnIndex }),
+        });
+      } catch (e) {
+        console.warn('Session rewind error:', e);
+      }
+    }
+  }, [rewindTranscripts, sendControl, dashboardState.session_id]);
 
   const handleSelectAgent = useCallback((agent: Agent) => {
     setActiveAgent(agent);
@@ -383,6 +402,7 @@ function App() {
             transcripts={transcripts}
             bargeInEvents={bargeInEvents}
             toolCalls={toolCalls}
+            onRewind={handleRewind}
           />
         );
       case 'analytics':
@@ -404,6 +424,7 @@ function App() {
     handleDeleteAgent,
     handleTestAgent,
     handleStartVoiceCall,
+    handleRewind,
     isCreatingNewAgent,
     metrics,
     transcripts,

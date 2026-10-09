@@ -62,6 +62,23 @@ export class SessionManager extends EventEmitter {
     return '';
   }
 
+  rewindToTurn(sessionId: string, turnIndex: number): any {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+    if (turnIndex < 0 || turnIndex >= session.turnHistory.length) return null;
+
+    const discardedTurns = session.turnHistory.slice(turnIndex + 1);
+    session.turnHistory = session.turnHistory.slice(0, turnIndex + 1);
+    session.updatedAt = new Date();
+    this.emit('sessionRewound', { sessionId, turnIndex, discardedTurnsCount: discardedTurns.length });
+    return {
+      success: true,
+      currentTurnIndex: turnIndex,
+      turnHistory: session.turnHistory,
+      discardedTurnsCount: discardedTurns.length,
+    };
+  }
+
   endSession(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (session) {

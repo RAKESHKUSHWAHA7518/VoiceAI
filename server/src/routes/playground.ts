@@ -45,6 +45,22 @@ router.post(
 );
 
 router.post(
+  '/guardrails',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { text } = req.body;
+    if (typeof text !== 'string') {
+      return res.status(400).json({ success: false, error: { message: 'Text string is required' } });
+    }
+    const { guardrailsEngine } = require('../services/guardrails');
+    const result = guardrailsEngine.inspect(text);
+    res.json({
+      success: true,
+      result,
+    });
+  })
+);
+
+router.post(
   '/test',
   async (req: Request, res: Response) => {
     const { 

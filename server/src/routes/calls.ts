@@ -33,6 +33,7 @@ export interface CallAnalyticsRecord {
     timestamp?: string | number;
   }>;
   tool_calls_count: number;
+  audio_url?: string;
 }
 
 import fs from 'fs';
@@ -40,6 +41,11 @@ import path from 'path';
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const CALLS_FILE = path.join(DATA_DIR, 'calls.json');
+const RECORDINGS_DIR = path.join(DATA_DIR, 'recordings');
+
+if (!fs.existsSync(RECORDINGS_DIR)) {
+  fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
+}
 
 // Realistic seed data
 const initialSeedCalls: CallAnalyticsRecord[] = [
@@ -282,8 +288,24 @@ Return a valid JSON object strictly matching this schema:
       }
     }
 
+    const id = `call_${Date.now().toString(36)}`;
+    let audio_url = req.body.audio_url || req.body.audioUrl;
+    const audio_base64 = req.body.audio_base64 || req.body.audioBase64;
+    if (audio_base64 && typeof audio_base64 === 'string') {
+      try {
+        const cleanBase64 = audio_base64.replace(/^data:audio\/[a-zA-Z0-9]+;base64,/, '');
+        const audioBuffer = Buffer.from(cleanBase64, 'base64');
+        const filename = `${id}.webm`;
+        const filePath = path.join(RECORDINGS_DIR, filename);
+        fs.writeFileSync(filePath, audioBuffer);
+        audio_url = `/recordings/${filename}`;
+      } catch (err) {
+        console.warn('Failed to save audio recording:', err);
+      }
+    }
+
     const newRecord: CallAnalyticsRecord = {
-      id: `call_${Date.now().toString(36)}`,
+      id,
       session_id,
       agent_id,
       agent_name,
@@ -300,6 +322,7 @@ Return a valid JSON object strictly matching this schema:
       qa_scores,
       transcripts: transcriptList,
       tool_calls_count,
+      audio_url,
     };
 
     callHistory.unshift(newRecord);
@@ -316,12 +339,43 @@ Return a valid JSON object strictly matching this schema:
   })
 );
 
+// POST upload standalone call recording
+router.post(
+  '/upload-recording',
+  asyncHandler(async (req: Request, res: Response) => {
+    const audio_base64 = req.body.audio_base64 || req.body.audioBase64;
+    const filename = req.body.filename || `rec_${Date.now().toString(36)}.webm`;
+    if (!audio_base64 || typeof audio_base64 !== 'string') {
+      return res.status(400).json({ success: false, error: { message: 'Missing audio_base64 payload' } });
+    }
+    try {
+      const cleanBase64 = audio_base64.replace(/^data:audio\/[a-zA-Z0-9]+;base64,/, '');
+      const audioBuffer = Buffer.from(cleanBase64, 'base64');
+      const filePath = path.join(RECORDINGS_DIR, filename);
+      fs.writeFileSync(filePath, audioBuffer);
+      res.json({
+        success: true,
+        audio_url: `/recordings/${filename}`,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: { message: err?.message || 'Failed to write recording' } });
+    }
+  })
+);
+
 // DELETE call record
 router.delete(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const idx = callHistory.findIndex(c => c.id === req.params.id);
     if (idx >= 0) {
+      const call = callHistory[idx];
+      if (call.audio_url && call.audio_url.startsWith('/recordings/')) {
+        const localPath = path.join(RECORDINGS_DIR, path.basename(call.audio_url));
+        if (fs.existsSync(localPath)) {
+          try { fs.unlinkSync(localPath); } catch {}
+        }
+      }
       callHistory.splice(idx, 1);
       saveCallsToDisk(callHistory);
     }
