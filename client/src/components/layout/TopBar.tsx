@@ -26,6 +26,8 @@ export function TopBar({
         return 'Multi-Agent Studio';
       case 'playground':
         return 'Interactive Voice Playground';
+      case 'telephony':
+        return 'PSTN Telephony & Real Phone Numbers';
       case 'analytics':
         return 'Call History & Post-Call QA Intelligence';
       case 'monitor':

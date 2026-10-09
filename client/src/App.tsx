@@ -11,6 +11,7 @@ import { PlaygroundTab } from './components/playground/PlaygroundTab';
 import { InspectorTab } from './components/inspector/InspectorTab';
 import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
 import { AnalyticsTab } from './components/analytics/AnalyticsTab';
+import { TelephonyTab } from './components/telephony/TelephonyTab';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useDashboardState } from './hooks/useDashboardState';
@@ -382,6 +383,13 @@ function App() {
             activeAgent={activeAgent}
             agents={agents}
             onSelectAgent={handleSelectAgent}
+            onStartVoiceCall={handleStartVoiceCall}
+          />
+        );
+      case 'telephony':
+        return (
+          <TelephonyTab
+            agents={agents}
             onStartVoiceCall={handleStartVoiceCall}
           />
         );

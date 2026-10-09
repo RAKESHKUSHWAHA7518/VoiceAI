@@ -1,0 +1,26 @@
+[
+  {
+    "id": "num_demo_01",
+    "phone_number": "+1 (555) 019-2831",
+    "friendly_name": "Customer Support Direct Line",
+    "agent_id": "agent_support",
+    "agent_name": "Maya",
+    "agent_avatar": "🎧",
+    "status": "active",
+    "inbound_calls_count": 26,
+    "last_call_at": 1791520122595,
+    "created_at": 1790914666259
+  },
+  {
+    "id": "num_demo_02",
+    "phone_number": "+1 (555) 014-9920",
+    "friendly_name": "Concierge & Booking Hotline",
+    "agent_id": "agent_weather",
+    "agent_name": "Alex",
+    "agent_avatar": "🌤️",
+    "status": "active",
+    "inbound_calls_count": 12,
+    "last_call_at": 1791512266259,
+    "created_at": 1791173866259
+  }
+]

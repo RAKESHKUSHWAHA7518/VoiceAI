@@ -23,9 +23,12 @@ import playgroundRoutes from './routes/playground';
 import adminRoutes from './routes/admin';
 import agentRoutes from './routes/agents';
 import callRoutes from './routes/calls';
+import telephonyRoutes from './routes/telephony';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
+import { TwilioMediaStreamHandler } from './transport/twilio_stream';
+import { WebSocketServer } from 'ws';
 
 // Pipeline
 import { PipelineManager } from './services/pipeline';
@@ -75,6 +78,7 @@ app.use('/api/playground', playgroundRoutes);
 app.use('/api/agents', agentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/calls', callRoutes);
+app.use('/api/telephony', telephonyRoutes);
 
 app.get('/api/state', (req, res) => {
   res.json({
@@ -87,9 +91,13 @@ app.get('/api/state', (req, res) => {
   });
 });
 
-// WebSocket
+// WebSocket for Web Clients (/ws)
 const wsHandler = new WebSocketHandler(server);
 const wss = wsHandler.getWss();
+
+// WebSocket for Twilio Media Streams (/media-stream)
+const twilioWss = new WebSocketServer({ server, path: '/media-stream' });
+twilioWss.on('connection', (ws, req) => TwilioMediaStreamHandler.handleConnection(ws, req));
 
 // Initialize on startup
 async function initialize() {

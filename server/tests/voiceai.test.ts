@@ -435,3 +435,96 @@ describe('Guardrails & PII Redaction Engine', () => {
     expect(result.latencyMs).toBeLessThan(25);
   });
 });
+
+describe('Telephony & Real Phone Calling (Phase 1)', () => {
+  test('should correctly transcode 8kHz G.711 mu-law audio to 16kHz PCM and back', () => {
+    const { mulaw_encode, mulaw_decode, resample_audio, pcm16_to_float32, float32_to_pcm16 } = require('../src/audio/utils');
+
+    // Create 160 samples (20ms at 8kHz)
+    const samples = new Int16Array(160);
+    for (let i = 0; i < 160; i++) {
+      samples[i] = Math.round(15000 * Math.sin((2 * Math.PI * 440 * i) / 8000));
+    }
+    const pcm8kBuffer = Buffer.from(samples.buffer);
+
+    // Encode to mu-law (160 bytes)
+    const mulaw = mulaw_encode(pcm8kBuffer);
+    expect(mulaw.length).toBe(160);
+
+    // Decode back to 8kHz PCM
+    const decoded8k = mulaw_decode(mulaw);
+    expect(decoded8k.length).toBe(320); // 160 samples * 2 bytes/sample
+
+    // Resample 8kHz to 16kHz (should double sample count)
+    const float8k = pcm16_to_float32(decoded8k);
+    const float16k = resample_audio(float8k, 8000, 16000);
+    expect(float16k.length).toBe(320); // 160 * 2
+  });
+
+  test('should handle inbound telephony webhook and generate streaming TwiML', async () => {
+    const request = require('supertest');
+    const app = require('../src/app').default;
+
+    const res = await request(app)
+      .post('/api/telephony/inbound')
+      .send({
+        To: '+1 (555) 019-2831',
+        From: '+1 (415) 555-0199',
+        CallSid: 'CA_unit_test_99',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.header['content-type']).toContain('text/xml');
+    expect(res.text).toContain('<Response>');
+    expect(res.text).toContain('<Stream url="');
+    expect(res.text).toContain('/media-stream"');
+    expect(res.text).toContain('<Parameter name="agent_id"');
+  });
+
+  test('should manage provisioned telephone numbers', async () => {
+    const request = require('supertest');
+    const app = require('../src/app').default;
+
+    // List numbers
+    const listRes = await request(app).get('/api/telephony/numbers');
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.success).toBe(true);
+    expect(Array.isArray(listRes.body.numbers)).toBe(true);
+    expect(listRes.body.numbers.length).toBeGreaterThan(0);
+
+    // Add a test number
+    const addRes = await request(app)
+      .post('/api/telephony/numbers')
+      .send({
+        phone_number: '+1 (555) 777-8899',
+        friendly_name: 'Unit Test Line',
+        agent_id: 'agent_support',
+        agent_name: 'Maya',
+      });
+
+    expect(addRes.status).toBe(200);
+    expect(addRes.body.success).toBe(true);
+    expect(addRes.body.number.phone_number).toBe('+1 (555) 777-8899');
+
+    // Clean up
+    await request(app).delete(`/api/telephony/numbers/${addRes.body.number.id}`);
+  });
+
+  test('should initiate outbound carrier call', async () => {
+    const request = require('supertest');
+    const app = require('../src/app').default;
+
+    const res = await request(app)
+      .post('/api/telephony/outbound')
+      .send({
+        to_phone_number: '+1 (415) 555-0123',
+        agent_id: 'agent_support',
+        agent_name: 'Maya',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.call_sid).toBeDefined();
+    expect(res.body.to).toBe('+1 (415) 555-0123');
+  });
+});

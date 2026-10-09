@@ -129,7 +129,20 @@ export interface CallAnalyticsRecord {
   audio_url?: string;
 }
 
-export type TabName = 'agents' | 'playground' | 'monitor' | 'inspector' | 'analytics';
+export interface PhoneNumberRecord {
+  id: string;
+  phone_number: string;
+  friendly_name: string;
+  agent_id: string;
+  agent_name: string;
+  agent_avatar?: string;
+  status: 'active' | 'inactive';
+  inbound_calls_count: number;
+  last_call_at?: number;
+  created_at: number;
+}
+
+export type TabName = 'agents' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,
