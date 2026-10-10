@@ -528,3 +528,126 @@ describe('Telephony & Real Phone Calling (Phase 1)', () => {
     expect(res.body.to).toBe('+1 (415) 555-0123');
   });
 });
+
+describe('Agent Knowledge Base & Document RAG (Phase 2)', () => {
+  const { ragEngine } = require('../src/services/rag');
+
+  test('should perform semantic text chunking with overlap', () => {
+    const sampleText = `
+First paragraph with essential information regarding account security and login credentials.
+Users must use two-factor authentication when accessing sensitive billing portals.
+
+Second paragraph detailing password rotation cycles and emergency password resets.
+Administrators will receive instant SMS notifications upon unrecognized device logins.
+
+Third paragraph explaining backup codes and hardware security key options such as YubiKey.
+    `.trim();
+
+    const chunks = ragEngine.chunkText(sampleText, 150, 40);
+    expect(Array.isArray(chunks)).toBe(true);
+    expect(chunks.length).toBeGreaterThanOrEqual(2);
+    // Chunks should contain words from original text
+    expect(chunks[0]).toContain('account security');
+  });
+
+  test('should ingest text documents and index term vectors', async () => {
+    const doc = await ragEngine.ingestText(
+      'agent_support',
+      'Test Refund Policy Document',
+      'test_refund_policy.md',
+      'md',
+      500,
+      'Customers can request full refunds within 30 days of purchase. Opened items have a 14 day return window.'
+    );
+
+    expect(doc).toBeDefined();
+    expect(doc.id).toBeDefined();
+    expect(doc.title).toBe('Test Refund Policy Document');
+    expect(doc.chunk_count).toBeGreaterThan(0);
+
+    const retrievedChunks = ragEngine.getChunksForDoc(doc.id);
+    expect(retrievedChunks.length).toBe(doc.chunk_count);
+    expect(retrievedChunks[0].term_frequencies).toBeDefined();
+    expect(retrievedChunks[0].magnitude).toBeGreaterThan(0);
+
+    // Clean up
+    ragEngine.deleteDocument(doc.id);
+  });
+
+  test('should retrieve relevant chunks with <35ms latency budget', async () => {
+    // Seed default documents if not already seeded
+    await ragEngine.seedDefaultDocuments();
+
+    const start = Date.now();
+    const results = ragEngine.search('agent_support', 'what is the return window for opened goods', 2);
+    const latency = Date.now() - start;
+
+    expect(latency).toBeLessThan(35);
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].score).toBeGreaterThan(0.2);
+    expect(results[0].text.toLowerCase()).toContain('opened');
+  });
+
+  test('should correctly discriminate between different agent knowledge bases', async () => {
+    await ragEngine.seedDefaultDocuments();
+
+    // Query for room service hours on hotel agent
+    const hotelResults = ragEngine.search('agent_hotel', 'what time is room service breakfast served', 2);
+    expect(hotelResults.length).toBeGreaterThan(0);
+    expect(hotelResults[0].text.toLowerCase()).toContain('room service');
+
+    // Query for clinic appointment cancellation on medical agent
+    const medicalResults = ragEngine.search('agent_medical', 'cancellation notice fee policy', 2);
+    expect(medicalResults.length).toBeGreaterThan(0);
+    expect(medicalResults[0].text.toLowerCase()).toContain('cancellation');
+  });
+
+  test('should expose REST endpoints for document management and test retrieval', async () => {
+    const request = require('supertest');
+    const app = require('../src/app').default;
+
+    // 1. GET /api/knowledge/documents
+    const docsRes = await request(app).get('/api/knowledge/documents');
+    expect(docsRes.status).toBe(200);
+    expect(docsRes.body.success).toBe(true);
+    expect(Array.isArray(docsRes.body.documents)).toBe(true);
+
+    // 2. POST /api/knowledge/documents/text
+    const createRes = await request(app)
+      .post('/api/knowledge/documents/text')
+      .send({
+        agent_id: 'agent_support',
+        title: 'VIP Concierge Perks Guide',
+        content: 'Platinum members receive priority checkout lines and free airport transfers.',
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.success).toBe(true);
+    const createdDocId = createRes.body.document.id;
+
+    // 3. POST /api/knowledge/test (test retrieval simulator)
+    const testQueryRes = await request(app)
+      .post('/api/knowledge/test')
+      .send({
+        agent_id: 'agent_support',
+        query: 'platinum members airport transfers',
+        top_k: 2,
+        synthesize_answer: false,
+      });
+
+    expect(testQueryRes.status).toBe(200);
+    expect(testQueryRes.body.success).toBe(true);
+    expect(testQueryRes.body.match_count).toBeGreaterThan(0);
+    expect(testQueryRes.body.results[0].text).toContain('airport transfers');
+
+    // 4. GET /api/agents/:agentId/documents
+    const agentDocsRes = await request(app).get('/api/agents/agent_support/documents');
+    expect(agentDocsRes.status).toBe(200);
+    expect(agentDocsRes.body.success).toBe(true);
+
+    // 5. DELETE /api/knowledge/documents/:docId
+    const delRes = await request(app).delete(`/api/knowledge/documents/${createdDocId}`);
+    expect(delRes.status).toBe(200);
+    expect(delRes.body.success).toBe(true);
+  });
+});

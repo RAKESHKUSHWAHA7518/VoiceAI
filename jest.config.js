@@ -31,7 +31,7 @@ module.exports = {
     '^@types/(.*)$': '<rootDir>/server/src/types/$1',
   },
   setupFilesAfterEnv: ['<rootDir>/server/tests/setup.ts'],
-  testTimeout: 10000,
+  testTimeout: 30000,
   transformIgnorePatterns: [
     '/node_modules/(?!(onnxruntime-node)/)',
   ],

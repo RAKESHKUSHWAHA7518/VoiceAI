@@ -1,0 +1,46 @@
+[
+  {
+    "id": "doc_mv0j7pg1_942b49",
+    "agent_id": "agent_support",
+    "title": "Customer Refund and Return Policy (2025 Standard)",
+    "filename": "refund_and_returns_policy_v2.md",
+    "file_type": "md",
+    "file_size": 1379,
+    "created_at": 1791524134801,
+    "chunk_count": 2,
+    "status": "indexed"
+  },
+  {
+    "id": "doc_mv0j7qjm_078cb6",
+    "agent_id": "agent_hotel",
+    "title": "Grand Palace Hotel Guest Directory & Services",
+    "filename": "grand_palace_guest_directory.md",
+    "file_type": "md",
+    "file_size": 1198,
+    "created_at": 1791524136227,
+    "chunk_count": 1,
+    "status": "indexed"
+  },
+  {
+    "id": "doc_mv0j7qjt_7188fb",
+    "agent_id": "agent_weather",
+    "title": "Global Concierge Travel & Weather Advisory Handbook",
+    "filename": "concierge_travel_advisory.md",
+    "file_type": "md",
+    "file_size": 1125,
+    "created_at": 1791524136233,
+    "chunk_count": 1,
+    "status": "indexed"
+  },
+  {
+    "id": "doc_mv0j7qjx_634084",
+    "agent_id": "agent_medical",
+    "title": "Downtown Health Clinic Patient Protocols & Triage",
+    "filename": "clinic_patient_protocols.md",
+    "file_type": "md",
+    "file_size": 1268,
+    "created_at": 1791524136238,
+    "chunk_count": 2,
+    "status": "indexed"
+  }
+]

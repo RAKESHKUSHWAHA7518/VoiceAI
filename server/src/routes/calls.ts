@@ -211,8 +211,8 @@ router.post(
       response_speed: 90,
     };
 
-    // Use OpenAI for deep intelligence if API key is present
-    if (config.apiKeys?.openai && conversationText.trim().length > 10) {
+    // Use OpenAI for deep intelligence if API key is present and not running in test mode
+    if (config.apiKeys?.openai && process.env.NODE_ENV !== 'test' && conversationText.trim().length > 10) {
       try {
         const llm = new OpenAILLM(config.apiKeys.openai, 'gpt-4o-mini');
         const prompt = `You are a Voice AI Quality Assurance & Analytics auditor. Analyze the following conversation transcript between a User and a Voice Agent (${agent_name} - ${agent_role}):

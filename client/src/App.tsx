@@ -12,6 +12,7 @@ import { InspectorTab } from './components/inspector/InspectorTab';
 import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
 import { AnalyticsTab } from './components/analytics/AnalyticsTab';
 import { TelephonyTab } from './components/telephony/TelephonyTab';
+import { KnowledgeTab } from './components/knowledge/KnowledgeTab';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useDashboardState } from './hooks/useDashboardState';
@@ -384,6 +385,14 @@ function App() {
             agents={agents}
             onSelectAgent={handleSelectAgent}
             onStartVoiceCall={handleStartVoiceCall}
+          />
+        );
+      case 'knowledge':
+        return (
+          <KnowledgeTab
+            agents={agents}
+            activeAgent={activeAgent}
+            playVoice={playVoice}
           />
         );
       case 'telephony':

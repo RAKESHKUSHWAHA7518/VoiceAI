@@ -142,7 +142,43 @@ export interface PhoneNumberRecord {
   created_at: number;
 }
 
-export type TabName = 'agents' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
+export interface KnowledgeDocument {
+  id: string;
+  agent_id: string;
+  title: string;
+  filename: string;
+  file_type: 'pdf' | 'md' | 'txt' | 'json' | 'csv';
+  file_size: number;
+  created_at: number;
+  chunk_count: number;
+  status: 'indexed' | 'indexing' | 'error';
+  error?: string;
+}
+
+export interface KnowledgeChunk {
+  id: string;
+  doc_id: string;
+  agent_id: string;
+  chunk_index: number;
+  text: string;
+  metadata: {
+    title: string;
+    filename: string;
+    token_count: number;
+  };
+}
+
+export interface KnowledgeSearchResult {
+  chunk_id: string;
+  doc_id: string;
+  title: string;
+  filename: string;
+  text: string;
+  score: number;
+  latency_ms: number;
+}
+
+export type TabName = 'agents' | 'playground' | 'knowledge' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,

@@ -132,4 +132,73 @@ router.delete('/:id', (req: Request, res: Response) => {
   });
 });
 
+// ============================================================================
+// Agent Knowledge Base & RAG Endpoints
+// ============================================================================
+import { ragEngine } from '../services/rag';
+
+router.get('/:agentId/documents', (req: Request, res: Response) => {
+  const { agentId } = req.params;
+  const docs = ragEngine.listDocuments(agentId);
+  res.json({
+    success: true,
+    agent_id: agentId,
+    count: docs.length,
+    documents: docs,
+  });
+});
+
+router.post('/:agentId/documents', async (req: Request, res: Response) => {
+  const { agentId } = req.params;
+  const { title, content, filename, file_type } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ success: false, error: { message: 'Title and content are required' } });
+  }
+
+  const type = file_type || 'md';
+  const fname = filename || `${title.toLowerCase().replace(/\s+/g, '_')}.${type}`;
+  const size = Buffer.byteLength(content, 'utf-8');
+
+  try {
+    const doc = await ragEngine.ingestText(agentId, title, fname, type, size, content);
+    res.status(201).json({
+      success: true,
+      message: 'Document indexed successfully',
+      document: doc,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: { message: err.message || 'Indexing failed' } });
+  }
+});
+
+router.delete('/:agentId/documents/:docId', (req: Request, res: Response) => {
+  const { docId } = req.params;
+  const deleted = ragEngine.deleteDocument(docId);
+  if (!deleted) {
+    return res.status(404).json({ success: false, error: { message: 'Document not found' } });
+  }
+  res.json({
+    success: true,
+    message: 'Document deleted from agent knowledge base',
+  });
+});
+
+router.post('/:agentId/knowledge/query', (req: Request, res: Response) => {
+  const { agentId } = req.params;
+  const { query, top_k, min_score } = req.body;
+  if (!query) {
+    return res.status(400).json({ success: false, error: { message: 'Query string is required' } });
+  }
+
+  const start = Date.now();
+  const results = ragEngine.search(agentId, query, Number(top_k) || 2, typeof min_score === 'number' ? min_score : 0.15);
+  res.json({
+    success: true,
+    agent_id: agentId,
+    query,
+    retrieval_latency_ms: Date.now() - start,
+    results,
+  });
+});
+
 export default router;

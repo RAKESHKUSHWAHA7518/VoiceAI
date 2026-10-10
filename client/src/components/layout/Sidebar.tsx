@@ -9,6 +9,7 @@ import {
   LogoVoiceAI,
   IconBot,
   IconFlask,
+  IconBook,
   IconPhone,
   IconHistory,
   IconActivity,
@@ -39,6 +40,7 @@ export function Sidebar({
 }: SidebarProps) {
   const navItems: { id: TabName; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'agents', label: 'Agents Studio', icon: <IconBot size={18} />, badge: `${agents.length}` },
+    { id: 'knowledge', label: 'Knowledge & RAG', icon: <IconBook size={18} /> },
     { id: 'playground', label: 'Playground', icon: <IconFlask size={18} /> },
     { id: 'telephony', label: 'Telephony & Lines', icon: <IconPhone size={18} /> },
     { id: 'analytics', label: 'Call History & QA', icon: <IconHistory size={18} /> },

@@ -24,11 +24,11 @@ import adminRoutes from './routes/admin';
 import agentRoutes from './routes/agents';
 import callRoutes from './routes/calls';
 import telephonyRoutes from './routes/telephony';
+import knowledgeRoutes from './routes/knowledge';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
 import { TwilioMediaStreamHandler } from './transport/twilio_stream';
-import { WebSocketServer } from 'ws';
 
 // Pipeline
 import { PipelineManager } from './services/pipeline';
@@ -79,6 +79,7 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/telephony', telephonyRoutes);
+app.use('/api/knowledge', knowledgeRoutes);
 
 app.get('/api/state', (req, res) => {
   res.json({

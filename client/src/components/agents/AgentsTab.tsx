@@ -1,9 +1,6 @@
-// ============================================================================
-// Agents Studio Component
-// ============================================================================
-
 import React, { useState, useEffect } from 'react';
 import type { Agent, ToolItem } from '../../types';
+const PRESET_AVATARS = ['🤖', '👩‍💼', '👨‍⚕️', '🛎️', '🎙️', '⚡', '💼', '🎧'];
 
 interface AgentsTabProps {
   agents: Agent[];
@@ -13,17 +10,16 @@ interface AgentsTabProps {
   onDeleteAgent: (agentId: string) => Promise<void>;
   onTestAgent: (agent: Agent) => void;
   onStartVoiceCall?: (agent: Agent) => void;
+  onOpenKnowledge?: (agentId: string) => void;
   isCreatingNew?: boolean;
   setIsCreatingNew?: (val: boolean) => void;
 }
 
 const DEFAULT_TOOLS = [
-  { name: 'get_weather', label: '🌤️ Live Weather', description: 'Real-time forecasts and weather conditions' },
-  { name: 'check_booking', label: '📋 Booking Lookup', description: 'Verify reservations, dates, and party sizes' },
-  { name: 'transfer_call', label: '📞 Call Transfer', description: 'Route caller to specific departments' },
+  { name: 'get_weather', label: 'Live Weather', description: 'Real-time forecasts and weather conditions' },
+  { name: 'check_booking', label: 'Booking Lookup', description: 'Verify reservations, dates, and party sizes' },
+  { name: 'transfer_call', label: 'Call Transfer', description: 'Route caller to specific departments' },
 ];
-
-const PRESET_AVATARS = ['🎧', '🌤️', '🏨', '🩺', '🚀', '💼', '🤖', '🎯', '⚖️', '🧑‍🏫', '🛍️', '💡'];
 
 const PRESET_VOICES = [
   { id: 'a0e99841-438c-4a64-b679-ae501e7d6091', name: 'Friendly Assistant (Sonic 3.6)' },

@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import config from '../config';
 import { OpenAILLM } from '../services/llm';
 import { getAllToolsMap } from '../services/tools';
+import { ragEngine } from '../services/rag';
 
 const router = Router();
 
@@ -95,14 +96,25 @@ router.post(
     const effectiveModel = llm_model || currentConfig.llm_model || 'gpt-4o-mini';
     const effectiveTemp = typeof llm_temperature === 'number' ? llm_temperature : currentConfig.llm_temperature;
 
+    // RAG Knowledge Base Retrieval (<25ms)
+    const targetAgentId = agent_id || 'all';
+    const ragMatches = ragEngine.search(targetAgentId, text, 2, 0.18);
+    let promptWithRag = effectiveSystemPrompt;
+    if (ragMatches.length > 0) {
+      const ragSnippets = ragMatches
+        .map((m, i) => `[Source ${i + 1}: ${m.title}]\n${m.text}`)
+        .join('\n\n');
+      promptWithRag += `\n\n[RETRIEVED KNOWLEDGE BASE CONTEXT]\n${ragSnippets}\n\n[GROUNDING INSTRUCTION]\nWhen answering, ground your response in the retrieved Knowledge Base context above whenever relevant. Speak warmly, naturally, and concisely in spoken-language sentences.`;
+    }
+
     // If OpenAI API key is present, generate response with tool calling!
     if (config.apiKeys?.openai) {
       try {
         const llm = new OpenAILLM(config.apiKeys.openai, effectiveModel);
-        llm.setSystemPrompt(effectiveSystemPrompt);
+        llm.setSystemPrompt(promptWithRag);
         llm.setTemperature(effectiveTemp);
 
-        for await (const chunk of llm.streamChat([{ role: 'system', content: effectiveSystemPrompt }], text, toolsList)) {
+        for await (const chunk of llm.streamChat([{ role: 'system', content: promptWithRag }], text, toolsList)) {
           if (chunk.isToolCall && chunk.toolName) {
             const tool = toolsMap.get(chunk.toolName);
             let args: any = {};
@@ -220,7 +232,11 @@ router.post(
       }
 
       if (!reply) {
-        if (executedToolCalls.length > 0) {
+        if (ragMatches.length > 0) {
+          const topMatch = ragMatches[0];
+          const firstSent = topMatch.text.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('#'))[0];
+          reply = firstSent || `According to our ${topMatch.title}, ${topMatch.text.slice(0, 160)}...`;
+        } else if (executedToolCalls.length > 0) {
           const first = executedToolCalls[0];
           reply = `I executed ${first.tool_name} for you. Result: ${JSON.stringify(first.result)}`;
         } else {
@@ -285,6 +301,8 @@ router.post(
       agent_name: agent_name || 'Voice Assistant',
       tool_calls: executedToolCalls,
       toolCalls: executedToolCalls,
+      rag_matches: ragMatches,
+      ragMatches,
       config_snapshot: {
         ...currentConfig,
         voice_id: effectiveVoiceId,
