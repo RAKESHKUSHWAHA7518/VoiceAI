@@ -83,17 +83,18 @@ export function TopBar({
             className="btn btn-primary btn-sm topbar-call-btn"
             onClick={onStartVoiceCall}
             style={{
-              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
               border: 'none',
               color: '#ffffff',
-              fontWeight: 600,
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: '0.45rem',
-              boxShadow: '0 2px 8px rgba(22, 163, 74, 0.4)',
+              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.35)',
               cursor: 'pointer',
-              padding: '0.4rem 0.85rem',
-              borderRadius: '20px',
+              padding: '0.45rem 0.95rem',
+              borderRadius: '24px',
+              transition: 'all 0.2s ease',
             }}
             title="Start live conversational voice call with active agent"
           >
@@ -118,15 +119,19 @@ export function TopBar({
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.45rem',
-            background: 'rgba(15, 23, 42, 0.8)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '18px',
-            padding: '0.25rem 0.65rem',
+            gap: '0.5rem',
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(59, 130, 246, 0.25)',
+            borderRadius: '24px',
+            padding: '0.35rem 0.75rem',
             fontSize: '0.75rem',
           }}>
-            <span title="SOC2 Type II & HIPAA Certified Access Control" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#60a5fa', fontWeight: 600 }}>
-              🛡️ <span style={{ fontSize: '0.65rem', background: '#1e3a8a', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>SOC2 / HIPAA</span>
+            <span title="SOC2 Type II & HIPAA Certified Access Control" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#60a5fa', fontWeight: 700 }}>
+              <span>🛡️</span>
+              <span style={{ fontSize: '0.65rem', background: 'rgba(30, 58, 138, 0.7)', border: '1px solid rgba(59, 130, 246, 0.4)', padding: '0.1rem 0.4rem', borderRadius: '10px', color: '#93c5fd' }}>
+                SOC2 / HIPAA
+              </span>
             </span>
             <select
               style={{
@@ -137,13 +142,14 @@ export function TopBar({
                 fontWeight: 600,
                 outline: 'none',
                 cursor: 'pointer',
+                fontFamily: 'inherit',
               }}
               value={currentUser.id}
               onChange={e => handleSwitchUser(e.target.value)}
               title="Switch Active RBAC User Role"
             >
               {allUsers.map(u => (
-                <option key={u.id} value={u.id} style={{ background: '#0f172a', color: '#fff' }}>
+                <option key={u.id} value={u.id} style={{ background: '#070a13', color: '#fff' }}>
                   {u.avatar} {u.name} ({u.role.replace('_', ' ').toUpperCase()})
                 </option>
               ))}

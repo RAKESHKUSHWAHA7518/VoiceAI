@@ -301,7 +301,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Streaming Codec</span>
-            <span className="kpi-value" style={{ fontSize: '1.25rem' }}>G.711 μ-law</span>
+            <span className="kpi-value" style={{ fontSize: '1.2rem', whiteSpace: 'nowrap' }}>G.711 μ-law</span>
             <span className="kpi-subtext">8000Hz bi-directional audio</span>
           </div>
         </div>
@@ -323,7 +323,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Carrier Status</span>
-            <span className="kpi-value" style={{ fontSize: '1.15rem', color: isTwilioConfigured ? '#22c55e' : '#38bdf8' }}>
+            <span className="kpi-value" style={{ fontSize: '1.15rem', whiteSpace: 'nowrap', color: isTwilioConfigured ? '#22c55e' : '#38bdf8' }}>
               {isTwilioConfigured ? 'Twilio Live' : 'PSTN Bridge Ready'}
             </span>
             <span className="kpi-subtext">TwiML & MediaStream enabled</span>
@@ -332,13 +332,13 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
       </div>
 
       {/* Main 2-Column Layout: Outbound Phone Dialer (Left) + Phone Numbers List (Right) */}
-      <div className="telephony-main-grid" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="telephony-main-grid">
         {/* Outbound Phone Dialer Card */}
-        <div className="detail-section-card outbound-dialer-card" style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem' }}>
-          <div className="card-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid #334155', paddingBottom: '0.75rem' }}>
+        <div className="detail-section-card outbound-dialer-card">
+          <div className="card-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <IconPhone size={18} color="#38bdf8" />
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#f1f5f9' }}>Outbound Dialer</h3>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: '#f1f5f9' }}>Outbound Dialer</h3>
             </div>
             {dialingState !== 'idle' && (
               <span className={`status-pill ${dialingState === 'connected' ? 'badge-resolved' : 'badge-followup'}`}>
@@ -349,7 +349,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
 
           {/* Number Display Input */}
           <div className="dialer-display" style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
               Destination Phone Number:
             </label>
             <div style={{ position: 'relative' }}>
@@ -360,7 +360,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
                 value={outboundNumber}
                 onChange={(e) => setOutboundNumber(e.target.value)}
                 disabled={dialingState === 'connected' || dialingState === 'ringing'}
-                style={{ fontSize: '1.1rem', fontWeight: 600, paddingRight: '2rem' }}
+                style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--font-mono)', paddingRight: '2rem' }}
               />
               {outboundNumber && dialingState === 'idle' && (
                 <button
@@ -376,7 +376,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           {/* Agent & Caller ID Pickers */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Speaking Agent:
               </label>
               <select
@@ -392,7 +392,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', color: '#94a3b8', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Caller ID (From):
               </label>
               <select
@@ -416,17 +416,6 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
                 className="keypad-btn"
                 onClick={() => handleKeypadPress(digit)}
                 disabled={dialingState === 'connected' || dialingState === 'ringing'}
-                style={{
-                  height: '46px',
-                  background: '#0f172a',
-                  border: '1px solid #334155',
-                  borderRadius: '8px',
-                  color: '#f8fafc',
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
               >
                 {digit}
               </button>
@@ -440,7 +429,8 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
               onClick={handleInitiateCall}
               style={{
                 width: '100%',
-                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                boxShadow: '0 4px 16px rgba(16, 185, 129, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -455,8 +445,8 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
             </button>
           ) : (
             <div className="active-call-controls" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div style={{ textAlign: 'center', padding: '0.5rem', background: '#0f172a', borderRadius: '8px', border: '1px solid #334155' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+              <div style={{ textAlign: 'center', padding: '0.65rem', background: 'rgba(11, 16, 28, 0.85)', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
                   <IconClock size={16} color="#38bdf8" />
                   <span>{Math.floor(callDurationSec / 60)}:{String(callDurationSec % 60).padStart(2, '0')}</span>
                 </div>
@@ -464,7 +454,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
                   {dialerMessage}
                 </div>
                 {activeCallSid && (
-                  <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem', fontFamily: 'var(--font-mono)' }}>
                     Call SID: {activeCallSid}
                   </div>
                 )}
@@ -475,7 +465,8 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
                 onClick={handleHangup}
                 style={{
                   width: '100%',
-                  background: '#ef4444',
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  boxShadow: '0 4px 16px rgba(239, 68, 68, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -493,13 +484,13 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
         </div>
 
         {/* Right Side: Phone Numbers Management & Webhooks */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
           {/* Active Provisioned Phone Numbers */}
-          <div className="detail-section-card" style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem' }}>
-            <div className="card-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid #334155', paddingBottom: '0.75rem' }}>
+          <div className="detail-section-card">
+            <div className="card-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <IconPhoneIncoming size={18} color="#22c55e" />
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#f1f5f9' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: '#f1f5f9' }}>
                   Configured Telephone Lines ({numbers.length})
                 </h3>
               </div>
@@ -516,72 +507,74 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
                 No phone numbers configured yet. Click "+ Add Number" to route calls to an agent.
               </div>
             ) : (
-              <table className="call-history-table" style={{ width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th>Telephone Number</th>
-                    <th>Friendly Label</th>
-                    <th>Assigned Agent</th>
-                    <th>Inbound Calls</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {numbers.map((n) => (
-                    <tr key={n.id} className="call-history-row" style={{ cursor: 'default' }}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: '#f8fafc' }}>
-                          <IconPhone size={15} color="#38bdf8" />
-                          <span>{n.phone_number}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>{n.friendly_name}</span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <PersonaAvatar name={n.agent_name} size={28} />
-                          <select
-                            className="form-select form-select-sm"
-                            value={n.agent_id}
-                            onChange={(e) => handleReassignAgent(n.id, e.target.value)}
-                            style={{ maxWidth: '140px', fontSize: '0.78rem' }}
-                          >
-                            {agents.map((a) => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="duration-pill">📞 {n.inbound_calls_count || 0} calls</span>
-                      </td>
-                      <td>
-                        <span className="status-pill badge-resolved">Active</span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="btn-delete-row"
-                          onClick={() => handleDeleteNumber(n.id)}
-                          title="Release phone number"
-                        >
-                          <IconTrash size={14} />
-                        </button>
-                      </td>
+              <div style={{ overflowX: 'auto', width: '100%' }}>
+                <table className="call-history-table" style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ whiteSpace: 'nowrap' }}>Telephone Number</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Friendly Label</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Assigned Agent</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Inbound Calls</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Status</th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {numbers.map((n) => (
+                      <tr key={n.id} className="call-history-row" style={{ cursor: 'default' }}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: '#f8fafc', fontFamily: 'var(--font-mono)', fontSize: '0.92rem' }}>
+                            <IconPhone size={15} color="#38bdf8" />
+                            <span>{n.phone_number}</span>
+                          </div>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>{n.friendly_name}</span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <PersonaAvatar name={n.agent_name} size={28} />
+                            <select
+                              className="form-select form-select-sm"
+                              value={n.agent_id}
+                              onChange={(e) => handleReassignAgent(n.id, e.target.value)}
+                              style={{ minWidth: '130px', fontSize: '0.8rem' }}
+                            >
+                              {agents.map((a) => (
+                                <option key={a.id} value={a.id}>{a.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span className="duration-pill" style={{ whiteSpace: 'nowrap' }}>📞 {n.inbound_calls_count || 0} calls</span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span className="status-pill badge-resolved" style={{ whiteSpace: 'nowrap' }}>Active</span>
+                        </td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <button
+                            className="btn-delete-row"
+                            onClick={() => handleDeleteNumber(n.id)}
+                            title="Release phone number"
+                          >
+                            <IconTrash size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
           {/* Twilio Carrier Webhook Setup Box */}
-          <div className="detail-section-card" style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '1.5rem' }}>
-            <div className="card-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #334155', paddingBottom: '0.75rem' }}>
+          <div className="detail-section-card">
+            <div className="card-section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <IconZap size={18} color="#fbbf24" />
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#f1f5f9' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: '#f1f5f9' }}>
                   Twilio Webhook & Media Stream Setup
                 </h3>
               </div>
@@ -595,7 +588,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
               To connect your real Twilio phone numbers to VoiceAI, configure the incoming voice webhook on your Twilio Console phone number configuration to point to:
             </p>
 
-            <div style={{ background: '#0f172a', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #334155', fontFamily: 'monospace', fontSize: '0.85rem', color: '#38bdf8', marginBottom: '1rem', wordBreak: 'break-all' }}>
+            <div style={{ background: 'rgba(11, 16, 28, 0.85)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#38bdf8', marginBottom: '1rem', wordBreak: 'break-all' }}>
               POST {typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000'}/api/telephony/inbound
             </div>
 
