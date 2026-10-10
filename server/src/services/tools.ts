@@ -469,6 +469,30 @@ export function createDemoTools(): Map<string, any> {
     },
   });
 
+  tools.set('transfer_to_human', {
+    name: 'transfer_to_human',
+    label: '👤 Transfer to Human Agent',
+    description: 'Instantly escalates and transfers the caller to a human supervisor or specialist',
+    parameters: {
+      type: 'object',
+      properties: {
+        reason: { type: 'string', description: 'Reason for escalation or handoff' },
+        urgency: { type: 'string', enum: ['normal', 'high', 'urgent'], description: 'Urgency level' },
+        department: { type: 'string', description: 'Target department or specialist queue' },
+      },
+      required: ['reason'],
+    },
+    handler: async (args: { reason: string; urgency?: string; department?: string }) => {
+      await new Promise(r => setTimeout(r, 400));
+      return {
+        status: 'escalated',
+        reason: args.reason,
+        department: args.department || 'Tier 2 Support',
+        message: 'A human supervisor has been notified and is stepping in immediately.',
+      };
+    },
+  });
+
   return tools;
 }
 

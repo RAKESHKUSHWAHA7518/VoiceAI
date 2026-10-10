@@ -25,6 +25,10 @@ import agentRoutes from './routes/agents';
 import callRoutes from './routes/calls';
 import telephonyRoutes from './routes/telephony';
 import knowledgeRoutes from './routes/knowledge';
+import hitlRoutes from './routes/hitl';
+import evalRoutes from './routes/evals';
+import multilingualRoutes from './routes/multilingual';
+import securityRoutes from './routes/security';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
@@ -80,6 +84,10 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/telephony', telephonyRoutes);
 app.use('/api/knowledge', knowledgeRoutes);
+app.use('/api/hitl', hitlRoutes);
+app.use('/api/evals', evalRoutes);
+app.use('/api/multilingual', multilingualRoutes);
+app.use('/api/security', securityRoutes);
 
 app.get('/api/state', (req, res) => {
   res.json({

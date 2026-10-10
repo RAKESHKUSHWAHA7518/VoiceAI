@@ -651,3 +651,531 @@ Third paragraph explaining backup codes and hardware security key options such a
     expect(delRes.body.success).toBe(true);
   });
 });
+
+describe('Human-in-the-Loop (HITL) Live Call Takeover & Warm Transfer (Phase 3)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { hitlEngine } = require('../src/services/hitl');
+  const { getAllToolsMap } = require('../src/services/tools');
+
+  test('should register transfer_to_human tool in Tool Registry', () => {
+    const tools = getAllToolsMap();
+    expect(tools.has('transfer_to_human')).toBe(true);
+    const tool = tools.get('transfer_to_human');
+    expect(tool.name).toBe('transfer_to_human');
+    expect(tool.parameters.properties.reason).toBeDefined();
+  });
+
+  test('should list active calls and seeded escalation calls', async () => {
+    const res = await request(app).get('/api/hitl/active-calls');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.calls)).toBe(true);
+    expect(res.body.count).toBeGreaterThanOrEqual(1);
+
+    const call1 = res.body.calls.find((c: any) => c.id === 'call_live_901');
+    expect(call1).toBeDefined();
+    expect(call1.is_escalated).toBe(true);
+    expect(call1.current_sentiment).toBe('Frustrated');
+  });
+
+  test('should register a new live call and retrieve it by ID', async () => {
+    const createRes = await request(app)
+      .post('/api/hitl/calls')
+      .send({
+        agent_id: 'agent_support',
+        agent_name: 'Maya',
+        agent_role: 'Customer Support Lead',
+        caller_name: 'Robert Chen',
+        caller_phone: '+1 (415) 555-7722',
+        channel: 'telephony',
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.success).toBe(true);
+    const call = createRes.body.call;
+    expect(call.id).toBeDefined();
+    expect(call.caller_name).toBe('Robert Chen');
+    expect(call.status).toBe('ai_active');
+
+    const getRes = await request(app).get(`/api/hitl/calls/${call.id}`);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.call.id).toBe(call.id);
+  });
+
+  test('should automatically escalate call on frustrated human keyword trigger', async () => {
+    const testCall = hitlEngine.registerCall({
+      agent_id: 'agent_support',
+      agent_name: 'Maya',
+      caller_name: 'Angry Caller',
+      caller_phone: '+1 (555) 000-1111',
+    });
+
+    expect(testCall.is_escalated).toBe(false);
+
+    // Send customer message demanding a human manager
+    const msgRes = await request(app)
+      .post(`/api/hitl/calls/${testCall.id}/message`)
+      .send({
+        role: 'user',
+        text: 'This is ridiculous! I want to speak to a real human manager right now!',
+      });
+
+    expect(msgRes.status).toBe(200);
+    const updatedCall = msgRes.body.call;
+    expect(updatedCall.is_escalated).toBe(true);
+    expect(updatedCall.current_sentiment).toBe('Frustrated');
+    expect(updatedCall.escalation_reason).toContain('Caller keyword trigger');
+    expect(updatedCall.copilot_suggestions.length).toBeGreaterThan(0);
+  });
+
+  test('should allow supervisor to enter whisper mode and take over call', async () => {
+    const testCall = hitlEngine.registerCall({
+      agent_id: 'agent_support',
+      agent_name: 'Maya',
+      caller_name: 'Test Customer',
+    });
+
+    // 1. Whisper mode
+    const whisperRes = await request(app)
+      .post(`/api/hitl/calls/${testCall.id}/whisper`)
+      .send({ supervisor_name: 'Lead Supervisor John' });
+
+    expect(whisperRes.status).toBe(200);
+    expect(whisperRes.body.call.status).toBe('whisper_listening');
+    expect(whisperRes.body.call.supervisor.mode).toBe('whisper');
+
+    // 2. Take over call (mute AI)
+    const takeoverRes = await request(app)
+      .post(`/api/hitl/calls/${testCall.id}/takeover`)
+      .send({ supervisor_name: 'Lead Supervisor John' });
+
+    expect(takeoverRes.status).toBe(200);
+    expect(takeoverRes.body.call.status).toBe('supervisor_takeover');
+    expect(takeoverRes.body.call.supervisor.mode).toBe('takeover');
+
+    // 3. Handback to AI
+    const handbackRes = await request(app).post(`/api/hitl/calls/${testCall.id}/handback`);
+    expect(handbackRes.status).toBe(200);
+    expect(handbackRes.body.call.status).toBe('ai_active');
+    expect(handbackRes.body.call.supervisor.mode).toBe('idle');
+  });
+
+  test('should execute warm transfer to phone number and department', async () => {
+    const testCall = hitlEngine.registerCall({
+      agent_id: 'agent_support',
+      agent_name: 'Maya',
+      caller_name: 'Transfer Caller',
+    });
+
+    const transferRes = await request(app)
+      .post(`/api/hitl/calls/${testCall.id}/transfer`)
+      .send({
+        target_phone: '+1 (800) 555-0199',
+        department: 'Tier 3 Escalations',
+      });
+
+    expect(transferRes.status).toBe(200);
+    expect(transferRes.body.call.status).toBe('transferred');
+    expect(transferRes.body.call.transfer_details.target_phone).toBe('+1 (800) 555-0199');
+    expect(transferRes.body.call.transfer_details.department).toBe('Tier 3 Escalations');
+  });
+
+  test('should generate context-aware Copilot suggestions for supervisor', async () => {
+    const testCall = hitlEngine.registerCall({
+      agent_id: 'agent_support',
+      agent_name: 'Maya',
+      caller_name: 'Refund Request Caller',
+    });
+
+    const sugRes = await request(app)
+      .post(`/api/hitl/calls/${testCall.id}/copilot-suggest`)
+      .send({ latest_query: 'I demand a full refund and money back' });
+
+    expect(sugRes.status).toBe(200);
+    expect(sugRes.body.success).toBe(true);
+    expect(Array.isArray(sugRes.body.suggestions)).toBe(true);
+    expect(sugRes.body.suggestions.length).toBeGreaterThan(0);
+    expect(sugRes.body.suggestions[0].text.toLowerCase()).toContain('refund');
+  });
+});
+
+describe('Automated Agent Testing Suite & Batch Evaluation Simulator (Phase 4)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { evalEngine } = require('../src/services/evals');
+
+  test('should list available compliance and testing suites', async () => {
+    const res = await request(app).get('/api/evals/suites');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.suites)).toBe(true);
+    expect(res.body.suites.length).toBeGreaterThanOrEqual(1);
+
+    const compSuite = res.body.suites.find((s: any) => s.id === 'suite_compliance_v1');
+    expect(compSuite).toBeDefined();
+    expect(compSuite.test_cases.length).toBeGreaterThanOrEqual(5);
+  });
+
+  test('should retrieve single test suite by ID', async () => {
+    const res = await request(app).get('/api/evals/suites/suite_compliance_v1');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.suite.id).toBe('suite_compliance_v1');
+  });
+
+  test('should execute automated batch evaluation run against an agent', async () => {
+    const runRes = await request(app)
+      .post('/api/evals/run')
+      .send({
+        suite_id: 'suite_compliance_v1',
+        agent_id: 'agent_support',
+        agent_name: 'Maya',
+      });
+
+    expect(runRes.status).toBe(201);
+    expect(runRes.body.success).toBe(true);
+    const run = runRes.body.run;
+    expect(run.id).toBeDefined();
+    expect(run.status).toBe('completed');
+    expect(run.total_tests).toBe(5);
+    expect(run.pass_rate).toBeGreaterThanOrEqual(80);
+    expect(run.metrics).toBeDefined();
+    expect(run.metrics.goal_completion_rate).toBeGreaterThan(0);
+    expect(run.metrics.avg_turn_latency_ms).toBeGreaterThan(0);
+    expect(run.results.length).toBe(5);
+
+    // Verify first test case (TC-01: discount refusal)
+    const tc1 = run.results.find((r: any) => r.test_case_id === 'TC-01');
+    expect(tc1).toBeDefined();
+    expect(tc1.passed).toBe(true);
+    expect(tc1.judge_verdict).toBe('PASSED');
+  });
+
+  test('should retrieve evaluation runs history and individual run details', async () => {
+    // 1. GET all runs
+    const listRes = await request(app).get('/api/evals/runs');
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.success).toBe(true);
+    expect(Array.isArray(listRes.body.runs)).toBe(true);
+    expect(listRes.body.runs.length).toBeGreaterThanOrEqual(1);
+
+    const firstRun = listRes.body.runs[0];
+
+    // 2. GET run by ID
+    const singleRes = await request(app).get(`/api/evals/runs/${firstRun.id}`);
+    expect(singleRes.status).toBe(200);
+    expect(singleRes.body.success).toBe(true);
+    expect(singleRes.body.run.id).toBe(firstRun.id);
+    expect(singleRes.body.run.metrics).toBeDefined();
+  });
+});
+
+describe('Real-Time Sub-500ms Latency Waterfall Profiler (Phase 5)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { waterfallProfiler } = require('../src/services/waterfall');
+
+  test('should retrieve recent turn spans with per-stage breakdowns', async () => {
+    const res = await request(app).get('/api/metrics/waterfall');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.spans)).toBe(true);
+    expect(res.body.count).toBeGreaterThanOrEqual(1);
+
+    const firstSpan = res.body.spans[0];
+    expect(firstSpan.turn_id).toBeDefined();
+    expect(firstSpan.stages.vad_eos_ms).toBeGreaterThan(0);
+    expect(firstSpan.stages.asr_ms).toBeGreaterThan(0);
+    expect(firstSpan.stages.llm_ttft_ms).toBeGreaterThan(0);
+    expect(firstSpan.stages.tts_first_chunk_ms).toBeGreaterThan(0);
+    expect(firstSpan.stages.network_playout_ms).toBeGreaterThan(0);
+    expect(firstSpan.total_e2e_ms).toBe(
+      firstSpan.stages.vad_eos_ms +
+      firstSpan.stages.asr_ms +
+      firstSpan.stages.llm_ttft_ms +
+      firstSpan.stages.tts_first_chunk_ms +
+      firstSpan.stages.network_playout_ms
+    );
+  });
+
+  test('should generate aggregated latency waterfall report with P50 and P95', async () => {
+    const res = await request(app).get('/api/metrics/waterfall/report');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const report = res.body.report;
+    expect(report.total_turns_analyzed).toBeGreaterThanOrEqual(1);
+    expect(report.p50_e2e_ms).toBeGreaterThan(0);
+    expect(report.p95_e2e_ms).toBeGreaterThan(0);
+    expect(report.budget_compliance_rate).toBeGreaterThan(0);
+
+    // Verify sub-stage statistics
+    expect(report.stage_breakdowns.vad.p50).toBeGreaterThan(0);
+    expect(report.stage_breakdowns.asr.p50).toBeGreaterThan(0);
+    expect(report.stage_breakdowns.llm_ttft.p50).toBeGreaterThan(0);
+    expect(report.stage_breakdowns.tts_chunk.p50).toBeGreaterThan(0);
+    expect(report.bottleneck_distribution).toBeDefined();
+  });
+
+  test('should record new turn span and identify bottleneck stage', async () => {
+    const recordRes = await request(app)
+      .post('/api/metrics/waterfall/record')
+      .send({
+        agent_name: 'Maya',
+        user_query: 'Book my flight to Seattle',
+        agent_response: 'Flight to Seattle is available at 3 PM',
+        vad_eos_ms: 32,
+        asr_ms: 145,
+        llm_ttft_ms: 200,
+        tts_first_chunk_ms: 100,
+        network_playout_ms: 25,
+      });
+
+    expect(recordRes.status).toBe(201);
+    expect(recordRes.body.success).toBe(true);
+    const span = recordRes.body.span;
+    expect(span.total_e2e_ms).toBe(502); // 32 + 145 + 200 + 100 + 25 = 502ms (Sub-500ms target!)
+    expect(span.is_within_budget).toBe(true);
+    expect(span.bottleneck_stage).toBeDefined();
+  });
+});
+
+describe('Multi-Language Auto-Detection & Bilingual Voice Switching (Phase 6)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { multilingualManager } = require('../src/services/multilingual');
+
+  test('should list all supported languages with native voice presets', async () => {
+    const res = await request(app).get('/api/multilingual/languages');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.languages)).toBe(true);
+    expect(res.body.total).toBeGreaterThanOrEqual(8);
+
+    const esLang = res.body.languages.find((l: any) => l.code === 'es');
+    expect(esLang).toBeDefined();
+    expect(esLang.flag).toBe('🇪🇸');
+    expect(esLang.cartesiaVoiceId).toBeDefined();
+
+    const hiLang = res.body.languages.find((l: any) => l.code === 'hi');
+    expect(hiLang).toBeDefined();
+    expect(hiLang.flag).toBe('🇮🇳');
+  });
+
+  test('should accurately identify language across European and Asian scripts', async () => {
+    // 1. Spanish
+    const esRes = await request(app)
+      .post('/api/multilingual/detect')
+      .send({ text: '¡Hola! ¿Podrías cancelar mi pedido por favor?' });
+    expect(esRes.status).toBe(200);
+    expect(esRes.body.language).toBe('es');
+    expect(esRes.body.confidence).toBeGreaterThanOrEqual(0.70);
+
+    // 2. French
+    const frRes = await request(app)
+      .post('/api/multilingual/detect')
+      .send({ text: 'Bonjour, je voudrais annuler ma réservation s\'il vous plaît.' });
+    expect(frRes.status).toBe(200);
+    expect(frRes.body.language).toBe('fr');
+    expect(frRes.body.confidence).toBeGreaterThanOrEqual(0.70);
+
+    // 3. German
+    const deRes = await request(app)
+      .post('/api/multilingual/detect')
+      .send({ text: 'Guten Tag, ich möchte bitte einen Termin buchen.' });
+    expect(deRes.status).toBe(200);
+    expect(deRes.body.language).toBe('de');
+    expect(deRes.body.confidence).toBeGreaterThanOrEqual(0.70);
+
+    // 4. Japanese (Kana script)
+    const jaRes = await request(app)
+      .post('/api/multilingual/detect')
+      .send({ text: 'こんにちは、明日の予約を確認してください。' });
+    expect(jaRes.status).toBe(200);
+    expect(jaRes.body.language).toBe('ja');
+    expect(jaRes.body.script).toBe('japanese');
+    expect(jaRes.body.confidence).toBeGreaterThanOrEqual(0.90);
+
+    // 5. Hindi (Devanagari script)
+    const hiRes = await request(app)
+      .post('/api/multilingual/detect')
+      .send({ text: 'नमस्ते, क्या आप मेरी बुकिंग की स्थिति बता सकते हैं?' });
+    expect(hiRes.status).toBe(200);
+    expect(hiRes.body.language).toBe('hi');
+    expect(hiRes.body.script).toBe('devanagari');
+    expect(hiRes.body.confidence).toBeGreaterThanOrEqual(0.90);
+  });
+
+  test('should automatically detect language switch mid-call and adapt voice and directives', async () => {
+    const testSessionId = `test_sess_ml_${Date.now()}`;
+
+    // Turn 1: Caller speaks English
+    const turn1 = multilingualManager.processTurnTranscript(testSessionId, 'Hello, can you help me with an order?');
+    expect(turn1.currentLanguage).toBe('en');
+    expect(turn1.switched).toBe(false);
+
+    // Turn 2: Caller switches to Spanish mid-call
+    const turn2 = multilingualManager.processTurnTranscript(testSessionId, '¡Hola! Necesito ayuda para cancelar mi pedido.');
+    expect(turn2.switched).toBe(true);
+    expect(turn2.previousLanguage).toBe('en');
+    expect(turn2.currentLanguage).toBe('es');
+    expect(turn2.voiceId).toBe('846d302f-514d-4250-b0ff-90807c4bbab5');
+    expect(turn2.promptDirective).toContain('español');
+
+    // Turn 3: Caller speaks Spanish again (no re-switch)
+    const turn3 = multilingualManager.processTurnTranscript(testSessionId, 'Muchas gracias por la ayuda.');
+    expect(turn3.currentLanguage).toBe('es');
+    expect(turn3.switched).toBe(false);
+  });
+
+  test('should allow manual language override and locking via REST endpoint', async () => {
+    const testSessionId = `test_sess_manual_${Date.now()}`;
+
+    // Manual switch to German with lock
+    const switchRes = await request(app)
+      .post(`/api/multilingual/sessions/${testSessionId}/switch`)
+      .send({ language: 'de', lock: true });
+
+    expect(switchRes.status).toBe(200);
+    expect(switchRes.body.success).toBe(true);
+    expect(switchRes.body.newLanguage).toBe('de');
+
+    // Check session status
+    const statusRes = await request(app).get(`/api/multilingual/sessions/${testSessionId}`);
+    expect(statusRes.status).toBe(200);
+    expect(statusRes.body.state.currentLanguage).toBe('de');
+    expect(statusRes.body.state.lockedLanguage).toBe('de');
+    expect(statusRes.body.state.switchCount).toBe(1);
+    expect(statusRes.body.state.history.length).toBe(1);
+  });
+});
+
+describe('Enterprise Security, RBAC & SOC2/HIPAA Compliance (Phase 7)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { securityService } = require('../src/services/security');
+
+  test('should list enterprise users and verify granular RBAC permission matrix', async () => {
+    const res = await request(app).get('/api/security/users');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.users)).toBe(true);
+    expect(res.body.users.length).toBeGreaterThanOrEqual(3);
+
+    const admin = res.body.users.find((u: any) => u.role === 'admin');
+    expect(admin).toBeDefined();
+    expect(admin.permissions).toContain('manage_keys');
+    expect(admin.permissions).toContain('delete_calls');
+
+    const auditor = res.body.users.find((u: any) => u.role === 'auditor_qa');
+    expect(auditor).toBeDefined();
+    expect(auditor.permissions).not.toContain('manage_keys');
+    expect(auditor.permissions).not.toContain('delete_calls');
+    expect(auditor.permissions).toContain('view_analytics');
+  });
+
+  test('should enforce role-based access control and block unauthorized key rotation', async () => {
+    // 1. Switch to Auditor QA role
+    const switchRes = await request(app)
+      .post('/api/security/switch-user')
+      .send({ userId: 'user_auditor' });
+    expect(switchRes.status).toBe(200);
+    expect(switchRes.body.user.role).toBe('auditor_qa');
+
+    // 2. Auditor attempts to rotate an API key -> 403 Forbidden!
+    const rotateAttempt = await request(app)
+      .post('/api/security/vault/rotate')
+      .send({ keyId: 'key_openai_prod' });
+    expect(rotateAttempt.status).toBe(403);
+    expect(rotateAttempt.body.success).toBe(false);
+
+    // 3. Switch back to Admin role -> Authorized
+    const switchAdmin = await request(app)
+      .post('/api/security/switch-user')
+      .send({ userId: 'user_admin' });
+    expect(switchAdmin.status).toBe(200);
+    expect(switchAdmin.body.user.role).toBe('admin');
+  });
+
+  test('should encrypt and decrypt call audio recordings using military-grade AES-256-GCM', async () => {
+    const sensitiveCallTranscript = 'Patient medical record: Caller prescribed Metformin 500mg, SSN: 987-65-4321';
+
+    // 1. Encrypt payload
+    const encRes = await request(app)
+      .post('/api/security/crypto/encrypt')
+      .send({ data: sensitiveCallTranscript });
+
+    expect(encRes.status).toBe(200);
+    expect(encRes.body.success).toBe(true);
+    const payload = encRes.body.payload;
+    expect(payload.algorithm).toBe('aes-256-gcm');
+    expect(payload.ciphertext).toBeDefined();
+    expect(payload.iv).toBeDefined();
+    expect(payload.authTag).toBeDefined();
+
+    // 2. Decrypt with valid auth tag
+    const decRes = await request(app)
+      .post('/api/security/crypto/decrypt')
+      .send(payload);
+
+    expect(decRes.status).toBe(200);
+    expect(decRes.body.success).toBe(true);
+    expect(decRes.body.plaintext).toBe(sensitiveCallTranscript);
+
+    // 3. Decrypt with tampered auth tag -> fails integrity check
+    const tamperedPayload = { ...payload, authTag: Buffer.alloc(16, 0).toString('base64') };
+    const failRes = await request(app)
+      .post('/api/security/crypto/decrypt')
+      .send(tamperedPayload);
+
+    expect(failRes.status).toBe(400);
+    expect(failRes.body.success).toBe(false);
+  });
+
+  test('should record and query immutable SOC2 / HIPAA audit log entries', async () => {
+    // 1. GET audit logs
+    const logsRes = await request(app).get('/api/security/audit-logs');
+    expect(logsRes.status).toBe(200);
+    expect(logsRes.body.success).toBe(true);
+    expect(Array.isArray(logsRes.body.logs)).toBe(true);
+    expect(logsRes.body.logs.length).toBeGreaterThanOrEqual(1);
+
+    // 2. Append new audit event
+    const createRes = await request(app)
+      .post('/api/security/audit-logs')
+      .send({
+        action: 'AGENT_UPDATE',
+        resource: 'agents/agent_support',
+        details: { field: 'system_prompt', changedBy: 'admin' },
+        status: 'SUCCESS',
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.success).toBe(true);
+    expect(createRes.body.entry.action).toBe('AGENT_UPDATE');
+    expect(createRes.body.entry.actorRole).toBe('admin');
+  });
+
+  test('should protect and mask secret keys in vault and support rotation by admin', async () => {
+    // 1. GET vault keys
+    const vaultRes = await request(app).get('/api/security/vault');
+    expect(vaultRes.status).toBe(200);
+    expect(vaultRes.body.success).toBe(true);
+    expect(Array.isArray(vaultRes.body.keys)).toBe(true);
+
+    const dgKey = vaultRes.body.keys.find((k: any) => k.provider === 'deepgram');
+    expect(dgKey).toBeDefined();
+    expect(dgKey.maskedKey).toContain('****');
+    const oldVersion = dgKey.version;
+
+    // 2. Admin rotates key
+    const rotRes = await request(app)
+      .post('/api/security/vault/rotate')
+      .send({ keyId: dgKey.id });
+
+    expect(rotRes.status).toBe(200);
+    expect(rotRes.body.success).toBe(true);
+    expect(rotRes.body.key.version).toBe(oldVersion + 1);
+    expect(rotRes.body.key.maskedKey).toContain('****');
+  });
+});

@@ -23,6 +23,9 @@ export interface Agent {
   assigned_tools: string[];
   greeting?: string;
   is_default?: boolean;
+  languages_supported?: string[];
+  default_language?: string;
+  auto_switch_language?: boolean;
 }
 
 export interface PlaygroundConfig {
@@ -178,7 +181,187 @@ export interface KnowledgeSearchResult {
   latency_ms: number;
 }
 
-export type TabName = 'agents' | 'playground' | 'knowledge' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
+export interface HITLTranscriptItem {
+  id: string;
+  role: 'user' | 'assistant' | 'supervisor';
+  text: string;
+  timestamp: number;
+  sentiment?: 'Positive' | 'Neutral' | 'Frustrated';
+}
+
+export interface CopilotSuggestion {
+  id: string;
+  text: string;
+  category: 'deescalation' | 'policy' | 'action' | 'greeting';
+  confidence: number;
+}
+
+export interface HITLActiveCall {
+  id: string;
+  session_id: string;
+  agent_id: string;
+  agent_name: string;
+  agent_role: string;
+  caller_name: string;
+  caller_phone: string;
+  channel: 'browser' | 'telephony' | 'sip';
+  status: 'ai_active' | 'whisper_listening' | 'supervisor_takeover' | 'transferred' | 'completed';
+  started_at: number;
+  duration_seconds: number;
+  current_sentiment: 'Positive' | 'Neutral' | 'Frustrated';
+  sentiment_score: number;
+  is_escalated: boolean;
+  escalation_reason?: string;
+  escalated_at?: number;
+  supervisor: {
+    is_assigned: boolean;
+    supervisor_id?: string;
+    supervisor_name?: string;
+    mode: 'idle' | 'whisper' | 'takeover';
+    takeover_at?: number;
+  };
+  transcripts: HITLTranscriptItem[];
+  copilot_suggestions: CopilotSuggestion[];
+  transfer_details?: {
+    target_phone: string;
+    department: string;
+    transferred_at: number;
+  };
+}
+
+export interface EvalTestCase {
+  id: string;
+  name: string;
+  category: 'policy' | 'tools' | 'guardrails' | 'escalation' | 'reasoning';
+  user_turns: string[];
+  expected_behavior: string;
+  failure_criteria: string;
+  expected_tool?: string;
+  forbidden_words?: string[];
+  required_words?: string[];
+}
+
+export interface EvalScenarioResult {
+  test_case_id: string;
+  test_name: string;
+  category: string;
+  passed: boolean;
+  score: number;
+  conversation: Array<{ role: 'user' | 'assistant'; text: string }>;
+  tools_called: string[];
+  latency_ms: number;
+  judge_verdict: string;
+  judge_feedback: string;
+}
+
+export interface EvalRunRecord {
+  id: string;
+  suite_id: string;
+  suite_name: string;
+  agent_id: string;
+  agent_name: string;
+  timestamp: number;
+  duration_ms: number;
+  status: 'running' | 'completed' | 'failed';
+  total_tests: number;
+  passed_tests: number;
+  failed_tests: number;
+  pass_rate: number;
+  overall_score: number;
+  metrics: {
+    goal_completion_rate: number;
+    hallucination_defense_score: number;
+    tool_accuracy_score: number;
+    guardrail_compliance_score: number;
+    avg_turn_latency_ms: number;
+  };
+  results: EvalScenarioResult[];
+}
+
+export interface EvalTestSuite {
+  id: string;
+  name: string;
+  description: string;
+  test_cases: EvalTestCase[];
+}
+
+export interface SupportedLanguage {
+  code: string;
+  name: string;
+  nativeName: string;
+  flag: string;
+  cartesiaVoiceId: string;
+  elevenLabsVoiceId: string;
+  sampleGreeting: string;
+  systemPromptDirective: string;
+  commonKeywords: string[];
+}
+
+export interface LanguageDetectionResult {
+  language: string;
+  confidence: number;
+  script: string;
+  matchedKeywords: string[];
+  switched: boolean;
+}
+
+export interface LanguageSwitchEvent {
+  id: string;
+  sessionId: string;
+  fromLanguage: string;
+  toLanguage: string;
+  confidence: number;
+  triggerText: string;
+  newVoiceId: string;
+  timestamp: number;
+}
+
+export interface SessionLanguageState {
+  sessionId: string;
+  currentLanguage: string;
+  autoDetectEnabled: boolean;
+  supportedLanguages: string[];
+  switchCount: number;
+  history: LanguageSwitchEvent[];
+  lockedLanguage?: string;
+}
+
+export type UserRole = 'admin' | 'agent_manager' | 'auditor_qa';
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar: string;
+  permissions: string[];
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: number;
+  actorId: string;
+  actorName: string;
+  actorRole: UserRole;
+  action: string;
+  resource: string;
+  details: Record<string, unknown>;
+  ipAddress: string;
+  status: 'SUCCESS' | 'DENIED' | 'FAILED';
+}
+
+export interface VaultKeyRecord {
+  id: string;
+  provider: string;
+  displayName: string;
+  maskedKey: string;
+  status: 'active' | 'rotated' | 'revoked';
+  environment: 'production' | 'staging';
+  lastRotated: number;
+  version: number;
+}
+
+export type TabName = 'agents' | 'evals' | 'hitl' | 'knowledge' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,

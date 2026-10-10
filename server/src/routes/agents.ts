@@ -13,6 +13,9 @@ export interface AgentModel {
   assigned_tools: string[];
   greeting: string;
   is_default?: boolean;
+  languages_supported?: string[];
+  default_language?: string;
+  auto_switch_language?: boolean;
 }
 
 const defaultAgents: AgentModel[] = [
@@ -29,6 +32,9 @@ const defaultAgents: AgentModel[] = [
     assigned_tools: ['check_booking', 'transfer_call'],
     greeting: "Hello! I'm Maya, your customer support specialist. How can I help you today?",
     is_default: true,
+    languages_supported: ['en', 'es', 'fr', 'de'],
+    default_language: 'en',
+    auto_switch_language: true,
   },
   {
     id: 'agent_weather',

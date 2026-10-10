@@ -205,9 +205,18 @@ jest.mock('../src/services/tools', () => {
     constructor(private executor: any) {}
     async executeAndStream() { return { success: true, result: {}, usedFiller: false, usedFallback: false, latencyMs: 0 }; }
   }
-  
-  return { ToolRegistryImpl, CircuitBreakerImpl, ToolExecutorImpl, HallucinationChecker, StreamingToolExecutor };
-});
+
+  const mockToolsMap = new Map();
+    mockToolsMap.set('transfer_to_human', {
+      name: 'transfer_to_human',
+      label: '👤 Transfer to Human Agent',
+      description: 'Instantly escalates and transfers the caller to a human supervisor',
+      parameters: { type: 'object', properties: { reason: { type: 'string' } } },
+    });
+    const getAllToolsMap = () => mockToolsMap;
+
+    return { ToolRegistryImpl, CircuitBreakerImpl, ToolExecutorImpl, HallucinationChecker, StreamingToolExecutor, getAllToolsMap };
+  });
 
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({

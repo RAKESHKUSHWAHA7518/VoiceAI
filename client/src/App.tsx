@@ -13,6 +13,8 @@ import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
 import { AnalyticsTab } from './components/analytics/AnalyticsTab';
 import { TelephonyTab } from './components/telephony/TelephonyTab';
 import { KnowledgeTab } from './components/knowledge/KnowledgeTab';
+import { HITLTab } from './components/hitl/HITLTab';
+import { EvalsTab } from './components/evals/EvalsTab';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useDashboardState } from './hooks/useDashboardState';
@@ -392,6 +394,19 @@ function App() {
           <KnowledgeTab
             agents={agents}
             activeAgent={activeAgent}
+            playVoice={playVoice}
+          />
+        );
+      case 'evals':
+        return (
+          <EvalsTab
+            agents={agents}
+          />
+        );
+      case 'hitl':
+        return (
+          <HITLTab
+            agents={agents}
             playVoice={playVoice}
           />
         );

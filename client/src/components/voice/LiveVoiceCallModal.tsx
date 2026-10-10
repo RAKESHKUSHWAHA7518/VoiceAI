@@ -30,6 +30,17 @@ interface MessageItem {
   audioUrl?: string;
 }
 
+const CALL_LANGUAGES = [
+  { code: 'en', flag: '🇺🇸', name: 'English' },
+  { code: 'es', flag: '🇪🇸', name: 'Español' },
+  { code: 'fr', flag: '🇫🇷', name: 'Français' },
+  { code: 'de', flag: '🇩🇪', name: 'Deutsch' },
+  { code: 'ja', flag: '🇯🇵', name: '日本語' },
+  { code: 'hi', flag: '🇮🇳', name: 'हिन्दी' },
+  { code: 'pt', flag: '🇧🇷', name: 'Português' },
+  { code: 'zh', flag: '🇨🇳', name: '中文' },
+];
+
 export function LiveVoiceCallModal({
   isOpen,
   onClose,
@@ -46,6 +57,11 @@ export function LiveVoiceCallModal({
   const [audioWaves, setAudioWaves] = useState<number[]>([15, 25, 45, 60, 35, 20]);
   const [analyzingScorecard, setAnalyzingScorecard] = useState<boolean>(false);
   const [scorecardResult, setScorecardResult] = useState<CallAnalyticsRecord | null>(null);
+
+  // Multilingual auto-detection & switching state
+  const [currentLang, setCurrentLang] = useState<string>(agent?.default_language || 'en');
+  const [autoDetectLang, setAutoDetectLang] = useState<boolean>(agent?.auto_switch_language !== false);
+  const [switchNotice, setSwitchNotice] = useState<string | null>(null);
 
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -269,6 +285,28 @@ export function LiveVoiceCallModal({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     };
     setMessages(prev => [...prev, userMsg]);
+
+    // 2.5 Multi-Language Auto-Detection & Mid-Call Voice Switching
+    if (autoDetectLang) {
+      fetch('/api/multilingual/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          text: textToSend,
+          allowed_languages: agent?.languages_supported || ['en', 'es', 'fr', 'de', 'ja', 'hi'],
+        }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.confidence >= 0.70 && data.language !== currentLang) {
+            const target = CALL_LANGUAGES.find(l => l.code === data.language);
+            setCurrentLang(data.language);
+            setSwitchNotice(`Auto-switched dialect & voice to ${target?.flag || ''} ${target?.name || data.language.toUpperCase()} (${Math.round(data.confidence * 100)}% confidence)`);
+            setTimeout(() => setSwitchNotice(null), 6000);
+          }
+        })
+        .catch(() => {});
+    }
 
     // 3. Phase: Thinking
     setPhase('THINKING');
@@ -642,6 +680,54 @@ export function LiveVoiceCallModal({
             </div>
           </div>
           <div className="call-header-meta">
+            {/* Mid-Call Language Selector & Auto-detect indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.05)', padding: '0.2rem 0.5rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <span style={{ fontSize: '0.85rem' }}>🌐</span>
+              <select
+                style={{
+                  background: 'transparent',
+                  color: '#93c5fd',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+                value={currentLang}
+                onChange={(e) => {
+                  const newL = e.target.value;
+                  setCurrentLang(newL);
+                  const info = CALL_LANGUAGES.find(l => l.code === newL);
+                  setSwitchNotice(`Switched to ${info?.flag || ''} ${info?.name || newL.toUpperCase()}`);
+                  setTimeout(() => setSwitchNotice(null), 4000);
+                }}
+                title="Active Spoken Language (Bilingual Switching)"
+              >
+                {CALL_LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code} style={{ background: '#0f172a', color: '#fff' }}>
+                    {lang.flag} {lang.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setAutoDetectLang(prev => !prev)}
+                style={{
+                  background: autoDetectLang ? '#059669' : 'rgba(255,255,255,0.1)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.1rem 0.35rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+                title={autoDetectLang ? "Auto-detect is ON: switches when caller changes language" : "Auto-detect is OFF"}
+              >
+                {autoDetectLang ? 'AUTO' : 'MANUAL'}
+              </button>
+            </div>
+
             <div className="call-timer-pill">
               <span className="call-timer-dot"></span>
               <span>{formatDuration(callDuration)}</span>
@@ -662,6 +748,25 @@ export function LiveVoiceCallModal({
           <div className="call-phase-status">
             <span className="status-badge">{getPhaseDescription()}</span>
           </div>
+
+          {/* Multilingual Switch Notice Badge */}
+          {switchNotice && (
+            <div style={{
+              background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.95), rgba(16, 185, 129, 0.95))',
+              color: '#ffffff',
+              padding: '0.35rem 0.85rem',
+              borderRadius: '20px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              marginTop: '0.3rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+            }}>
+              <span>🌐</span> {switchNotice}
+            </div>
+          )}
 
           {/* Animated Audio Waveform */}
           <div className="call-wave-visualizer">

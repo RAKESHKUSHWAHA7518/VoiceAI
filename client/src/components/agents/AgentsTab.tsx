@@ -27,6 +27,17 @@ const PRESET_VOICES = [
   { id: '5c5ad5e7-1020-476b-8b91-e4c194e4f7a7', name: 'Upbeat Conversational' },
 ];
 
+export const AVAILABLE_LANGUAGES = [
+  { code: 'en', flag: '🇺🇸', name: 'English (US)' },
+  { code: 'es', flag: '🇪🇸', name: 'Spanish (Español)' },
+  { code: 'fr', flag: '🇫🇷', name: 'French (Français)' },
+  { code: 'de', flag: '🇩🇪', name: 'German (Deutsch)' },
+  { code: 'ja', flag: '🇯🇵', name: 'Japanese (日本語)' },
+  { code: 'hi', flag: '🇮🇳', name: 'Hindi (हिन्दी)' },
+  { code: 'pt', flag: '🇧🇷', name: 'Portuguese (Português)' },
+  { code: 'zh', flag: '🇨🇳', name: 'Chinese (中文)' },
+];
+
 export function AgentsTab({
   agents,
   activeAgent,
@@ -65,6 +76,9 @@ export function AgentsTab({
   const [formPrompt, setFormPrompt] = useState<string>('');
   const [formGreeting, setFormGreeting] = useState<string>('');
   const [formTools, setFormTools] = useState<string[]>(['get_weather', 'check_booking']);
+  const [formLanguages, setFormLanguages] = useState<string[]>(['en', 'es', 'fr', 'de']);
+  const [formDefaultLang, setFormDefaultLang] = useState<string>('en');
+  const [formAutoSwitch, setFormAutoSwitch] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
   const openCreateModal = () => {
@@ -79,6 +93,9 @@ export function AgentsTab({
     setFormPrompt('You are a helpful voice assistant. Speak naturally in short, conversational sentences.');
     setFormGreeting('Hello! How can I assist you today?');
     setFormTools(['get_weather', 'check_booking']);
+    setFormLanguages(['en', 'es', 'fr', 'de']);
+    setFormDefaultLang('en');
+    setFormAutoSwitch(true);
     setShowModal(true);
     setIsCreatingNew?.(true);
   };
@@ -95,6 +112,9 @@ export function AgentsTab({
     setFormPrompt(agent.system_prompt);
     setFormGreeting(agent.greeting || `Hello! I am ${agent.name}. How can I assist you today?`);
     setFormTools(agent.assigned_tools || []);
+    setFormLanguages(agent.languages_supported || ['en', 'es']);
+    setFormDefaultLang(agent.default_language || 'en');
+    setFormAutoSwitch(agent.auto_switch_language ?? true);
     setShowModal(true);
   };
 
@@ -107,6 +127,14 @@ export function AgentsTab({
   const handleToggleTool = (toolId: string) => {
     setFormTools(prev =>
       prev.includes(toolId) ? prev.filter(t => t !== toolId) : [...prev, toolId]
+    );
+  };
+
+  const handleToggleLanguage = (langCode: string) => {
+    setFormLanguages(prev =>
+      prev.includes(langCode)
+        ? (prev.length > 1 ? prev.filter(l => l !== langCode) : prev)
+        : [...prev, langCode]
     );
   };
 
@@ -127,6 +155,9 @@ export function AgentsTab({
         system_prompt: formPrompt,
         greeting: formGreeting,
         assigned_tools: formTools,
+        languages_supported: formLanguages,
+        default_language: formDefaultLang,
+        auto_switch_language: formAutoSwitch,
       });
       closeModal();
     } catch (err) {
@@ -204,6 +235,30 @@ export function AgentsTab({
                   ) : (
                     <span className="no-tools-text">No tools assigned</span>
                   )}
+                </div>
+              </div>
+
+              {/* Supported Languages */}
+              <div style={{ marginTop: '0.65rem', padding: '0.45rem 0.65rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '0.35rem' }}>
+                  <span className="spec-label" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    🌐 Languages:
+                  </span>
+                  {agent.auto_switch_language !== false && (
+                    <span style={{ fontSize: '0.65rem', background: '#059669', color: '#fff', padding: '0.08rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
+                      ⚡ Auto-Switch
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                  {(agent.languages_supported || ['en']).map(langCode => {
+                    const lang = AVAILABLE_LANGUAGES.find(l => l.code === langCode);
+                    return (
+                      <span key={langCode} style={{ fontSize: '0.72rem', padding: '0.12rem 0.4rem', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '4px', color: '#93c5fd' }}>
+                        {lang?.flag || '🌐'} {lang?.name.split(' ')[0] || langCode.toUpperCase()}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -365,6 +420,72 @@ export function AgentsTab({
                   value={formPrompt}
                   onChange={e => setFormPrompt(e.target.value)}
                 />
+              </div>
+
+              {/* Multilingual & Auto-Switching Config */}
+              <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                    🌐 Multi-Language Auto-Detection & Bilingual Voice
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer', color: '#60a5fa' }}>
+                    <input
+                      type="checkbox"
+                      checked={formAutoSwitch}
+                      onChange={e => setFormAutoSwitch(e.target.checked)}
+                    />
+                    Enable Mid-Call Auto-Switch
+                  </label>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.75rem' }}>
+                  When enabled, the pipeline detects if a caller switches language mid-stream and seamlessly adapts system prompt persona and native TTS voice model.
+                </span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  {AVAILABLE_LANGUAGES.map(lang => {
+                    const isChecked = formLanguages.includes(lang.code);
+                    return (
+                      <label
+                        key={lang.code}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.4rem 0.6rem',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          background: isChecked ? 'rgba(37, 99, 235, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                          border: isChecked ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.1)',
+                          color: isChecked ? '#bfdbfe' : '#cbd5e1',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleLanguage(lang.code)}
+                        />
+                        <span>{lang.flag} {lang.name.split(' ')[0]}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Default Spoken Language:</span>
+                  <select
+                    className="form-select"
+                    style={{ width: 'auto', padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}
+                    value={formDefaultLang}
+                    onChange={e => setFormDefaultLang(e.target.value)}
+                  >
+                    {AVAILABLE_LANGUAGES.map(lang => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.flag} {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Tool Assignments */}

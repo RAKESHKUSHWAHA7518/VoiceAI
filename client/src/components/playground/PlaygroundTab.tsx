@@ -35,9 +35,27 @@ export function PlaygroundTab({
   const [testInput, setTestInput] = useState('Hello, how are you?');
   const [playgroundTests, setPlaygroundTests] = useState<PlaygroundTest[]>([]);
   const [playgroundTestActive, setPlaygroundTestActive] = useState(false);
+  const [detectedInfo, setDetectedInfo] = useState<{ language: string; confidence: number; script: string } | null>(null);
 
   const displayTests = tests.length > 0 ? tests : playgroundTests;
   const isRunning = testActive || playgroundTestActive;
+
+  const handleDetectLanguage = async (text: string) => {
+    if (!text.trim()) return;
+    try {
+      const res = await fetch('/api/multilingual/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDetectedInfo({ language: data.language, confidence: data.confidence, script: data.script });
+      }
+    } catch (err) {
+      console.error('Detection error:', err);
+    }
+  };
 
   const handleConfigChange = useCallback((key: keyof PlaygroundConfig, value: string | number) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -308,13 +326,111 @@ export function PlaygroundTab({
               className="form-textarea"
               id="testInput"
               placeholder="Enter test message..."
-              rows={4}
+              rows={3}
               value={testInput}
-              onChange={(e) => setTestInput(e.target.value)}
+              onChange={(e) => {
+                setTestInput(e.target.value);
+                setDetectedInfo(null);
+              }}
             />
+
+            {/* Quick Multi-Language Phrases */}
+            <div style={{ marginTop: '0.4rem', marginBottom: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.73rem', color: '#94a3b8' }}>
+                <span>🌐 Quick Bilingual Phrases:</span>
+                {detectedInfo && (
+                  <span style={{ color: '#34d399', fontWeight: 600 }}>
+                    Detected: {detectedInfo.language.toUpperCase()} ({Math.round(detectedInfo.confidence * 100)}% match)
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem' }}
+                  onClick={() => {
+                    const text = "Can you please check my hotel reservation for tomorrow?";
+                    setTestInput(text);
+                    handleDetectLanguage(text);
+                  }}
+                >
+                  🇺🇸 English
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem' }}
+                  onClick={() => {
+                    const text = "¡Hola! ¿Podrías consultar mi reserva de hotel para mañana por favor?";
+                    setTestInput(text);
+                    handleDetectLanguage(text);
+                  }}
+                >
+                  🇪🇸 Spanish
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem' }}
+                  onClick={() => {
+                    const text = "Bonjour ! Pouvez-vous vérifier ma réservation d'hôtel pour demain s'il vous plaît ?";
+                    setTestInput(text);
+                    handleDetectLanguage(text);
+                  }}
+                >
+                  🇫🇷 French
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem' }}
+                  onClick={() => {
+                    const text = "Guten Tag, können Sie meine Hotelbuchung für morgen bitte überprüfen?";
+                    setTestInput(text);
+                    handleDetectLanguage(text);
+                  }}
+                >
+                  🇩🇪 German
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem' }}
+                  onClick={() => {
+                    const text = "こんにちは、明日のホテルの予約を確認していただけますか？";
+                    setTestInput(text);
+                    handleDetectLanguage(text);
+                  }}
+                >
+                  🇯🇵 Japanese
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem' }}
+                  onClick={() => {
+                    const text = "नमस्ते, क्या आप कल के लिए मेरी होटल बुकिंग की पुष्टि कर सकते हैं?";
+                    setTestInput(text);
+                    handleDetectLanguage(text);
+                  }}
+                >
+                  🇮🇳 Hindi
+                </button>
+              </div>
+            </div>
+
             <div className="btn-group">
               <button className="btn btn-success" onClick={handleRunTest} disabled={isRunning}>
                 {isRunning ? 'Running...' : 'Run Test'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => handleDetectLanguage(testInput)}
+                title="Identify language and script dialect"
+              >
+                🔍 Detect Language
               </button>
               {onStartVoiceCall && activeAgent && (
                 <button

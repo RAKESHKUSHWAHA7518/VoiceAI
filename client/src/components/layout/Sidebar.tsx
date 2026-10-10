@@ -14,6 +14,8 @@ import {
   IconHistory,
   IconActivity,
   IconInspector,
+  IconHeadphones,
+  IconTarget,
   PersonaAvatar,
 } from '../common/Icons';
 
@@ -41,6 +43,8 @@ export function Sidebar({
   const navItems: { id: TabName; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'agents', label: 'Agents Studio', icon: <IconBot size={18} />, badge: `${agents.length}` },
     { id: 'knowledge', label: 'Knowledge & RAG', icon: <IconBook size={18} /> },
+    { id: 'evals', label: 'Evals & Test Suite', icon: <IconTarget size={18} /> },
+    { id: 'hitl', label: 'HITL Supervision', icon: <IconHeadphones size={18} />, badge: 'LIVE' },
     { id: 'playground', label: 'Playground', icon: <IconFlask size={18} /> },
     { id: 'telephony', label: 'Telephony & Lines', icon: <IconPhone size={18} /> },
     { id: 'analytics', label: 'Call History & QA', icon: <IconHistory size={18} /> },
