@@ -31,6 +31,8 @@ import multilingualRoutes from './routes/multilingual';
 import securityRoutes from './routes/security';
 import campaignRoutes from './routes/campaigns';
 import providerRoutes from './routes/providers';
+import calendarRoutes from './routes/calendar';
+import voiceRoutes from './routes/voices';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
@@ -92,6 +94,8 @@ app.use('/api/multilingual', multilingualRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/providers', providerRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/voices', voiceRoutes);
 
 app.get('/api/state', (req, res) => {
   res.json({

@@ -1371,3 +1371,164 @@ describe('Real Twilio PSTN Phone Call Setup & Cloud Tunneling (Phase 11)', () =>
     expect(res.body.setup_instructions.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('In-Call Calendar & Appointment Booking Tool (Phase 12)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { calendarManager } = require('../src/services/calendar');
+  const { getAllToolsMap } = require('../src/services/tools');
+
+  test('should register check_availability and book_appointment in Tool Registry', () => {
+    const tools = getAllToolsMap();
+    expect(tools.has('check_availability')).toBe(true);
+    expect(tools.has('book_appointment')).toBe(true);
+
+    const checkTool = tools.get('check_availability');
+    expect(checkTool.name).toBe('check_availability');
+    expect(checkTool.parameters.properties.date).toBeDefined();
+
+    const bookTool = tools.get('book_appointment');
+    expect(bookTool.name).toBe('book_appointment');
+    expect(bookTool.parameters.required).toContain('customer_name');
+    expect(bookTool.parameters.required).toContain('time');
+  });
+
+  test('should query available appointment slots via tool and REST endpoint', async () => {
+    // 1. Tool execution
+    const tools = getAllToolsMap();
+    const checkHandler = tools.get('check_availability').handler;
+    const toolResult = await checkHandler({ date: 'tomorrow' });
+    expect(toolResult.available_slots).toBeDefined();
+    expect(toolResult.available_slots.length).toBeGreaterThan(0);
+
+    // 2. REST endpoint
+    const res = await request(app).get('/api/calendar/slots?date=tomorrow');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.slots)).toBe(true);
+    expect(res.body.slots.length).toBeGreaterThan(0);
+  });
+
+  test('should book an appointment via book_appointment tool and return confirmation', async () => {
+    const tools = getAllToolsMap();
+    const bookHandler = tools.get('book_appointment').handler;
+    const result = await bookHandler({
+      customer_name: 'Dr. Sarah Connor',
+      customer_phone: '+1 (555) 998-1122',
+      date: 'tomorrow',
+      time: '02:30 PM',
+      service: 'Diagnostic Consultation',
+    });
+
+    expect(result.status).toBe('confirmed');
+    expect(result.confirmation_code).toMatch(/^APT-\d{4}$/);
+    expect(result.customer_name).toBe('Dr. Sarah Connor');
+    expect(result.appointment_time).toBe('02:30 PM');
+  });
+
+  test('should list all scheduled appointments via REST API', async () => {
+    const res = await request(app).get('/api/calendar/appointments');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.appointments)).toBe(true);
+    expect(res.body.count).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('Voice Library & Voice Cloning Studio (Phase 13)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { voiceLibraryManager } = require('../src/services/voice_library');
+
+  test('should list all curated preset voices and custom clones', async () => {
+    const res = await request(app).get('/api/voices');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.voices)).toBe(true);
+    expect(res.body.total_count).toBeGreaterThanOrEqual(6);
+
+    // Should include Cartesia Sonic and ElevenLabs
+    const providers = res.body.voices.map((v: any) => v.provider);
+    expect(providers).toContain('cartesia');
+    expect(providers).toContain('elevenlabs');
+  });
+
+  test('should stream valid WAV preview audio for a voice ID', async () => {
+    const res = await request(app).get('/api/voices/a0e99841-438c-4a64-b679-ae501e7d6091/preview');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('audio/wav');
+    expect(res.body.length).toBeGreaterThan(44); // Has WAV header + audio payload
+  });
+
+  test('should clone a new custom voice and add it to library', async () => {
+    const res = await request(app)
+      .post('/api/voices/clone')
+      .send({
+        name: 'Alexander (Executive Assistant)',
+        gender: 'Male',
+        accent: 'American (Midwest)',
+        tone: 'Warm, reassuring, and confident',
+        description: 'Cloned for high-touch VIP client support',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.voice.name).toBe('Alexander (Executive Assistant)');
+    expect(res.body.voice.is_cloned).toBe(true);
+    expect(res.body.voice.provider).toBe('custom_clone');
+
+    // Verify it appears in voice library
+    const voices = voiceLibraryManager.getAllVoices();
+    expect(voices.some(v => v.name === 'Alexander (Executive Assistant)')).toBe(true);
+  });
+});
+
+describe('Virtual PSTN Softphone & Web Dialpad (Phase 14)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+
+  test('should initiate outbound carrier softphone call and return TwiML stream', async () => {
+    const res = await request(app)
+      .post('/api/telephony/softphone/dial')
+      .send({
+        to_number: '+1 (415) 555-0199',
+        from_number: '+1 (555) 902-8800',
+        agent_name: 'Maya (Support Lead)',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.session).toBeDefined();
+    expect(res.body.session.status).toBe('connected');
+    expect(res.body.session.codec).toContain('G.711 mu-law');
+    expect(res.body.twiml).toContain('<Response>');
+    expect(res.body.twiml).toContain('<Stream');
+  });
+
+  test('should transmit DTMF tones with dual frequency harmonics', async () => {
+    const res = await request(app)
+      .post('/api/telephony/softphone/dtmf')
+      .send({ digit: '5' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.digit).toBe('5');
+    expect(res.body.low_freq).toBe(770);
+    expect(res.body.high_freq).toBe(1336);
+  });
+
+  test('should query softphone network status and hang up active call', async () => {
+    // 1. Status
+    const statusRes = await request(app).get('/api/telephony/softphone/status');
+    expect(statusRes.status).toBe(200);
+    expect(statusRes.body.success).toBe(true);
+    expect(statusRes.body.network_stats.carrier).toContain('Twilio');
+    expect(statusRes.body.active_session).toBeDefined();
+
+    // 2. Hangup
+    const hangupRes = await request(app).post('/api/telephony/softphone/hangup');
+    expect(hangupRes.status).toBe(200);
+    expect(hangupRes.body.success).toBe(true);
+    expect(hangupRes.body.message).toContain('hung up successfully');
+  });
+});

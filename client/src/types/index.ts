@@ -395,6 +395,47 @@ export interface Campaign {
   updated_at: string;
 }
 
+export interface VoiceProfile {
+  id: string;
+  name: string;
+  provider: 'cartesia' | 'elevenlabs' | 'openai' | 'custom_clone';
+  gender: 'Female' | 'Male' | 'Neutral';
+  accent: string;
+  tone: string;
+  description: string;
+  sample_text: string;
+  is_cloned?: boolean;
+  sample_audio_base64?: string;
+  created_at?: string;
+}
+
+export interface AppointmentRecord {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  date: string;
+  time: string;
+  service: string;
+  status: 'confirmed' | 'rescheduled' | 'cancelled';
+  notes?: string;
+  agent_id?: string;
+  created_at: string;
+}
+
+export interface SoftphoneSession {
+  call_sid: string;
+  to_number: string;
+  from_number: string;
+  agent_id: string;
+  agent_name: string;
+  status: 'ringing' | 'connected' | 'completed';
+  start_time: number;
+  duration_sec: number;
+  codec: string;
+  dtmf_history: Array<{ digit: string; timestamp: number }>;
+  media_stream_url: string;
+}
+
 export type TabName = 'agents' | 'campaigns' | 'evals' | 'hitl' | 'knowledge' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
 
 export const FRAME_TYPES = {

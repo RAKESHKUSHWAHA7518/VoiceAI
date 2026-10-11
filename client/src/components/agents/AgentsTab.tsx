@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Agent, ToolItem } from '../../types';
+import { VoiceLibraryModal } from '../voice/VoiceLibraryModal';
 const PRESET_AVATARS = ['🤖', '👩‍💼', '👨‍⚕️', '🛎️', '🎙️', '⚡', '💼', '🎧'];
 
 interface AgentsTabProps {
@@ -51,7 +52,21 @@ export function AgentsTab({
 }: AgentsTabProps) {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [showModal, setShowModal] = useState(isCreatingNew || false);
+  const [showVoiceLibrary, setShowVoiceLibrary] = useState<boolean>(false);
+  const [voicesList, setVoicesList] = useState<any[]>(PRESET_VOICES);
   const [toolsList, setToolsList] = useState<ToolItem[]>(DEFAULT_TOOLS as any);
+
+  // Load voices & tools
+  useEffect(() => {
+    fetch('/api/voices')
+      .then(r => r.json())
+      .then(data => {
+        if (data.voices && Array.isArray(data.voices)) {
+          setVoicesList(data.voices);
+        }
+      })
+      .catch(() => {});
+  }, [showVoiceLibrary]);
 
   // Load active tools (built-in + custom)
   useEffect(() => {
@@ -177,9 +192,19 @@ export function AgentsTab({
             Configure, customize, and deploy multi-persona voice agents with dedicated voices and tools.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openCreateModal}>
-          + Create New Agent
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowVoiceLibrary(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            🎙️ Voice Library & Cloning
+          </button>
+          <button className="btn btn-primary" onClick={openCreateModal}>
+            + Create New Agent
+          </button>
+        </div>
       </div>
 
       {/* Agents Grid */}
@@ -356,14 +381,33 @@ export function AgentsTab({
 
               <div className="form-row">
                 <div className="form-group flex-1">
-                  <label className="form-label">Voice Model</label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <label className="form-label" style={{ margin: 0 }}>Voice Model</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowVoiceLibrary(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#38bdf8',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                    >
+                      🎙️ Voice Library & Clones →
+                    </button>
+                  </div>
                   <select
                     className="form-select"
                     value={formVoiceId}
                     onChange={e => setFormVoiceId(e.target.value)}
                   >
-                    {PRESET_VOICES.map(v => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
+                    {voicesList.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} ({v.provider === 'custom_clone' ? 'Custom Clone' : v.provider})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -532,6 +576,20 @@ export function AgentsTab({
           </div>
         </div>
       )}
+      {/* Voice Library & Voice Cloning Modal */}
+      <VoiceLibraryModal
+        isOpen={showVoiceLibrary}
+        onClose={() => setShowVoiceLibrary(false)}
+        selectedVoiceId={formVoiceId}
+        onSelectVoice={(voiceId) => {
+          setFormVoiceId(voiceId);
+          fetch('/api/voices')
+            .then(r => r.json())
+            .then(data => {
+              if (data.voices) setVoicesList(data.voices);
+            });
+        }}
+      />
     </div>
   );
 }

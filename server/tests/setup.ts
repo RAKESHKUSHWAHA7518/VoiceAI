@@ -213,6 +213,38 @@ jest.mock('../src/services/tools', () => {
       description: 'Instantly escalates and transfers the caller to a human supervisor',
       parameters: { type: 'object', properties: { reason: { type: 'string' } } },
     });
+    mockToolsMap.set('check_availability', {
+      name: 'check_availability',
+      label: '📅 Calendar Availability',
+      description: 'Check open calendar appointment slots for a specific date',
+      parameters: { type: 'object', properties: { date: { type: 'string' } } },
+      handler: async (args: any) => {
+        const { calendarManager } = require('../src/services/calendar');
+        const res = calendarManager.getAvailableSlots(args.date);
+        return { date: res.date, available_slots: res.slots, total_open: res.slots.length };
+      },
+    });
+    mockToolsMap.set('book_appointment', {
+      name: 'book_appointment',
+      label: '📝 Book Appointment',
+      description: 'Reserve an appointment slot for the customer',
+      parameters: {
+        type: 'object',
+        properties: { customer_name: { type: 'string' }, time: { type: 'string' } },
+        required: ['customer_name', 'time'],
+      },
+      handler: async (args: any) => {
+        const { calendarManager } = require('../src/services/calendar');
+        const apt = calendarManager.bookAppointment(args);
+        return {
+          status: 'confirmed',
+          confirmation_code: apt.id,
+          appointment_date: apt.date,
+          appointment_time: apt.time,
+          customer_name: apt.customer_name,
+        };
+      },
+    });
     const getAllToolsMap = () => mockToolsMap;
 
     return { ToolRegistryImpl, CircuitBreakerImpl, ToolExecutorImpl, HallucinationChecker, StreamingToolExecutor, getAllToolsMap };

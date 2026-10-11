@@ -493,6 +493,65 @@ export function createDemoTools(): Map<string, any> {
     },
   });
 
+  tools.set('check_availability', {
+    name: 'check_availability',
+    label: '📅 Calendar Availability',
+    description: 'Check open calendar appointment slots for a specific date or relative day (today, tomorrow)',
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'Date to check (e.g. "today", "tomorrow", "2026-10-12")' },
+      },
+    },
+    handler: async (args: { date?: string }) => {
+      const { calendarManager } = require('./calendar');
+      const res = calendarManager.getAvailableSlots(args.date);
+      return {
+        date: res.date,
+        available_slots: res.slots,
+        total_open: res.slots.length,
+      };
+    },
+  });
+
+  tools.set('book_appointment', {
+    name: 'book_appointment',
+    label: '📝 Book Appointment',
+    description: 'Reserve an appointment slot for the customer with name, phone, date, time, and service',
+    parameters: {
+      type: 'object',
+      properties: {
+        customer_name: { type: 'string', description: 'Customer full name' },
+        customer_phone: { type: 'string', description: 'Customer phone number' },
+        date: { type: 'string', description: 'Date of appointment (e.g. "today", "tomorrow", "YYYY-MM-DD")' },
+        time: { type: 'string', description: 'Time of appointment (e.g. "10:30 AM", "02:30 PM")' },
+        service: { type: 'string', description: 'Service or consultation reason' },
+        notes: { type: 'string', description: 'Optional extra notes' },
+      },
+      required: ['customer_name', 'time'],
+    },
+    handler: async (args: any) => {
+      const { calendarManager } = require('./calendar');
+      const apt = calendarManager.bookAppointment({
+        customer_name: args.customer_name,
+        customer_phone: args.customer_phone || '+1 (555) 000-0000',
+        date: args.date,
+        time: args.time,
+        service: args.service || 'Voice Consultation',
+        notes: args.notes,
+      });
+      return {
+        status: 'confirmed',
+        confirmation_code: apt.id,
+        appointment_date: apt.date,
+        appointment_time: apt.time,
+        customer_name: apt.customer_name,
+        service: apt.service,
+        message: `Appointment confirmed for ${apt.customer_name} on ${apt.date} at ${apt.time}. Confirmation code is ${apt.id}.`,
+      };
+    },
+  });
+
   return tools;
 }
 

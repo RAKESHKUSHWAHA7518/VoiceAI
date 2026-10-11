@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Agent, PhoneNumberRecord } from '../../types';
+import { VirtualSoftphone } from './VirtualSoftphone';
 import {
   IconPhone,
   IconPhoneIncoming,
@@ -600,6 +601,9 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           </div>
         </div>
       </div>
+
+      {/* Phase 14: Virtual PSTN Softphone & Web Dialpad */}
+      <VirtualSoftphone />
 
       {/* Add Number Modal */}
       {showAddModal && (

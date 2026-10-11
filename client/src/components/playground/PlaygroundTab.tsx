@@ -4,6 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
+import { CalendarWidget } from '../calendar/CalendarWidget';
 import type { PlaygroundConfig, PlaygroundTest, Agent } from '../../types';
 
 interface PlaygroundTabProps {
@@ -779,6 +780,11 @@ export function PlaygroundTab({
               ))
             )}
           </div>
+        </div>
+
+        {/* Phase 12: In-Call Calendar & Appointments Widget */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <CalendarWidget />
         </div>
       </div>
     </>
