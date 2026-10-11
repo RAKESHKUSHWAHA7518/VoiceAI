@@ -1179,3 +1179,195 @@ describe('Enterprise Security, RBAC & SOC2/HIPAA Compliance (Phase 7)', () => {
     expect(rotRes.body.key.maskedKey).toContain('****');
   });
 });
+
+describe('Outbound Campaign Auto-Dialer & Lead Batch Calling (Phase 9)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { campaignManager } = require('../src/services/campaign');
+
+  test('should list campaigns with comprehensive progress and metrics', async () => {
+    const res = await request(app).get('/api/campaigns');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.campaigns)).toBe(true);
+    expect(res.body.count).toBeGreaterThanOrEqual(2);
+
+    const first = res.body.campaigns[0];
+    expect(first.id).toBeDefined();
+    expect(first.name).toBeDefined();
+    expect(first.total_leads).toBeGreaterThan(0);
+    expect(first.concurrent_lines).toBeGreaterThanOrEqual(1);
+  });
+
+  test('should parse CSV lead contacts with header discrimination', () => {
+    const csvData = `Name,Phone Number,Company,Procedure
+Sarah Connor,+15559876543,Cyberdyne Systems,Diagnostic MRI
+John Wick,+15551234567,Continental NYC,Joint Consultation`;
+
+    const parsed = campaignManager.parseCsvContacts(csvData);
+    expect(parsed.length).toBe(2);
+    expect(parsed[0].name).toBe('Sarah Connor');
+    expect(parsed[0].phone_number).toBe('+15559876543');
+    expect(parsed[0].company).toBe('Cyberdyne Systems');
+    expect(parsed[0].variables?.procedure).toBe('Diagnostic MRI');
+  });
+
+  test('should create new campaign with inline leads', async () => {
+    const res = await request(app)
+      .post('/api/campaigns')
+      .send({
+        name: 'Mortgage Refi VIP Outreach',
+        description: 'Auto-dial qualified homeowners for rate refi pre-qualification',
+        agent_id: 'agent-1',
+        agent_name: 'Maya (Finance Voice AI)',
+        concurrent_lines: 8,
+        max_retries: 3,
+        contacts: [
+          { name: 'Alice Walker', phone_number: '+1 (555) 789-0123', company: 'Pinnacle Capital' },
+          { name: 'Bob Vance', phone_number: '+1 (555) 456-7890', company: 'Vance Refrigeration' },
+        ],
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.campaign.name).toBe('Mortgage Refi VIP Outreach');
+    expect(res.body.campaign.total_leads).toBe(2);
+    expect(res.body.campaign.concurrent_lines).toBe(8);
+  });
+
+  test('should import CSV leads into an existing campaign', async () => {
+    const campaigns = campaignManager.listCampaigns();
+    const campaignId = campaigns[0].id;
+    const initialCount = campaigns[0].total_leads;
+
+    const csvData = `Full Name,Mobile Tel,Organization
+Bruce Wayne,+15559990001,Wayne Enterprises
+Clark Kent,+15559990002,Daily Planet`;
+
+    const res = await request(app)
+      .post(`/api/campaigns/${campaignId}/import`)
+      .send({ csv: csvData });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.imported_count).toBe(2);
+    expect(res.body.total_leads).toBe(initialCount + 2);
+  });
+
+  test('should start, pause, and reset campaign auto-dialing lifecycle', async () => {
+    const testCamp = campaignManager.createCampaign({
+      name: 'Lifecycle Test Campaign',
+      agent_id: 'agent-1',
+      contacts: [{ name: 'Test Lead', phone_number: '+15550001111' }],
+    });
+
+    // 1. Start
+    const startRes = await request(app).post(`/api/campaigns/${testCamp.id}/start`);
+    expect(startRes.status).toBe(200);
+    expect(startRes.body.status).toBe('running');
+
+    // 2. Pause
+    const pauseRes = await request(app).post(`/api/campaigns/${testCamp.id}/pause`);
+    expect(pauseRes.status).toBe(200);
+    expect(pauseRes.body.status).toBe('paused');
+
+    // 3. Reset
+    const resetRes = await request(app).post(`/api/campaigns/${testCamp.id}/reset`);
+    expect(resetRes.status).toBe(200);
+    expect(resetRes.body.campaign.status).toBe('draft');
+    expect(resetRes.body.campaign.completed_calls).toBe(0);
+  });
+
+  test('should update single contact disposition and recompute metrics', async () => {
+    const campaigns = campaignManager.listCampaigns();
+    const targetCampaign = campaigns[0];
+    const targetContact = targetCampaign.contacts[0];
+
+    const res = await request(app)
+      .post(`/api/campaigns/${targetCampaign.id}/contacts/${targetContact.id}/disposition`)
+      .send({ disposition: 'Scheduled Demo', notes: 'Scheduled calendar invite for tomorrow' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.contact.disposition).toBe('Scheduled Demo');
+    expect(res.body.contact.summary).toBe('Scheduled calendar invite for tomorrow');
+  });
+});
+
+describe('Real Speech & AI Provider Adapters (Phase 10)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+
+  test('should return provider status with model configurations and fallback cascade', async () => {
+    const res = await request(app).get('/api/providers/status');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.providers).toBeDefined();
+
+    // ASR checks
+    expect(res.body.providers.asr).toBeDefined();
+    expect(res.body.providers.asr.model).toBe('nova-2');
+    expect(res.body.providers.asr.sample_rate).toBe(16000);
+
+    // TTS checks
+    expect(res.body.providers.tts).toBeDefined();
+    expect(Array.isArray(res.body.providers.tts.available)).toBe(true);
+    expect(res.body.providers.tts.available.length).toBeGreaterThanOrEqual(2);
+
+    // LLM checks
+    expect(res.body.providers.llm).toBeDefined();
+    expect(res.body.providers.llm.fallback_chain).toEqual(['openai', 'groq', 'mock']);
+  });
+
+  test('should execute provider diagnostic test and report roundtrip latency', async () => {
+    const res = await request(app)
+      .post('/api/providers/test')
+      .send({ provider_type: 'tts', provider_name: 'cartesia' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.status).toBe('healthy');
+    expect(res.body.diagnostic_roundtrip_ms).toBeGreaterThan(0);
+  });
+});
+
+describe('Real Twilio PSTN Phone Call Setup & Cloud Tunneling (Phase 11)', () => {
+  const request = require('supertest');
+  const app = require('../src/app').default;
+  const { validateTwilioSignature } = require('../src/middleware/twilio_auth');
+  const crypto = require('crypto');
+
+  test('should accurately validate authentic and forged Twilio carrier signatures', () => {
+    const authToken = 'mock_twilio_secret_token_12345';
+    const webhookUrl = 'https://voiceai.trycloudflare.com/api/telephony/inbound';
+    const params = { CallSid: 'CA12345', From: '+15551234567', To: '+15559876543' };
+
+    // Generate authentic signature
+    const sortedKeys = Object.keys(params).sort();
+    let dataToSign = webhookUrl;
+    for (const key of sortedKeys) {
+      dataToSign += key + (params as any)[key];
+    }
+    const authenticSig = crypto.createHmac('sha1', authToken).update(Buffer.from(dataToSign, 'utf-8')).digest('base64');
+
+    // 1. Should accept authentic signature
+    const isValid = validateTwilioSignature(authToken, authenticSig, webhookUrl, params);
+    expect(isValid).toBe(true);
+
+    // 2. Should reject forged signature
+    const isForgedValid = validateTwilioSignature(authToken, 'invalid_forged_signature==', webhookUrl, params);
+    expect(isForgedValid).toBe(false);
+  });
+
+  test('should expose carrier tunnel status, inbound webhook URL, and setup guide', async () => {
+    const res = await request(app).get('/api/telephony/tunnel-status');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.carrier).toBe('Twilio Voice PSTN');
+    expect(res.body.tunnel).toBeDefined();
+    expect(res.body.tunnel.webhook_inbound_url).toContain('/api/telephony/inbound');
+    expect(res.body.tunnel.media_stream_websocket_url).toContain('/media-stream');
+    expect(Array.isArray(res.body.setup_instructions)).toBe(true);
+    expect(res.body.setup_instructions.length).toBeGreaterThanOrEqual(3);
+  });
+});

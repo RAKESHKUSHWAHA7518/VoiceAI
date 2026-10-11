@@ -312,4 +312,46 @@ router.post(
   })
 );
 
+/**
+ * Phase 11: Carrier Tunnel & PSTN Webhook Status
+ */
+router.get(
+  '/tunnel-status',
+  asyncHandler(async (req: Request, res: Response) => {
+    const host = req.headers.host || `localhost:${config.port}`;
+    const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const wsProto = proto === 'https' ? 'wss' : 'ws';
+
+    const isCloudTunnel = host.includes('trycloudflare.com') || host.includes('ngrok') || host.includes('loca.lt');
+
+    res.json({
+      success: true,
+      carrier: 'Twilio Voice PSTN',
+      tunnel: {
+        active: isCloudTunnel,
+        host,
+        protocol: proto,
+        webhook_inbound_url: `${proto}://${host}/api/telephony/inbound`,
+        media_stream_websocket_url: `${wsProto}://${host}/media-stream`,
+        type: host.includes('trycloudflare.com')
+          ? 'Cloudflare Quick Tunnel'
+          : host.includes('ngrok')
+          ? 'ngrok Tunnel'
+          : 'Localhost Direct',
+      },
+      twilio_config: {
+        account_sid_present: Boolean(config.twilio.accountSid),
+        auth_token_present: Boolean(config.twilio.authToken),
+        caller_id: config.twilio.phoneNumber,
+      },
+      setup_instructions: [
+        `1. Start tunnel using: npm run tunnel (or npx cloudflared tunnel --url http://localhost:8000)`,
+        `2. In Twilio Console -> Phone Numbers -> Active Numbers -> Configure:`,
+        `3. Set "A CALL COMES IN" Webhook (HTTP POST) to: ${proto}://${host}/api/telephony/inbound`,
+        `4. Make a live phone call from any mobile or landline to your Twilio number!`,
+      ],
+    });
+  })
+);
+
 export default router;

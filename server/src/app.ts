@@ -29,6 +29,8 @@ import hitlRoutes from './routes/hitl';
 import evalRoutes from './routes/evals';
 import multilingualRoutes from './routes/multilingual';
 import securityRoutes from './routes/security';
+import campaignRoutes from './routes/campaigns';
+import providerRoutes from './routes/providers';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
@@ -88,6 +90,8 @@ app.use('/api/hitl', hitlRoutes);
 app.use('/api/evals', evalRoutes);
 app.use('/api/multilingual', multilingualRoutes);
 app.use('/api/security', securityRoutes);
+app.use('/api/campaigns', campaignRoutes);
+app.use('/api/providers', providerRoutes);
 
 app.get('/api/state', (req, res) => {
   res.json({
@@ -130,11 +134,10 @@ if (process.env.NODE_ENV !== 'test') {
 
   // Start server
   const PORT = config.port;
-  server.listen(PORT, config.host, () => {
-    logger.info(`VoiceAI server running on http://${config.host}:${config.port}`);
-    logger.info(`WebSocket server running on ws://${config.host}:${config.port}/ws`);
-    logger.info(`Dashboard available at http://${config.host}:${config.port}`);
-    logger.info(`API docs available at http://${config.host}:${config.port}/docs`);
+  server.listen(PORT, () => {
+    logger.info(`VoiceAI server running on http://localhost:${PORT}`);
+    logger.info(`WebSocket server running on ws://localhost:${PORT}/ws`);
+    logger.info(`Dashboard available at http://localhost:${PORT}`);
   });
 }
 

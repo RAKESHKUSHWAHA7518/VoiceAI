@@ -112,7 +112,7 @@ const config: Config = {
   port: parseInt(process.env.PORT || '8000', 10),
   host: process.env.HOST || '0.0.0.0',
   corsOrigin: process.env.CORS_ORIGIN || '*',
-  logLevel: process.env.LOG_LEVEL || 'info',
+  logLevel: (process.env.LOG_LEVEL || 'info').toLowerCase(),
   
   db: {
     host: process.env.DB_HOST || 'localhost',

@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useState, useCallback } from 'react';
+import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import type { PlaygroundConfig, PlaygroundTest, Agent } from '../../types';
 
 interface PlaygroundTabProps {
@@ -10,6 +11,8 @@ interface PlaygroundTabProps {
   setConfig: React.Dispatch<React.SetStateAction<PlaygroundConfig>>;
   tests: PlaygroundTest[];
   sendControl?: (type: string, payload: Record<string, unknown>) => void;
+  sendAudioChunk?: (pcm16: Uint8Array) => void;
+  onStopAudio?: () => void;
   onRunTest?: (input: string) => Promise<PlaygroundTest | undefined>;
   onPlayVoice?: (text: string, audioUrl?: string) => void;
   testActive?: boolean;
@@ -24,6 +27,8 @@ export function PlaygroundTab({
   setConfig,
   tests,
   sendControl,
+  sendAudioChunk,
+  onStopAudio,
   onRunTest,
   onPlayVoice,
   testActive,
@@ -36,6 +41,39 @@ export function PlaygroundTab({
   const [playgroundTests, setPlaygroundTests] = useState<PlaygroundTest[]>([]);
   const [playgroundTestActive, setPlaygroundTestActive] = useState(false);
   const [detectedInfo, setDetectedInfo] = useState<{ language: string; confidence: number; script: string } | null>(null);
+
+  const {
+    isRecording,
+    volume,
+    error: micError,
+    startRecording,
+    stopRecording,
+  } = useAudioRecorder({
+    onAudioChunk: (chunk) => {
+      if (sendAudioChunk) {
+        sendAudioChunk(chunk);
+      }
+    },
+    onSpeechStart: () => {
+      if (sendControl) {
+        sendControl('start_speaking', {});
+      }
+    },
+    onSpeechEnd: () => {
+      if (sendControl) {
+        sendControl('stop_speaking', {});
+      }
+    },
+  });
+
+  const handleInterrupt = useCallback(() => {
+    if (sendControl) {
+      sendControl('interrupt', {});
+    }
+    if (onStopAudio) {
+      onStopAudio();
+    }
+  }, [sendControl, onStopAudio]);
 
   const displayTests = tests.length > 0 ? tests : playgroundTests;
   const isRunning = testActive || playgroundTestActive;
@@ -316,6 +354,214 @@ export function PlaygroundTab({
         </div>
       </div>
       
+      {/* Phase 8: Live Browser Audio Engine (Microphone & Web Audio API Stream) */}
+      <div
+        className="card"
+        style={{
+          gridColumn: '1 / -1',
+          marginTop: '1.5rem',
+          background: isRecording
+            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(15, 23, 42, 0.85))'
+            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.85))',
+          border: isRecording ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.3)',
+          boxShadow: isRecording
+            ? '0 8px 32px rgba(239, 68, 68, 0.15)'
+            : '0 8px 32px rgba(16, 185, 129, 0.12)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ fontSize: '1.25rem' }}>🎙️</span>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, letterSpacing: '-0.01em' }}>
+                Live Browser Audio Engine
+              </h3>
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '999px',
+                  background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+                  color: isRecording ? '#f87171' : '#34d399',
+                  border: isRecording ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: isRecording ? '#ef4444' : '#10b981',
+                    boxShadow: isRecording ? '0 0 8px #ef4444' : '0 0 8px #10b981',
+                  }}
+                />
+                {isRecording ? 'STREAMING PCM16' : 'READY TO STREAM'}
+              </span>
+            </div>
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+              Live microphone capture downsampled to 16kHz PCM over binary WebSocket with Web Audio API chunk playback.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {/* Live Mic Toggle Button */}
+            <button
+              type="button"
+              id="liveMicStreamBtn"
+              onClick={isRecording ? stopRecording : startRecording}
+              style={{
+                background: isRecording
+                  ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
+                  : 'linear-gradient(135deg, #10b981, #047857)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.65rem 1.25rem',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.875rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                boxShadow: isRecording
+                  ? '0 4px 18px rgba(239, 68, 68, 0.4)'
+                  : '0 4px 18px rgba(16, 185, 129, 0.35)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span>{isRecording ? '⏹️' : '🎤'}</span>
+              <span>{isRecording ? 'Stop Live Mic Stream' : 'Start Live Mic Stream'}</span>
+            </button>
+
+            {/* Barge-In Interruption Button */}
+            <button
+              type="button"
+              id="bargeInBtn"
+              onClick={handleInterrupt}
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#f87171',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                padding: '0.65rem 1.1rem',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              title="Instantly stop agent speech output (Barge-In interruption)"
+            >
+              <span>⚡</span>
+              <span>Interrupt Agent</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Real-time VU Visualizer & Latency Metrics */}
+        <div
+          style={{
+            background: 'rgba(7, 10, 19, 0.6)',
+            borderRadius: '8px',
+            padding: '0.85rem 1.15rem',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          {/* Waveform VU Meter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>
+              Mic Input Level:
+            </span>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '24px' }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((barIndex) => {
+                const threshold = barIndex * 12;
+                const active = volume >= threshold;
+                const barHeight = active
+                  ? Math.min(24, Math.max(6, Math.round((volume / 100) * 24 * (0.6 + (barIndex % 3) * 0.2))))
+                  : 4;
+                return (
+                  <div
+                    key={barIndex}
+                    style={{
+                      width: '6px',
+                      height: `${barHeight}px`,
+                      borderRadius: '2px',
+                      background: active
+                        ? barIndex > 6
+                          ? '#ef4444'
+                          : barIndex > 4
+                          ? '#f59e0b'
+                          : '#10b981'
+                        : 'rgba(255, 255, 255, 0.12)',
+                      transition: 'height 0.08s ease, background 0.08s ease',
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontFamily: 'monospace',
+                color: isRecording ? '#38bdf8' : '#64748b',
+                fontWeight: 600,
+                minWidth: '38px',
+              }}
+            >
+              {isRecording ? `${volume}%` : '0%'}
+            </span>
+          </div>
+
+          {/* Engine Parameters */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+            <div>
+              <span style={{ color: '#64748b' }}>STT Input: </span>
+              <strong style={{ color: '#e2e8f0' }}>16 kHz PCM (Int16)</strong>
+            </div>
+            <div>
+              <span style={{ color: '#64748b' }}>Audio Output: </span>
+              <strong style={{ color: '#e2e8f0' }}>24 kHz Web Audio</strong>
+            </div>
+            <div>
+              <span style={{ color: '#64748b' }}>Transport: </span>
+              <strong style={{ color: '#34d399' }}>Binary Frame (0x01)</strong>
+            </div>
+          </div>
+        </div>
+
+        {micError && (
+          <div
+            style={{
+              marginTop: '0.75rem',
+              padding: '0.6rem 0.9rem',
+              borderRadius: '6px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#f87171',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <span>⚠️</span>
+            <span>Microphone access error: {micError}. Please ensure microphone permission is granted in your browser.</span>
+          </div>
+        )}
+      </div>
+
       {/* Test Panel */}
       <div className="card" style={{ gridColumn: '1 / -1', marginTop: '1.5rem' }}>
         <h3>Test Conversation</h3>

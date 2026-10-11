@@ -18,6 +18,8 @@ interface UseWebSocketOptions {
   onPlaygroundTestComplete?: (test: PlaygroundTest) => void;
   onPlaygroundTestResults?: (tests: PlaygroundTest[]) => void;
   onDashboardState?: (state: DashboardState) => void;
+  onAudioFrame?: (pcmChunk: Uint8Array) => void;
+  onFlushBuffer?: () => void;
   onError?: (error: string) => void;
 }
 
@@ -26,6 +28,7 @@ interface UseWebSocketReturn {
   connected: boolean;
   sequence: number;
   sendControl: (type: string, payload: Record<string, unknown>) => void;
+  sendAudioChunk: (pcm16: Uint8Array) => void;
   sendInterrupt: () => void;
   sendPing: () => void;
 }
@@ -42,6 +45,8 @@ export function useWebSocket({
   onPlaygroundTestComplete,
   onPlaygroundTestResults,
   onDashboardState,
+  onAudioFrame,
+  onFlushBuffer,
   onError,
 }: UseWebSocketOptions): UseWebSocketReturn {
   const [ws, setWs] = useState<WebSocket | null>(null);
@@ -63,6 +68,8 @@ export function useWebSocket({
     onPlaygroundTestComplete,
     onPlaygroundTestResults,
     onDashboardState,
+    onAudioFrame,
+    onFlushBuffer,
     onError,
   });
 
@@ -78,6 +85,8 @@ export function useWebSocket({
       onPlaygroundTestComplete,
       onPlaygroundTestResults,
       onDashboardState,
+      onAudioFrame,
+      onFlushBuffer,
       onError,
     };
   });
@@ -105,6 +114,9 @@ export function useWebSocket({
         break;
       case 'barge_in':
         cb.onBargeIn?.({ timestamp: Date.now() });
+        break;
+      case 'flush_buffer':
+        cb.onFlushBuffer?.();
         break;
       case 'tool_call':
         cb.onToolCall?.({
@@ -169,6 +181,16 @@ export function useWebSocket({
 
         websocket.onmessage = (event) => {
           if (event.data instanceof ArrayBuffer) {
+            // Check for binary audio frame (0x01)
+            if (event.data.byteLength >= 9) {
+              const frameType = new DataView(event.data).getUint8(0);
+              if (frameType === 0x01) {
+                const payloadLen = new DataView(event.data).getUint32(5, false);
+                const pcmBytes = new Uint8Array(event.data.slice(9, 9 + payloadLen));
+                callbacksRef.current.onAudioFrame?.(pcmBytes);
+                return;
+              }
+            }
             handleMessage(event.data);
           }
         };
@@ -214,6 +236,19 @@ export function useWebSocket({
     setSequence(s => s + 1);
   }, [sequence]);
 
+  const sendAudioChunk = useCallback((pcm16: Uint8Array) => {
+    const currentWs = wsRef.current;
+    if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
+
+    const frame = new Uint8Array(9 + pcm16.length);
+    frame[0] = 0x01; // AUDIO
+    new DataView(frame.buffer).setUint32(1, sequence, false);
+    new DataView(frame.buffer).setUint32(5, pcm16.length, false);
+    frame.set(pcm16, 9);
+    currentWs.send(frame);
+    setSequence(s => s + 1);
+  }, [sequence]);
+
   const sendInterrupt = useCallback(() => {
     sendControl('interrupt', {});
   }, [sendControl]);
@@ -222,5 +257,5 @@ export function useWebSocket({
     sendControl('ping', {});
   }, [sendControl]);
 
-  return { ws, connected, sequence, sendControl, sendInterrupt, sendPing };
+  return { ws, connected, sequence, sendControl, sendAudioChunk, sendInterrupt, sendPing };
 }

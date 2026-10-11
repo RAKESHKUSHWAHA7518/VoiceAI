@@ -114,8 +114,21 @@ export class WebSocketHandler {
 
         if (vadResult[1] === 'start_of_speech') {
           logger.debug('Start of speech detected', { sessionId });
+          sessionData.isSpeaking = true;
+          session.start_speaking();
         } else if (vadResult[1] === 'end_of_speech') {
           logger.debug('End of speech detected', { sessionId });
+          sessionData.isSpeaking = false;
+          if (audioBuffer.length > 0) {
+            const turnId = `turn_${Date.now()}`;
+            const processor = new (require('../services/pipeline').TurnProcessor)(
+              ws, session, components, langfuse, sessionData.sequence
+            );
+            processor.run([...audioBuffer], turnId).catch((err: any) => {
+              logger.error('Error in VAD TurnProcessor run:', err);
+            });
+            audioBuffer.length = 0;
+          }
         }
 
         audioBuffer.push(payload);
@@ -169,13 +182,17 @@ export class WebSocketHandler {
     const ttsProvider = (config.tts?.provider || 'mock').toLowerCase();
     let tts;
     if (ttsProvider === 'cartesia' && config.apiKeys?.cartesia) {
-      tts = new (require('../services/tts').CartesiaTTS)();
+      tts = new (require('../services/tts').CartesiaTTS)(config.apiKeys.cartesia);
     } else if (ttsProvider === 'elevenlabs' && config.apiKeys?.elevenlabs) {
-      tts = new (require('../services/tts').ElevenLabsTTS)();
+      tts = new (require('../services/tts').ElevenLabsTTS)(config.apiKeys.elevenlabs);
     } else {
       tts = new (require('../services/tts').MockTTS)();
     }
-    await tts.connect();
+    try {
+      await tts.connect();
+    } catch {
+      tts = new (require('../services/tts').MockTTS)();
+    }
     return tts;
   }
 

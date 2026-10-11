@@ -13,10 +13,12 @@ import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
 import { AnalyticsTab } from './components/analytics/AnalyticsTab';
 import { TelephonyTab } from './components/telephony/TelephonyTab';
 import { KnowledgeTab } from './components/knowledge/KnowledgeTab';
+import { CampaignsTab } from './components/campaigns/CampaignsTab';
 import { HITLTab } from './components/hitl/HITLTab';
 import { EvalsTab } from './components/evals/EvalsTab';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
+import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useDashboardState } from './hooks/useDashboardState';
 import type { TabName, Agent } from './types';
 import './index.css';
@@ -116,6 +118,37 @@ function App() {
     fallbackSpeech(text);
   }, [pushAgent, fallbackSpeech]);
 
+  const { playPcmChunk, stopAndFlush } = useAudioPlayer(24000);
+
+  const handleAudioFrame = useCallback((pcmChunk: Uint8Array) => {
+    playPcmChunk(pcmChunk);
+    try {
+      const view = new Int16Array(pcmChunk.buffer, pcmChunk.byteOffset, pcmChunk.byteLength / 2);
+      let sum = 0;
+      const step = Math.max(1, Math.floor(view.length / 32));
+      let count = 0;
+      for (let i = 0; i < view.length; i += step) {
+        sum += Math.abs(view[i]);
+        count++;
+      }
+      const avg = count > 0 ? (sum / count) / 32768 : 0;
+      pushAgent(Math.min(1.0, avg * 3.0));
+    } catch {
+      pushAgent(0.4);
+    }
+  }, [playPcmChunk, pushAgent]);
+
+  const handleBargeIn = useCallback((evt: any) => {
+    addBargeIn(evt);
+    stopAndFlush();
+    pushAgent(0);
+  }, [addBargeIn, stopAndFlush, pushAgent]);
+
+  const handleFlushBuffer = useCallback(() => {
+    stopAndFlush();
+    pushAgent(0);
+  }, [stopAndFlush, pushAgent]);
+
   const wsUrl = typeof window !== 'undefined'
     ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname || 'localhost'}:8000/ws`
     : 'ws://localhost:8000/ws';
@@ -123,10 +156,13 @@ function App() {
   const {
     connected,
     sendControl,
+    sendAudioChunk,
   } = useWebSocket({
     url: wsUrl,
     onTranscript: addTranscript,
-    onBargeIn: addBargeIn,
+    onBargeIn: handleBargeIn,
+    onAudioFrame: handleAudioFrame,
+    onFlushBuffer: handleFlushBuffer,
     onToolCall: addToolCall,
     onMetrics: updateMetrics,
     onSessionStart: setSessionStart,
@@ -380,12 +416,21 @@ function App() {
             setConfig={setPlaygroundConfig}
             tests={playgroundTests}
             sendControl={sendControl}
+            sendAudioChunk={sendAudioChunk}
+            onStopAudio={stopAndFlush}
             onRunTest={runPlaygroundTestWithInput}
             onPlayVoice={playVoice}
             testActive={playgroundTestActive}
             activeAgent={activeAgent}
             agents={agents}
             onSelectAgent={handleSelectAgent}
+            onStartVoiceCall={handleStartVoiceCall}
+          />
+        );
+      case 'campaigns':
+        return (
+          <CampaignsTab
+            agents={agents}
             onStartVoiceCall={handleStartVoiceCall}
           />
         );
@@ -470,6 +515,8 @@ function App() {
     runPlaygroundTestWithInput,
     playVoice,
     sendControl,
+    sendAudioChunk,
+    stopAndFlush,
     setPlaygroundConfig,
   ]);
 

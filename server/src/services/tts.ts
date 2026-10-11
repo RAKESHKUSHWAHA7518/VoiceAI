@@ -40,10 +40,12 @@ export class CartesiaTTS extends EventEmitter implements TTSProvider {
 
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      let hasSettled = false;
       const url = `wss://api.cartesia.ai/tts/websocket?api_key=${this.apiKey}&cartesia_version=2024-06-10`;
       this.ws = new WebSocket(url);
       
       this.ws.on('open', () => {
+        hasSettled = true;
         this.connected = true;
         this.emit('connected');
         this.processQueue();
@@ -79,8 +81,11 @@ export class CartesiaTTS extends EventEmitter implements TTSProvider {
       });
 
       this.ws.on('error', (error) => {
-        console.error('Cartesia WebSocket error:', error);
-        if (this.listenerCount('error') > 0) {
+        console.warn('Cartesia WebSocket error:', (error as any)?.message || error);
+        if (!hasSettled) {
+          hasSettled = true;
+          reject(error);
+        } else if (this.listenerCount('error') > 0) {
           this.emit('error', error);
         }
       });
@@ -91,7 +96,8 @@ export class CartesiaTTS extends EventEmitter implements TTSProvider {
       });
 
       setTimeout(() => {
-        if (!this.connected) {
+        if (!hasSettled) {
+          hasSettled = true;
           this.ws?.close();
           reject(new Error('Cartesia connection timeout'));
         }
@@ -200,6 +206,7 @@ export class ElevenLabsTTS extends EventEmitter implements TTSProvider {
 
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      let hasSettled = false;
       const url = `wss://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}/stream-input?model_id=${this.modelId}&output_format=pcm_24000`;
       const apiKey = String(this.client.defaults.headers['xi-api-key'] || '');
       this.ws = new WebSocket(url, {
@@ -207,6 +214,7 @@ export class ElevenLabsTTS extends EventEmitter implements TTSProvider {
       });
 
       this.ws.on('open', () => {
+        hasSettled = true;
         this.connected = true;
         this.emit('connected');
         resolve();
@@ -229,7 +237,13 @@ export class ElevenLabsTTS extends EventEmitter implements TTSProvider {
       });
 
       this.ws.on('error', (error: any) => {
-        this.emit('error', error);
+        console.warn('ElevenLabs WebSocket error:', (error as any)?.message || error);
+        if (!hasSettled) {
+          hasSettled = true;
+          reject(error);
+        } else if (this.listenerCount('error') > 0) {
+          this.emit('error', error);
+        }
       });
 
       this.ws.on('close', () => {
@@ -237,7 +251,8 @@ export class ElevenLabsTTS extends EventEmitter implements TTSProvider {
       });
 
       setTimeout(() => {
-        if (!this.connected) {
+        if (!hasSettled) {
+          hasSettled = true;
           this.ws?.close();
           reject(new Error('ElevenLabs connection timeout'));
         }

@@ -361,7 +361,41 @@ export interface VaultKeyRecord {
   version: number;
 }
 
-export type TabName = 'agents' | 'evals' | 'hitl' | 'knowledge' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
+export interface LeadContact {
+  id: string;
+  name: string;
+  phone_number: string;
+  company?: string;
+  variables: Record<string, any>;
+  status: 'pending' | 'dialing' | 'connected' | 'completed' | 'voicemail' | 'failed';
+  disposition: string;
+  duration_sec: number;
+  attempts: number;
+  last_call_at?: string;
+  summary?: string;
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  description: string;
+  agent_id: string;
+  agent_name: string;
+  status: 'draft' | 'running' | 'paused' | 'completed';
+  total_leads: number;
+  completed_calls: number;
+  connected_calls: number;
+  voicemails: number;
+  failed_calls: number;
+  concurrent_lines: number;
+  max_retries: number;
+  disposition_breakdown: Record<string, number>;
+  contacts: LeadContact[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type TabName = 'agents' | 'campaigns' | 'evals' | 'hitl' | 'knowledge' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,

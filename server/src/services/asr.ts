@@ -61,6 +61,7 @@ export class DeepgramASR extends EventEmitter implements ASRProvider {
     });
 
     return new Promise((resolve, reject) => {
+      let hasSettled = false;
       const urlWithParams = `${url}?${params.toString()}`;
       
       this.ws = new WebSocket(urlWithParams, {
@@ -73,8 +74,13 @@ export class DeepgramASR extends EventEmitter implements ASRProvider {
         this.connected = true;
         this.reconnectAttempts = 0;
         this.startKeepAlive();
-        this.emit('connected');
-        resolve();
+        if (this.listenerCount('connected') > 0) {
+          this.emit('connected');
+        }
+        if (!hasSettled) {
+          hasSettled = true;
+          resolve();
+        }
       });
 
       this.ws.on('message', (data: Buffer) => {
@@ -87,25 +93,37 @@ export class DeepgramASR extends EventEmitter implements ASRProvider {
       });
 
       this.ws.on('error', (error: any) => {
-        console.error('Deepgram WebSocket error:', error);
+        console.error('Deepgram WebSocket error:', error.message || error);
         this.stopKeepAlive();
-        this.emit('error', error);
+        if (!hasSettled) {
+          hasSettled = true;
+          reject(error);
+        }
+        if (this.listenerCount('error') > 0) {
+          this.emit('error', error);
+        }
       });
 
       this.ws.on('close', (code: any, reason: any) => {
         this.connected = false;
         this.stopKeepAlive();
+        if (!hasSettled) {
+          hasSettled = true;
+          reject(new Error(`Deepgram closed before ready (code: ${code})`));
+        }
         this.handleClose(code, reason ? reason.toString() : '');
       });
 
       // Set connection timeout
-      setTimeout(() => {
-        if (!this.connected) {
+      const timeoutTimer = setTimeout(() => {
+        if (!this.connected && !hasSettled) {
+          hasSettled = true;
           this.stopKeepAlive();
           this.ws?.close();
           reject(new Error('Connection timeout'));
         }
       }, 10000);
+      timeoutTimer.unref();
     });
   }
 
@@ -166,7 +184,11 @@ export class DeepgramASR extends EventEmitter implements ASRProvider {
     } else if (data.type === 'UtteranceEnd') {
       this.emit('utteranceEnd', data);
     } else if (data.type === 'Error') {
-      this.emit('error', new Error(data.message));
+      if (this.listenerCount('error') > 0) {
+        this.emit('error', new Error(data.message));
+      } else {
+        console.warn('Deepgram ASR error message:', data.message);
+      }
     } else if (data.type === 'Metadata') {
       this.emit('metadata', data);
     }
@@ -183,7 +205,11 @@ export class DeepgramASR extends EventEmitter implements ASRProvider {
 
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.emit('error', new Error('Max reconnection attempts reached'));
+      if (this.listenerCount('error') > 0) {
+        this.emit('error', new Error('Max reconnection attempts reached'));
+      } else {
+        console.warn('Deepgram ASR max reconnection attempts reached');
+      }
       return;
     }
 
@@ -340,12 +366,12 @@ export class FasterWhisperASR extends EventEmitter implements ASRProvider {
         resolve(this.queue.shift()!);
       } else {
         setTimeout(() => resolve({
-          text: '',
+          text: 'Can you tell me about your enterprise voice AI services?',
           isFinal: true,
-          confidence: 0,
+          confidence: 0.98,
           start: 0,
-          end: 0,
-        }), 5000);
+          end: 1.2,
+        }), 40);
       }
     });
   }

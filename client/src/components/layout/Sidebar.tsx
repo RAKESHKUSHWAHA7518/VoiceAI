@@ -42,6 +42,7 @@ export function Sidebar({
 }: SidebarProps) {
   const navItems: { id: TabName; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'agents', label: 'Agents Studio', icon: <IconBot size={18} />, badge: `${agents.length}` },
+    { id: 'campaigns', label: 'Outbound Campaigns', icon: <IconPhone size={18} />, badge: 'NEW' },
     { id: 'knowledge', label: 'Knowledge & RAG', icon: <IconBook size={18} /> },
     { id: 'evals', label: 'Evals & Test Suite', icon: <IconTarget size={18} /> },
     { id: 'hitl', label: 'HITL Supervision', icon: <IconHeadphones size={18} />, badge: 'LIVE' },
