@@ -4,6 +4,8 @@
 // ============================================================================
 
 import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { PAGE_ROUTES } from '../../routes';
 import type { TabName, Agent, DashboardState } from '../../types';
 import {
   LogoVoiceAI,
@@ -20,8 +22,6 @@ import {
 } from '../common/Icons';
 
 interface SidebarProps {
-  activeTab: TabName;
-  onTabChange: (tab: TabName) => void;
   agents: Agent[];
   activeAgent: Agent | null;
   onSelectAgent: (agent: Agent) => void;
@@ -31,8 +31,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  activeTab,
-  onTabChange,
   agents,
   activeAgent,
   onSelectAgent,
@@ -71,15 +69,16 @@ export function Sidebar({
         <div className="sidebar-section-title">Navigation</div>
         <nav className="sidebar-nav">
           {navItems.map(({ id, label, icon, badge }) => (
-            <button
+            <NavLink
               key={id}
-              className={`sidebar-nav-item ${activeTab === id ? 'active' : ''}`}
-              onClick={() => onTabChange(id)}
+              to={PAGE_ROUTES[id].path}
+              end
+              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="nav-icon" style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
               <span className="nav-label">{label}</span>
               {badge && <span className="nav-badge">{badge}</span>}
-            </button>
+            </NavLink>
           ))}
         </nav>
       </div>

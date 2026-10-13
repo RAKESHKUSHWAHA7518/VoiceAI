@@ -3,6 +3,8 @@
 // ============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
+import { Link, Navigate, Route, Routes, matchPath, useLocation, useNavigate } from 'react-router-dom';
+import { PAGE_NAMES, PAGE_ROUTES } from './routes';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { AgentsTab } from './components/agents/AgentsTab';
@@ -24,7 +26,16 @@ import type { TabName, Agent } from './types';
 import './index.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<TabName>('agents');
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const activeTab = PAGE_NAMES.find(page => matchPath({ path: PAGE_ROUTES[page].path, end: true }, pathname)) ?? null;
+  const navigateToPage = useCallback((page: TabName) => {
+    const path = PAGE_ROUTES[page].path;
+    if (pathname !== path) navigate(path);
+  }, [navigate, pathname]);
+  useEffect(() => {
+    document.title = `${activeTab ? PAGE_ROUTES[activeTab].title : 'Page not found'} | VoiceAI`;
+  }, [activeTab]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null);
   const [isCreatingNewAgent, setIsCreatingNewAgent] = useState<boolean>(false);
@@ -239,8 +250,8 @@ function App() {
 
   const handleTestAgent = useCallback((agent: Agent) => {
     handleSelectAgent(agent);
-    setActiveTab('playground');
-  }, [handleSelectAgent]);
+    navigateToPage('playground');
+  }, [handleSelectAgent, navigateToPage]);
 
   const handleStartVoiceCall = useCallback((agentToCall?: Agent | null) => {
     const target = agentToCall || activeAgent;
@@ -393,8 +404,8 @@ function App() {
     }
   }, [setPlaygroundTests, setPlaygroundTestActive, addTranscript, addToolCall, updateMetrics, playVoice, activeAgent, playgroundConfig]);
 
-  const renderTabContent = useCallback(() => {
-    switch (activeTab) {
+  const renderTabContent = useCallback((page: TabName) => {
+    switch (page) {
       case 'agents':
         return (
           <AgentsTab
@@ -493,7 +504,6 @@ function App() {
         return null;
     }
   }, [
-    activeTab,
     agents,
     activeAgent,
     handleSelectAgent,
@@ -523,13 +533,11 @@ function App() {
   return (
     <div className="app-layout">
       <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
         agents={agents}
         activeAgent={activeAgent}
         onSelectAgent={handleSelectAgent}
         onCreateAgent={() => {
-          setActiveTab('agents');
+          navigateToPage('agents');
           setIsCreatingNewAgent(true);
         }}
         connected={connected}
@@ -539,12 +547,24 @@ function App() {
         <TopBar
           activeTab={activeTab}
           activeAgent={activeAgent}
-          onOpenAgentsTab={() => setActiveTab('agents')}
+          onOpenAgentsTab={() => navigateToPage('agents')}
           onStartVoiceCall={() => handleStartVoiceCall(activeAgent)}
           connected={connected}
         />
         <main className="content-container">
-          {renderTabContent()}
+          <Routes>
+            <Route path="/" element={<Navigate to={PAGE_ROUTES.agents.path} replace />} />
+            {PAGE_NAMES.map(page => (
+              <Route key={page} path={PAGE_ROUTES[page].path} element={renderTabContent(page)} />
+            ))}
+            <Route path="*" element={
+              <section>
+                <h2>Page not found</h2>
+                <p>The page you requested does not exist.</p>
+                <Link to={PAGE_ROUTES.agents.path} className="btn btn-primary">Go to Agents Studio</Link>
+              </section>
+            } />
+          </Routes>
         </main>
       </div>
 
@@ -555,7 +575,7 @@ function App() {
         onRunTest={runPlaygroundTestWithInput}
         onViewAnalytics={() => {
           setIsCallModalOpen(false);
-          setActiveTab('analytics');
+          navigateToPage('analytics');
         }}
       />
     </div>

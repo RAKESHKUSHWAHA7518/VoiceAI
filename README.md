@@ -340,3 +340,13 @@ The native-driver models in `server/src/models` define record types, Zod runtime
 schemas, collection names, and indexes. Persistence validates imports, loaded
 documents, and writes through these models. Existing `{ _id, position, value }`
 documents remain compatible; indexes target fields within `value`.
+
+## Dashboard page URLs
+
+Each dashboard page has a shareable URL: `/agents`, `/campaigns`, `/knowledge`,
+`/evals`, `/hitl`, `/playground`, `/telephony`, `/analytics`, `/monitor`, and
+`/inspector`. `/` redirects to `/agents`. Unknown URLs show a page-not-found view
+with a link back to Agents Studio. Sidebar links and in-app actions use browser
+history, so Back, Forward, opening links in a new tab, and refreshing a page work.
+Vite and the supplied Nginx configuration serve `index.html` for frontend routes;
+other hosting providers must configure the same SPA fallback.

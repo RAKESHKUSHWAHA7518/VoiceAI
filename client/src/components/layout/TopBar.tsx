@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { PAGE_ROUTES } from '../../routes';
 import type { TabName, Agent, UserAccount } from '../../types';
 import { IconPhone, PersonaAvatar } from '../common/Icons';
 
 interface TopBarProps {
-  activeTab: TabName;
+  activeTab: TabName | null;
   activeAgent: Agent | null;
   onOpenAgentsTab: () => void;
   onStartVoiceCall?: () => void;
@@ -52,29 +53,10 @@ export function TopBar({
     }
   };
 
-  const getTabTitle = (tab: TabName) => {
-    switch (tab) {
-      case 'agents':
-        return 'Multi-Agent Studio';
-      case 'playground':
-        return 'Interactive Voice Playground';
-      case 'telephony':
-        return 'PSTN Telephony & Real Phone Numbers';
-      case 'analytics':
-        return 'Call History & Post-Call QA Intelligence';
-      case 'monitor':
-        return 'Live System Telemetry';
-      case 'inspector':
-        return 'Conversation & Tool Inspector';
-      default:
-        return 'Dashboard';
-    }
-  };
-
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <h1 className="topbar-title">{getTabTitle(activeTab)}</h1>
+        <h1 className="topbar-title">{activeTab ? PAGE_ROUTES[activeTab].title : 'Page not found'}</h1>
       </div>
 
       <div className="topbar-right">
