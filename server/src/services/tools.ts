@@ -532,7 +532,7 @@ export function createDemoTools(): Map<string, any> {
     },
     handler: async (args: any) => {
       const { calendarManager } = require('./calendar');
-      const apt = calendarManager.bookAppointment({
+      const apt = await calendarManager.bookAppointment({
         customer_name: args.customer_name,
         customer_phone: args.customer_phone || '+1 (555) 000-0000',
         date: args.date,

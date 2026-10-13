@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { asyncHandler } from '../middleware/errorHandler';
 
 export interface AgentModel {
   id: string;
@@ -177,9 +178,9 @@ router.post('/:agentId/documents', async (req: Request, res: Response) => {
   }
 });
 
-router.delete('/:agentId/documents/:docId', (req: Request, res: Response) => {
+router.delete('/:agentId/documents/:docId', asyncHandler(async (req: Request, res: Response) => {
   const { docId } = req.params;
-  const deleted = ragEngine.deleteDocument(docId);
+  const deleted = await ragEngine.deleteDocument(docId);
   if (!deleted) {
     return res.status(404).json({ success: false, error: { message: 'Document not found' } });
   }
@@ -187,7 +188,7 @@ router.delete('/:agentId/documents/:docId', (req: Request, res: Response) => {
     success: true,
     message: 'Document deleted from agent knowledge base',
   });
-});
+}));
 
 router.post('/:agentId/knowledge/query', (req: Request, res: Response) => {
   const { agentId } = req.params;

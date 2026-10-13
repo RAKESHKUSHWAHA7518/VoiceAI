@@ -63,7 +63,7 @@ router.post(
       return;
     }
 
-    const clonedVoice = voiceLibraryManager.cloneVoice({
+    const clonedVoice = await voiceLibraryManager.cloneVoice({
       name,
       gender: gender || 'Female',
       accent,
@@ -87,7 +87,7 @@ router.delete(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const deleted = voiceLibraryManager.deleteVoice(id);
+    const deleted = await voiceLibraryManager.deleteVoice(id);
 
     if (!deleted) {
       res.status(404).json({

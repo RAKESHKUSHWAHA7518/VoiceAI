@@ -1,3 +1,6 @@
+import { VoiceModel } from '../models/voice.model';
+import type { VoiceProfile } from '../models/voice.model';
+export type { VoiceProfile } from '../models/voice.model';
 // ============================================================================
 // Phase 13: Voice Library & Live Voice Cloning Service
 // Manages curated ultra-realistic voices (Cartesia, ElevenLabs, OpenAI) and
@@ -7,20 +10,8 @@
 import fs from 'fs';
 import path from 'path';
 import logger from '../utils/logger';
+import { PersistentStore, isMongoEnabled } from './database';
 
-export interface VoiceProfile {
-  id: string;
-  name: string;
-  provider: 'cartesia' | 'elevenlabs' | 'openai' | 'custom_clone';
-  gender: 'Female' | 'Male' | 'Neutral';
-  accent: string;
-  tone: string;
-  description: string;
-  sample_text: string;
-  is_cloned?: boolean;
-  sample_audio_base64?: string;
-  created_at?: string;
-}
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const VOICES_FILE = path.join(DATA_DIR, 'custom_voices.json');
@@ -101,6 +92,7 @@ const PRESET_VOICES: VoiceProfile[] = [
 
 export class VoiceLibraryManager {
   private customVoices: VoiceProfile[] = [];
+  private store = new PersistentStore(VoiceModel, VOICES_FILE, () => this.customVoices, records => { this.customVoices = records; });
 
   constructor() {
     this.loadCustomVoices();
@@ -127,7 +119,10 @@ export class VoiceLibraryManager {
             created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
           },
         ];
-        this.saveCustomVoices();
+        if (!isMongoEnabled()) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+          fs.writeFileSync(VOICES_FILE, JSON.stringify(this.customVoices, null, 2));
+        }
       }
     } catch (err) {
       logger.error('Failed to load custom voices:', err);
@@ -135,15 +130,8 @@ export class VoiceLibraryManager {
     }
   }
 
-  private saveCustomVoices(): void {
-    try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-      fs.writeFileSync(VOICES_FILE, JSON.stringify(this.customVoices, null, 2), 'utf-8');
-    } catch (err) {
-      logger.error('Failed to save custom voices:', err);
-    }
+  private saveCustomVoices(): Promise<void> {
+    return this.store.save();
   }
 
   public getAllVoices(): VoiceProfile[] {
@@ -154,14 +142,14 @@ export class VoiceLibraryManager {
     return this.getAllVoices().find(v => v.id === id);
   }
 
-  public cloneVoice(params: {
+  public async cloneVoice(params: {
     name: string;
     gender: 'Female' | 'Male' | 'Neutral';
     accent?: string;
     tone?: string;
     description?: string;
     sample_audio_base64?: string;
-  }): VoiceProfile {
+  }): Promise<VoiceProfile> {
     const id = `clone_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const newClone: VoiceProfile = {
       id,
@@ -178,17 +166,17 @@ export class VoiceLibraryManager {
     };
 
     this.customVoices.unshift(newClone);
-    this.saveCustomVoices();
+    await this.saveCustomVoices();
 
     logger.info(`[VoiceLibrary] Created new custom voice clone: ${newClone.name} (${newClone.id})`);
     return newClone;
   }
 
-  public deleteVoice(id: string): boolean {
+  public async deleteVoice(id: string): Promise<boolean> {
     const initialLen = this.customVoices.length;
     this.customVoices = this.customVoices.filter(v => v.id !== id);
     if (this.customVoices.length < initialLen) {
-      this.saveCustomVoices();
+      await this.saveCustomVoices();
       return true;
     }
     return false;

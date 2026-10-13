@@ -56,7 +56,7 @@ router.post(
       return;
     }
 
-    const appointment = calendarManager.bookAppointment({
+    const appointment = await calendarManager.bookAppointment({
       customer_name,
       customer_phone,
       date,
@@ -80,7 +80,7 @@ router.delete(
   '/appointments/:id',
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const cancelled = calendarManager.cancelAppointment(id);
+    const cancelled = await calendarManager.cancelAppointment(id);
     if (!cancelled) {
       res.status(404).json({
         success: false,

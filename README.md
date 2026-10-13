@@ -312,3 +312,31 @@ MIT License - see [LICENSE](LICENSE) for details.
 ---
 
 **Built with ❤️ for real-time voice AI**
+
+## MongoDB Atlas storage
+
+Set `MONGODB_URI` in `.env` to your Atlas driver connection string. Optionally set
+`MONGODB_DB_NAME` to override the database in the URI; if neither specifies a database,
+the backend uses `voiceai`. The Atlas database user needs read/write access, and Atlas
+Network Access must permit the machine running the backend.
+
+On startup, the backend connects before accepting requests and imports existing local
+calls, appointments, phone numbers, custom voices, and knowledge documents/chunks once.
+The original JSON files remain available as a backup. Subsequent writes use MongoDB;
+recordings remain in `server/data/recordings`. `/health/ready` checks the Atlas connection.
+Leave `MONGODB_URI` empty to use JSON storage. Tests disable Atlas access automatically.
+Run `npm run db:check` to verify Atlas access and perform the same one-time import
+without starting the voice pipeline. Use the exact capitalization of an existing
+database name in `MONGODB_DB_NAME`.
+Run `npm run db:test` for a live audit of all six collections, model validation,
+indexes, migration markers, and knowledge relationships. It also creates, reads,
+updates, and deletes a temporary record per collection using an independent
+connection, with cleanup on failure. Existing records are read without modification.
+
+Storage reads use in-process caches; run one backend instance. Multiple instances or
+external database edits require a cache refresh/repository redesign.
+
+The native-driver models in `server/src/models` define record types, Zod runtime
+schemas, collection names, and indexes. Persistence validates imports, loaded
+documents, and writes through these models. Existing `{ _id, position, value }`
+documents remain compatible; indexes target fields within `value`.

@@ -25,6 +25,7 @@ yarn-error.log*
 
 # Testing & Coverage
 coverage/
+.jest-cache/
 
 # OS / Editor
 .DS_Store

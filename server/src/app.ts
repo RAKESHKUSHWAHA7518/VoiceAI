@@ -40,6 +40,7 @@ import { TwilioMediaStreamHandler } from './transport/twilio_stream';
 
 // Pipeline
 import { PipelineManager } from './services/pipeline';
+import { initializeDatabase, closeDatabase } from './services/database';
 
 import fs from 'fs';
 import path from 'path';
@@ -108,6 +109,10 @@ app.get('/api/state', (req, res) => {
   });
 });
 
+// Return storage failures through the shared API error handler.
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 // WebSocket for Web Clients (/ws)
 const wsHandler = new WebSocketHandler(server);
 const wss = wsHandler.getWss();
@@ -119,6 +124,7 @@ twilioWss.on('connection', (ws, req) => TwilioMediaStreamHandler.handleConnectio
 // Initialize on startup
 async function initialize() {
   try {
+    await initializeDatabase();
     await pipelineManager.initialize();
     logger.info('Pipeline initialized');
   } catch (error) {
@@ -131,18 +137,27 @@ async function initialize() {
 
 // Start server and initialize only if not in test environment
 if (process.env.NODE_ENV !== 'test') {
-  initialize().catch((err) => {
+  initialize().then(() => {
+    const PORT = config.port;
+    server.listen(PORT, () => {
+      logger.info(`VoiceAI server running on http://localhost:${PORT}`);
+      logger.info(`WebSocket server running on ws://localhost:${PORT}/ws`);
+      logger.info(`Dashboard available at http://localhost:${PORT}`);
+    });
+  }).catch((err) => {
     logger.error('Failed to initialize', { err });
     process.exit(1);
   });
 
-  // Start server
-  const PORT = config.port;
-  server.listen(PORT, () => {
-    logger.info(`VoiceAI server running on http://localhost:${PORT}`);
-    logger.info(`WebSocket server running on ws://localhost:${PORT}/ws`);
-    logger.info(`Dashboard available at http://localhost:${PORT}`);
-  });
+  const shutdown = async () => {
+    wsHandler.getWss().clients.forEach(socket => socket.close());
+    twilioWss.clients.forEach(socket => socket.close());
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    await closeDatabase();
+    process.exit(0);
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }
 
 export default app;

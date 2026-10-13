@@ -1,3 +1,6 @@
+import { AppointmentModel } from '../models/appointment.model';
+import type { AppointmentRecord } from '../models/appointment.model';
+export type { AppointmentRecord } from '../models/appointment.model';
 // ============================================================================
 // Phase 12: Interactive In-Call Appointment & Calendar Booking Service
 // Handles real-time slot checking, appointment reservation, and rescheduling
@@ -6,19 +9,8 @@
 import fs from 'fs';
 import path from 'path';
 import logger from '../utils/logger';
+import { PersistentStore, isMongoEnabled } from './database';
 
-export interface AppointmentRecord {
-  id: string;
-  customer_name: string;
-  customer_phone: string;
-  date: string; // YYYY-MM-DD
-  time: string; // e.g., '10:00 AM', '2:30 PM'
-  service: string;
-  status: 'confirmed' | 'rescheduled' | 'cancelled';
-  notes?: string;
-  agent_id?: string;
-  created_at: string;
-}
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
@@ -35,6 +27,7 @@ const DEFAULT_SLOTS = [
 
 export class CalendarManager {
   private appointments: AppointmentRecord[] = [];
+  private store = new PersistentStore(AppointmentModel, APPOINTMENTS_FILE, () => this.appointments, records => { this.appointments = records; });
 
   constructor() {
     this.loadAppointments();
@@ -74,7 +67,10 @@ export class CalendarManager {
             created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
           },
         ];
-        this.saveAppointments();
+        if (!isMongoEnabled()) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+          fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(this.appointments, null, 2));
+        }
       }
     } catch (err) {
       logger.error('Failed to load appointments file:', err);
@@ -82,15 +78,8 @@ export class CalendarManager {
     }
   }
 
-  private saveAppointments(): void {
-    try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-      fs.writeFileSync(APPOINTMENTS_FILE, JSON.stringify(this.appointments, null, 2), 'utf-8');
-    } catch (err) {
-      logger.error('Failed to save appointments file:', err);
-    }
+  private saveAppointments(): Promise<void> {
+    return this.store.save();
   }
 
   /**
@@ -137,7 +126,7 @@ export class CalendarManager {
   /**
    * Book an appointment
    */
-  public bookAppointment(params: {
+  public async bookAppointment(params: {
     customer_name: string;
     customer_phone: string;
     date?: string;
@@ -145,7 +134,7 @@ export class CalendarManager {
     service?: string;
     notes?: string;
     agent_id?: string;
-  }): AppointmentRecord {
+  }): Promise<AppointmentRecord> {
     const date = this.normalizeDate(params.date);
     const id = `APT-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -163,7 +152,7 @@ export class CalendarManager {
     };
 
     this.appointments.unshift(newAppointment);
-    this.saveAppointments();
+    await this.saveAppointments();
 
     logger.info(`[Calendar] Booked appointment ${id} for ${newAppointment.customer_name} on ${date} at ${newAppointment.time}`);
     return newAppointment;
@@ -172,11 +161,11 @@ export class CalendarManager {
   /**
    * Cancel an appointment
    */
-  public cancelAppointment(id: string): boolean {
+  public async cancelAppointment(id: string): Promise<boolean> {
     const apt = this.appointments.find(a => a.id === id);
     if (!apt) return false;
     apt.status = 'cancelled';
-    this.saveAppointments();
+    await this.saveAppointments();
     return true;
   }
 

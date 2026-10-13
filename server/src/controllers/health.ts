@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
+import { databaseStatus } from '../services/database';
 
 export const healthCheck = asyncHandler(async (req: Request, res: Response) => {
   res.json({
@@ -14,12 +15,12 @@ export const healthCheck = asyncHandler(async (req: Request, res: Response) => {
 export const readinessCheck = asyncHandler(async (req: Request, res: Response) => {
   // Check database connection, redis connection, etc.
   const checks = {
-    database: 'ok',
+    database: await databaseStatus(),
     redis: 'ok',
     services: 'ok',
   };
 
-  const allHealthy = Object.values(checks).every(status => status === 'ok');
+  const allHealthy = Object.values(checks).every(status => status === 'ok' || status === 'disabled');
 
   res.status(allHealthy ? 200 : 503).json({
     status: allHealthy ? 'ready' : 'not_ready',

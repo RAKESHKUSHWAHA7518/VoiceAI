@@ -13,9 +13,9 @@ import config from '../config';
 import logger from '../utils/logger';
 import fs from 'fs';
 import path from 'path';
+import { addCallRecord, CallAnalyticsRecord } from '../routes/calls';
 
 const RECORDINGS_DIR = path.join(__dirname, '../../data/recordings');
-const CALLS_FILE = path.join(__dirname, '../../data/calls.json');
 
 interface TwilioSession {
   callSid: string;
@@ -293,15 +293,9 @@ export class TwilioMediaStreamHandler {
       response_speed: 92,
     };
 
-    // Save into persistent calls.json
+    // Share persistence and the dashboard cache with browser calls.
     try {
-      let callHistory: any[] = [];
-      if (fs.existsSync(CALLS_FILE)) {
-        const content = fs.readFileSync(CALLS_FILE, 'utf-8');
-        callHistory = JSON.parse(content);
-      }
-
-      const newRecord = {
+      const newRecord: CallAnalyticsRecord = {
         id: callId,
         session_id: session.callSid,
         agent_id: session.agentId,
@@ -322,8 +316,7 @@ export class TwilioMediaStreamHandler {
         audio_url: audioUrl,
       };
 
-      callHistory.unshift(newRecord);
-      fs.writeFileSync(CALLS_FILE, JSON.stringify(callHistory, null, 2), 'utf-8');
+      await addCallRecord(newRecord);
       logger.info(`[Twilio MediaStream] Saved call record ${callId} to Call History.`);
     } catch (e) {
       logger.warn('[Twilio MediaStream] Failed to write call history:', e);

@@ -1,3 +1,6 @@
+import { PhoneNumberModel } from '../models/phone-number.model';
+import type { PhoneNumberRecord } from '../models/phone-number.model';
+export type { PhoneNumberRecord } from '../models/phone-number.model';
 // ============================================================================
 // Telephony Routes & PSTN Number Management
 // Inbound TwiML Webhook, Outbound Dialer, and Telephone Numbers Registry
@@ -10,19 +13,8 @@ import logger from '../utils/logger';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import { PersistentStore } from '../services/database';
 
-export interface PhoneNumberRecord {
-  id: string;
-  phone_number: string;
-  friendly_name: string;
-  agent_id: string;
-  agent_name: string;
-  agent_avatar?: string;
-  status: 'active' | 'inactive';
-  inbound_calls_count: number;
-  last_call_at?: number;
-  created_at: number;
-}
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const PHONE_NUMBERS_FILE = path.join(DATA_DIR, 'phone_numbers.json');
@@ -71,18 +63,8 @@ function loadNumbers(): PhoneNumberRecord[] {
   }
 }
 
-function saveNumbers(numbers: PhoneNumberRecord[]): void {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(PHONE_NUMBERS_FILE, JSON.stringify(numbers, null, 2), 'utf-8');
-  } catch (e) {
-    logger.warn('Failed to save phone numbers:', e);
-  }
-}
-
 let phoneNumbers: PhoneNumberRecord[] = loadNumbers();
+const numbersStore = new PersistentStore(PhoneNumberModel, PHONE_NUMBERS_FILE, () => phoneNumbers, records => { phoneNumbers = records; });
 
 const router = Router();
 
@@ -120,7 +102,7 @@ router.post(
     };
 
     phoneNumbers.unshift(newRecord);
-    saveNumbers(phoneNumbers);
+    await numbersStore.save();
 
     res.json({ success: true, number: newRecord });
   })
@@ -141,7 +123,7 @@ router.put(
       ...req.body,
       id,
     };
-    saveNumbers(phoneNumbers);
+    await numbersStore.save();
 
     res.json({ success: true, number: phoneNumbers[idx] });
   })
@@ -153,7 +135,7 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     phoneNumbers = phoneNumbers.filter((n) => n.id !== id);
-    saveNumbers(phoneNumbers);
+    await numbersStore.save();
     res.json({ success: true, message: 'Phone number removed' });
   })
 );
@@ -184,7 +166,7 @@ router.all(
     if (matchedNumber) {
       matchedNumber.inbound_calls_count++;
       matchedNumber.last_call_at = Date.now();
-      saveNumbers(phoneNumbers);
+      await numbersStore.save();
     }
 
     // Determine WebSocket host URL

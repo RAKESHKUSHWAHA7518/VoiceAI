@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 interface Config {
+  mongodb: { uri: string; database: string };
   env: string;
   port: number;
   host: string;
@@ -108,6 +109,10 @@ interface Config {
 }
 
 const config: Config = {
+  mongodb: {
+    uri: process.env.NODE_ENV === 'test' ? '' : (process.env.MONGODB_URI || ''),
+    database: process.env.MONGODB_DB_NAME || '',
+  },
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '8000', 10),
   host: process.env.HOST || '0.0.0.0',

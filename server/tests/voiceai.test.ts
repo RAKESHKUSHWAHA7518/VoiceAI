@@ -571,7 +571,7 @@ Third paragraph explaining backup codes and hardware security key options such a
     expect(retrievedChunks[0].magnitude).toBeGreaterThan(0);
 
     // Clean up
-    ragEngine.deleteDocument(doc.id);
+    await ragEngine.deleteDocument(doc.id);
   });
 
   test('should retrieve relevant chunks with <35ms latency budget', async () => {
@@ -1479,7 +1479,7 @@ describe('Voice Library & Voice Cloning Studio (Phase 13)', () => {
 
     // Verify it appears in voice library
     const voices = voiceLibraryManager.getAllVoices();
-    expect(voices.some(v => v.name === 'Alexander (Executive Assistant)')).toBe(true);
+    expect(voices.some((v: { name: string }) => v.name === 'Alexander (Executive Assistant)')).toBe(true);
   });
 });
 

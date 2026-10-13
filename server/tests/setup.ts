@@ -235,7 +235,7 @@ jest.mock('../src/services/tools', () => {
       },
       handler: async (args: any) => {
         const { calendarManager } = require('../src/services/calendar');
-        const apt = calendarManager.bookAppointment(args);
+        const apt = await calendarManager.bookAppointment(args);
         return {
           status: 'confirmed',
           confirmation_code: apt.id,

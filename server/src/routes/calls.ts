@@ -1,43 +1,16 @@
+import { CallModel } from '../models/call.model';
+import type { CallQAscore, CallAnalyticsRecord } from '../models/call.model';
+export type { CallQAscore, CallAnalyticsRecord } from '../models/call.model';
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import config from '../config';
 import { OpenAILLM } from '../services/llm';
 
-export interface CallQAscore {
-  overall_score: number;
-  empathy: number;
-  clarity: number;
-  tool_accuracy: number;
-  response_speed: number;
-}
 
-export interface CallAnalyticsRecord {
-  id: string;
-  session_id: string;
-  agent_id: string;
-  agent_name: string;
-  agent_avatar?: string;
-  agent_role: string;
-  timestamp: number;
-  duration_seconds: number;
-  summary: string;
-  sentiment: 'Positive' | 'Neutral' | 'Frustrated' | 'Curious';
-  sentiment_score: number;
-  resolution_status: 'Resolved' | 'Needs Follow-Up' | 'Escalated' | 'Unresolved';
-  topics: string[];
-  action_items: string[];
-  qa_scores: CallQAscore;
-  transcripts: Array<{
-    role: string;
-    text: string;
-    timestamp?: string | number;
-  }>;
-  tool_calls_count: number;
-  audio_url?: string;
-}
 
 import fs from 'fs';
 import path from 'path';
+import { PersistentStore } from '../services/database';
 
 const DATA_DIR = path.join(__dirname, '../../data');
 const CALLS_FILE = path.join(DATA_DIR, 'calls.json');
@@ -132,19 +105,17 @@ function loadCallsFromDisk(): CallAnalyticsRecord[] {
   }
 }
 
-function saveCallsToDisk(calls: CallAnalyticsRecord[]): void {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(CALLS_FILE, JSON.stringify(calls, null, 2), 'utf-8');
-  } catch (e) {
-    console.warn('Failed to save calls to disk:', e);
-  }
-}
-
 // Persistent call records store
 const callHistory: CallAnalyticsRecord[] = loadCallsFromDisk();
+const callsStore = new PersistentStore(CallModel, CALLS_FILE, () => callHistory, records => {
+  callHistory.splice(0, callHistory.length, ...records);
+});
+
+export async function addCallRecord(record: CallAnalyticsRecord): Promise<void> {
+  callHistory.unshift(record);
+  if (callHistory.length > 100) callHistory.pop();
+  await callsStore.save();
+}
 
 const router = Router();
 
@@ -325,11 +296,7 @@ Return a valid JSON object strictly matching this schema:
       audio_url,
     };
 
-    callHistory.unshift(newRecord);
-    if (callHistory.length > 100) {
-      callHistory.pop();
-    }
-    saveCallsToDisk(callHistory);
+    await addCallRecord(newRecord);
 
     res.json({
       success: true,
@@ -377,7 +344,7 @@ router.delete(
         }
       }
       callHistory.splice(idx, 1);
-      saveCallsToDisk(callHistory);
+      await callsStore.save();
     }
     res.json({
       success: true,

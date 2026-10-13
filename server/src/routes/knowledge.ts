@@ -167,7 +167,7 @@ router.delete(
   '/documents/:docId',
   asyncHandler(async (req: Request, res: Response) => {
     const { docId } = req.params;
-    const deleted = ragEngine.deleteDocument(docId);
+    const deleted = await ragEngine.deleteDocument(docId);
     if (!deleted) {
       return res.status(404).json({
         success: false,

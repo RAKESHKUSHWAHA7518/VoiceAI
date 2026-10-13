@@ -1,37 +1,17 @@
+import { KnowledgeChunkModel } from '../models/knowledge-chunk.model';
+import type { DocumentChunk } from '../models/knowledge-chunk.model';
+export type { DocumentChunk } from '../models/knowledge-chunk.model';
+import { KnowledgeDocumentModel } from '../models/knowledge-document.model';
+import type { DocumentRecord } from '../models/knowledge-document.model';
+export type { DocumentRecord } from '../models/knowledge-document.model';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import config from '../config';
 import logger from '../utils/logger';
+import { PersistentStore, isMongoEnabled } from './database';
 
-export interface DocumentRecord {
-  id: string;
-  agent_id: string; // specific agent ID or 'global'
-  title: string;
-  filename: string;
-  file_type: 'pdf' | 'md' | 'txt' | 'json' | 'csv';
-  file_size: number;
-  created_at: number;
-  chunk_count: number;
-  status: 'indexed' | 'indexing' | 'error';
-  error?: string;
-}
 
-export interface DocumentChunk {
-  id: string;
-  doc_id: string;
-  agent_id: string;
-  chunk_index: number;
-  text: string;
-  metadata: {
-    title: string;
-    filename: string;
-    token_count: number;
-  };
-  // Precomputed token frequency terms for ultra-fast BM25/cosine vector search
-  term_frequencies?: Record<string, number>;
-  magnitude?: number;
-}
 
 export interface RetrievalResult {
   chunk_id: string;
@@ -64,6 +44,10 @@ const STOPWORDS = new Set([
 export class RAGEngine {
   private documents: Map<string, DocumentRecord> = new Map();
   private chunks: DocumentChunk[] = [];
+  private documentsStore = new PersistentStore(KnowledgeDocumentModel, DOCS_FILE, () => Array.from(this.documents.values()), records => {
+    this.documents = new Map(records.map(record => [record.id, record]));
+  });
+  private chunksStore = new PersistentStore(KnowledgeChunkModel, CHUNKS_FILE, () => this.chunks, records => { this.chunks = records; });
   private isInitialized = false;
 
   constructor() {
@@ -99,17 +83,9 @@ export class RAGEngine {
     }
   }
 
-  private saveToDisk(): void {
-    try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-      const docsArray = Array.from(this.documents.values());
-      fs.writeFileSync(DOCS_FILE, JSON.stringify(docsArray, null, 2), 'utf-8');
-      fs.writeFileSync(CHUNKS_FILE, JSON.stringify(this.chunks, null, 2), 'utf-8');
-    } catch (err) {
-      logger.error('[RAG Engine] Error saving to disk:', err);
-    }
+  private async saveToDisk(): Promise<void> {
+    await this.documentsStore.save();
+    await this.chunksStore.save();
   }
 
   /**
@@ -246,7 +222,7 @@ export class RAGEngine {
         error: err.message || 'Ingestion failed',
       };
       this.documents.set(docId, failedDoc);
-      this.saveToDisk();
+      await this.saveToDisk();
       throw err;
     }
   }
@@ -306,7 +282,7 @@ export class RAGEngine {
     }
 
     this.documents.set(docId, docRecord);
-    this.saveToDisk();
+    await this.saveToDisk();
     logger.info(`[RAG Engine] Successfully indexed "${title}" (${textChunks.length} chunks) for agent ${agentId}.`);
     return docRecord;
   }
@@ -314,13 +290,13 @@ export class RAGEngine {
   /**
    * Delete a document and its chunks
    */
-  public deleteDocument(docId: string): boolean {
+  public async deleteDocument(docId: string): Promise<boolean> {
     const exists = this.documents.has(docId);
     if (!exists) return false;
 
     this.documents.delete(docId);
     this.chunks = this.chunks.filter((c) => c.doc_id !== docId);
-    this.saveToDisk();
+    await this.saveToDisk();
     logger.info(`[RAG Engine] Deleted document ${docId}.`);
     return true;
   }
@@ -535,7 +511,7 @@ Gift cards, personalized custom-engraved items, and software licenses with activ
 
 export const ragEngine = new RAGEngine();
 // Auto-seed default documents on first boot if store is empty
-if (ragEngine.listDocuments().length === 0) {
+if (!isMongoEnabled() && ragEngine.listDocuments().length === 0) {
   ragEngine.seedDefaultDocuments().catch((err) => {
     logger.warn('[RAG Engine] Error auto-seeding defaults:', err);
   });
