@@ -303,7 +303,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div>
                 <h2 style={{ margin: 0 }}>Function Tools & Custom Registry</h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            <p style={{ color: 'var(--studio-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
               Built-in and custom tools callable by voice agents during conversations. Create custom tools with mock JSON or webhook integrations.
             </p>
           </div>
@@ -314,7 +314,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
 
         {/* Tools Grid */}
         {loadingTools ? (
-          <div style={{ color: '#64748b', padding: '1.5rem', textAlign: 'center' }}>Loading tools...</div>
+          <div style={{ color: 'var(--studio-muted)', padding: '1.5rem', textAlign: 'center' }}>Loading tools...</div>
         ) : (
           <div className="tools-management-grid">
             {tools.map((t) => (
@@ -368,7 +368,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
         {activeTestTool && (
           <div className="tool-test-runner">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontWeight: 600, color: '#38bdf8' }}>
+              <span style={{ fontWeight: 600, color: 'var(--studio-accent)' }}>
                 Test Runner: <code>{activeTestTool}()</code>
               </span>
               <button 
@@ -381,7 +381,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
 
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.25rem' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.25rem' }}>
                   Arguments JSON:
                 </label>
                 <input
@@ -407,7 +407,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
 
             {testResult && (
               <div style={{ marginTop: '0.75rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.2rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.2rem' }}>
                   Execution Result:
                 </span>
                 <pre className="tool-result-preview">
@@ -423,13 +423,13 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
       <div className="card" style={{ gridColumn: '1 / -1' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <h2 style={{ margin: 0 }}>Live Transcript & Time-Travel Inspector</h2>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--studio-secondary)' }}>
             Click ⏪ on prior turns to time-travel rewind conversation state
           </span>
         </div>
         <div className="transcript-list" id="transcriptList">
           {transcripts.length === 0 ? (
-            <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+            <div style={{ color: 'var(--studio-muted)', textAlign: 'center', padding: '2rem' }}>
               No transcript data yet. Start a conversation to see transcripts here.
             </div>
           ) : (
@@ -464,12 +464,12 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
         <h2>Barge-in Events</h2>
         <div id="bargeInList" style={{ maxHeight: '300px', overflowY: 'auto' }}>
           {bargeInEvents.length === 0 ? (
-            <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+            <div style={{ color: 'var(--studio-muted)', textAlign: 'center', padding: '2rem' }}>
               No barge-in events recorded
             </div>
           ) : (
             bargeInEvents.map((e, i) => (
-              <div key={i} className="transcript-item" style={{ borderLeft: '3px solid #ef4444' }}>
+              <div key={i} className="transcript-item" style={{ borderLeft: '3px solid var(--studio-danger)' }}>
                 <strong>🚨 Barge-in</strong> at {new Date(e.timestamp).toLocaleTimeString()} <span className="barge-in-badge">INTERRUPT</span>
               </div>
             ))
@@ -482,7 +482,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
         <h2>Tool Calls Inspector</h2>
         <div id="toolCallList" style={{ maxHeight: '300px', overflowY: 'auto' }}>
           {toolCalls.length === 0 ? (
-            <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+            <div style={{ color: 'var(--studio-muted)', textAlign: 'center', padding: '2rem' }}>
               No tool calls recorded
             </div>
           ) : (
@@ -507,17 +507,17 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
               <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span>🛡️</span> Role-Based Access Control (RBAC) & Active Session
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+              <p style={{ color: 'var(--studio-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                 Multi-tenant authorization boundaries enforcing least privilege for voice agents, knowledge files, and recordings.
               </p>
             </div>
 
             {/* User Role Switcher */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(255,255,255,0.04)', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Active Session:</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--studio-secondary)' }}>Active Session:</span>
               <select
                 className="form-select form-select-sm"
-                style={{ width: 'auto', background: '#0f172a', color: '#fff', fontSize: '0.8rem' }}
+                style={{ width: 'auto', background: 'var(--studio-inset)', color: 'var(--studio-text)', fontSize: '0.8rem' }}
                 value={currentUser?.id || 'user_admin'}
                 onChange={e => handleSwitchRole(e.target.value)}
               >
@@ -532,18 +532,18 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
 
           {currentUser && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-              <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <div style={{ background: 'rgba(var(--studio-accent-rgb), 0.08)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(var(--studio-accent-rgb), 0.2)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '1.8rem' }}>{currentUser.avatar}</span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '1rem', color: '#93c5fd' }}>{currentUser.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{currentUser.email}</div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--studio-accent)' }}>{currentUser.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)' }}>{currentUser.email}</div>
                   </div>
-                  <span style={{ marginLeft: 'auto', background: '#2563eb', color: '#fff', fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 600 }}>
+                  <span style={{ marginLeft: 'auto', background: 'var(--studio-accent-strong)', color: 'var(--studio-text)', fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 600 }}>
                     {currentUser.role.replace('_', ' ').toUpperCase()}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#cbd5e1', lineHeight: '1.4' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--studio-secondary)', lineHeight: '1.4' }}>
                   {currentUser.role === 'admin'
                     ? '👑 Full Administrator: Unrestricted provisioning of API keys, model overrides, agent mutation, deletion, and telemetry inspection.'
                     : currentUser.role === 'agent_manager'
@@ -553,7 +553,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
               </div>
 
               <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.6rem' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--studio-secondary)', marginBottom: '0.6rem' }}>
                   Active Authorized Permissions ({currentUser.permissions.length}):
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -561,9 +561,9 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
                     <span
                       key={perm}
                       style={{
-                        background: 'rgba(16, 185, 129, 0.15)',
-                        border: '1px solid rgba(16, 185, 129, 0.35)',
-                        color: '#6ee7b7',
+                        background: 'rgba(var(--studio-success-rgb), 0.15)',
+                        border: '1px solid rgba(var(--studio-success-rgb), 0.35)',
+                        color: 'var(--studio-success)',
                         fontSize: '0.72rem',
                         padding: '0.2rem 0.5rem',
                         borderRadius: '4px',
@@ -584,7 +584,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div>
               <h2 style={{ margin: 0 }}>📜 SOC2 Type II & HIPAA Immutable Audit Log</h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+              <p style={{ color: 'var(--studio-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                 Tamper-proof event journal capturing administrative logins, key rotations, document ingests, and call exports.
               </p>
             </div>
@@ -596,7 +596,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: '#94a3b8' }}>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: 'var(--studio-secondary)' }}>
                   <th style={{ padding: '0.6rem' }}>Timestamp</th>
                   <th style={{ padding: '0.6rem' }}>Actor</th>
                   <th style={{ padding: '0.6rem' }}>Role</th>
@@ -609,7 +609,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
               <tbody>
                 {auditLogs.map(entry => (
                   <tr key={entry.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '0.6rem', color: '#64748b' }}>
+                    <td style={{ padding: '0.6rem', color: 'var(--studio-muted)' }}>
                       {new Date(entry.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })}
                     </td>
                     <td style={{ padding: '0.6rem', fontWeight: 600 }}>{entry.actorName}</td>
@@ -618,17 +618,17 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
                         {entry.actorRole}
                       </span>
                     </td>
-                    <td style={{ padding: '0.6rem', fontFamily: 'monospace', color: '#38bdf8' }}>{entry.action}</td>
-                    <td style={{ padding: '0.6rem', color: '#cbd5e1' }}>{entry.resource}</td>
-                    <td style={{ padding: '0.6rem', color: '#94a3b8' }}>{entry.ipAddress}</td>
+                    <td style={{ padding: '0.6rem', fontFamily: 'monospace', color: 'var(--studio-accent)' }}>{entry.action}</td>
+                    <td style={{ padding: '0.6rem', color: 'var(--studio-secondary)' }}>{entry.resource}</td>
+                    <td style={{ padding: '0.6rem', color: 'var(--studio-secondary)' }}>{entry.ipAddress}</td>
                     <td style={{ padding: '0.6rem' }}>
                       <span style={{
                         fontSize: '0.7rem',
                         padding: '0.15rem 0.45rem',
                         borderRadius: '4px',
                         fontWeight: 700,
-                        background: entry.status === 'SUCCESS' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                        color: entry.status === 'SUCCESS' ? '#34d399' : '#f87171',
+                        background: entry.status === 'SUCCESS' ? 'rgba(var(--studio-success-rgb), 0.2)' : 'rgba(var(--studio-danger-rgb), 0.2)',
+                        color: entry.status === 'SUCCESS' ? 'var(--studio-success)' : 'var(--studio-danger)',
                       }}>
                         {entry.status}
                       </span>
@@ -644,7 +644,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
         <div className="card">
           <div style={{ marginBottom: '1rem' }}>
             <h2 style={{ margin: 0 }}>🔐 Secret Key Vault & Provider Tokens</h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            <p style={{ color: 'var(--studio-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
               Zero-leak environment vault for third-party voice AI service keys (OpenAI, Deepgram, Cartesia, Twilio, ElevenLabs).
             </p>
           </div>
@@ -652,7 +652,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: '#94a3b8' }}>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: 'var(--studio-secondary)' }}>
                   <th style={{ padding: '0.6rem' }}>Provider Service</th>
                   <th style={{ padding: '0.6rem' }}>Masked Key</th>
                   <th style={{ padding: '0.6rem' }}>Environment</th>
@@ -665,14 +665,14 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
                 {vaultKeys.map(k => (
                   <tr key={k.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ padding: '0.6rem', fontWeight: 600 }}>{k.displayName}</td>
-                    <td style={{ padding: '0.6rem', fontFamily: 'monospace', color: '#a78bfa' }}>{k.maskedKey}</td>
+                    <td style={{ padding: '0.6rem', fontFamily: 'monospace', color: 'var(--studio-accent)' }}>{k.maskedKey}</td>
                     <td style={{ padding: '0.6rem' }}>
-                      <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(var(--studio-accent-rgb), 0.15)', color: 'var(--studio-accent)' }}>
                         {k.environment}
                       </span>
                     </td>
                     <td style={{ padding: '0.6rem' }}>v{k.version}</td>
-                    <td style={{ padding: '0.6rem', color: '#64748b' }}>
+                    <td style={{ padding: '0.6rem', color: 'var(--studio-muted)' }}>
                       {new Date(k.lastRotated).toLocaleDateString()}
                     </td>
                     <td style={{ padding: '0.6rem' }}>
@@ -696,7 +696,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
         <div className="card">
           <div style={{ marginBottom: '1rem' }}>
             <h2 style={{ margin: 0 }}>🛡️ AES-256-GCM Audio Recording & Data-at-Rest Encryption Sandbox</h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            <p style={{ color: 'var(--studio-secondary)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
               Test real-time military-grade envelope encryption for caller transcripts and WAV recordings satisfying HIPAA § 164.312(a)(2)(iv).
             </p>
           </div>
@@ -724,12 +724,12 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
               <label className="form-label">Ciphertext Envelope (Base64 + 96-bit IV + 128-bit MAC AuthTag)</label>
               {encryptedResult ? (
                 <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.85rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                  <div style={{ color: '#38bdf8', marginBottom: '0.3rem' }}>Algorithm: {encryptedResult.algorithm}</div>
-                  <div style={{ wordBreak: 'break-all', color: '#93c5fd', marginBottom: '0.3rem' }}>
+                  <div style={{ color: 'var(--studio-accent)', marginBottom: '0.3rem' }}>Algorithm: {encryptedResult.algorithm}</div>
+                  <div style={{ wordBreak: 'break-all', color: 'var(--studio-accent)', marginBottom: '0.3rem' }}>
                     <strong>Ciphertext:</strong> {encryptedResult.ciphertext.slice(0, 48)}...
                   </div>
-                  <div style={{ color: '#a78bfa', marginBottom: '0.3rem' }}><strong>IV:</strong> {encryptedResult.iv}</div>
-                  <div style={{ color: '#34d399', marginBottom: '0.6rem' }}><strong>AuthTag (MAC):</strong> {encryptedResult.authTag}</div>
+                  <div style={{ color: 'var(--studio-accent)', marginBottom: '0.3rem' }}><strong>IV:</strong> {encryptedResult.iv}</div>
+                  <div style={{ color: 'var(--studio-success)', marginBottom: '0.6rem' }}><strong>AuthTag (MAC):</strong> {encryptedResult.authTag}</div>
                   <button
                     className="btn btn-success btn-sm"
                     onClick={handleDecrypt}
@@ -739,17 +739,17 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
                   </button>
                 </div>
               ) : (
-                <div style={{ color: '#64748b', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', textAlign: 'center' }}>
+                <div style={{ color: 'var(--studio-muted)', padding: '1.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', textAlign: 'center' }}>
                   Click "Encrypt with AES-256-GCM" to generate ciphertext envelope.
                 </div>
               )}
 
               {decryptedResult && (
-                <div style={{ marginTop: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.75rem', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#6ee7b7', fontWeight: 600, marginBottom: '0.2rem' }}>
+                <div style={{ marginTop: '0.75rem', background: 'rgba(var(--studio-success-rgb), 0.1)', border: '1px solid rgba(var(--studio-success-rgb), 0.3)', padding: '0.75rem', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--studio-success)', fontWeight: 600, marginBottom: '0.2rem' }}>
                     ✓ Verified Decrypted Plaintext:
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#f8fafc' }}>{decryptedResult}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--studio-text)' }}>{decryptedResult}</div>
                 </div>
               )}
             </div>
@@ -831,7 +831,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
               <div className="form-group">
                 <label className="form-label">Execution Handler Type</label>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.4rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#f1f5f9', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--studio-text)', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="execType"
@@ -840,7 +840,7 @@ export function InspectorTab({ transcripts, bargeInEvents, toolCalls, onRewind }
                     />
                     <span>🧪 Simulated Mock Response (JSON Template)</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#f1f5f9', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--studio-text)', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="execType"

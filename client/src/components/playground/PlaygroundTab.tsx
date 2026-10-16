@@ -113,7 +113,7 @@ export function PlaygroundTab({
         const res = await fetch('/api/playground/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             text: testInput,
             agent_id: activeAgent?.id,
             agent_name: activeAgent?.name,
@@ -218,9 +218,9 @@ export function PlaygroundTab({
               className="btn btn-primary"
               onClick={() => onStartVoiceCall(activeAgent)}
               style={{
-                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                background: 'var(--studio-accent-strong)',
                 border: 'none',
-                color: '#ffffff',
+                color: 'var(--studio-text)',
                 fontWeight: 700,
                 fontSize: '0.85rem',
                 padding: '0.55rem 1.1rem',
@@ -228,7 +228,7 @@ export function PlaygroundTab({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.45rem',
-                boxShadow: '0 4px 14px rgba(22, 163, 74, 0.4)',
+                boxShadow: '0 4px 14px rgba(var(--studio-success-rgb), 0.4)',
                 cursor: 'pointer',
               }}
               title="Start two-way conversational voice call: Agent speaks first, listens to your mic, and answers aloud"
@@ -244,7 +244,7 @@ export function PlaygroundTab({
         {/* Configuration Panel */}
         <div className="playground-panel">
           <h3>Voice & Model Configuration</h3>
-          
+
           <div className="form-group">
             <label className="form-label">Voice ID</label>
             <input
@@ -255,7 +255,7 @@ export function PlaygroundTab({
               onChange={(e) => handleConfigChange('voice_id', e.target.value)}
             />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">LLM Model</label>
             <select className="form-select" id="llmModel" value={config.llm_model} onChange={(e) => handleConfigChange('llm_model', e.target.value)}>
@@ -264,7 +264,7 @@ export function PlaygroundTab({
               <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
             </select>
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">LLM Temperature <span id="tempValue">{config.llm_temperature}</span></label>
             <div className="slider-group">
@@ -281,7 +281,7 @@ export function PlaygroundTab({
               <span className="slider-value" id="tempValueDisplay">{config.llm_temperature}</span>
             </div>
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">VAD Threshold <span id="vadThresholdValue">{config.vad_threshold}</span></label>
             <div className="slider-group">
@@ -298,7 +298,7 @@ export function PlaygroundTab({
               <span className="slider-value" id="vadThresholdDisplay">{config.vad_threshold}</span>
             </div>
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">SOS Debounce (ms) <span id="sosDebounceValue">{config.vad_sos_debounce_ms}</span></label>
             <div className="slider-group">
@@ -315,7 +315,7 @@ export function PlaygroundTab({
               <span className="slider-value" id="sosDebounceDisplay">{config.vad_sos_debounce_ms}</span>
             </div>
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">EOS Timeout (ms) <span id="eosTimeoutValue">{config.vad_eos_timeout_ms}</span></label>
             <div className="slider-group">
@@ -332,13 +332,13 @@ export function PlaygroundTab({
               <span className="slider-value" id="eosTimeoutDisplay">{config.vad_eos_timeout_ms}</span>
             </div>
           </div>
-          
+
           <div className="btn-group">
             <button className="btn btn-primary" onClick={savePlaygroundConfig}>Save Config</button>
             <button className="btn btn-secondary" onClick={resetPlaygroundConfig}>Reset</button>
           </div>
         </div>
-        
+
         {/* System Prompt Panel */}
         <div className="playground-panel">
           <h3>System Prompt</h3>
@@ -354,7 +354,7 @@ export function PlaygroundTab({
           </div>
         </div>
       </div>
-      
+
       {/* Phase 8: Live Browser Audio Engine (Microphone & Web Audio API Stream) */}
       <div
         className="card"
@@ -362,12 +362,12 @@ export function PlaygroundTab({
           gridColumn: '1 / -1',
           marginTop: '1.5rem',
           background: isRecording
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(15, 23, 42, 0.85))'
-            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.85))',
-          border: isRecording ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.3)',
+            ? 'var(--studio-surface)'
+            : 'var(--studio-surface)',
+          border: isRecording ? '1px solid rgba(var(--studio-danger-rgb), 0.4)' : '1px solid rgba(var(--studio-success-rgb), 0.3)',
           boxShadow: isRecording
-            ? '0 8px 32px rgba(239, 68, 68, 0.15)'
-            : '0 8px 32px rgba(16, 185, 129, 0.12)',
+            ? '0 8px 32px rgba(var(--studio-danger-rgb), 0.15)'
+            : '0 8px 32px rgba(var(--studio-success-rgb), 0.12)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
@@ -384,9 +384,9 @@ export function PlaygroundTab({
                   textTransform: 'uppercase',
                   padding: '0.2rem 0.55rem',
                   borderRadius: '999px',
-                  background: isRecording ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.15)',
-                  color: isRecording ? '#f87171' : '#34d399',
-                  border: isRecording ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.3)',
+                  background: isRecording ? 'rgba(var(--studio-danger-rgb), 0.2)' : 'rgba(var(--studio-success-rgb), 0.15)',
+                  color: isRecording ? 'var(--studio-danger)' : 'var(--studio-success)',
+                  border: isRecording ? '1px solid rgba(var(--studio-danger-rgb), 0.4)' : '1px solid rgba(var(--studio-success-rgb), 0.3)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.35rem',
@@ -397,14 +397,14 @@ export function PlaygroundTab({
                     width: '6px',
                     height: '6px',
                     borderRadius: '50%',
-                    background: isRecording ? '#ef4444' : '#10b981',
-                    boxShadow: isRecording ? '0 0 8px #ef4444' : '0 0 8px #10b981',
+                    background: isRecording ? 'var(--studio-danger)' : 'var(--studio-success)',
+                    boxShadow: isRecording ? '0 0 8px var(--studio-danger)' : '0 0 8px var(--studio-success)',
                   }}
                 />
                 {isRecording ? 'STREAMING PCM16' : 'READY TO STREAM'}
               </span>
             </div>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--studio-secondary)' }}>
               Live microphone capture downsampled to 16kHz PCM over binary WebSocket with Web Audio API chunk playback.
             </p>
           </div>
@@ -417,9 +417,9 @@ export function PlaygroundTab({
               onClick={isRecording ? stopRecording : startRecording}
               style={{
                 background: isRecording
-                  ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
-                  : 'linear-gradient(135deg, #10b981, #047857)',
-                color: '#ffffff',
+                  ? 'var(--studio-danger-strong)'
+                  : 'var(--studio-accent-strong)',
+                color: 'var(--studio-text)',
                 border: 'none',
                 padding: '0.65rem 1.25rem',
                 borderRadius: '8px',
@@ -430,8 +430,8 @@ export function PlaygroundTab({
                 gap: '0.5rem',
                 cursor: 'pointer',
                 boxShadow: isRecording
-                  ? '0 4px 18px rgba(239, 68, 68, 0.4)'
-                  : '0 4px 18px rgba(16, 185, 129, 0.35)',
+                  ? '0 4px 18px rgba(var(--studio-danger-rgb), 0.4)'
+                  : '0 4px 18px rgba(var(--studio-success-rgb), 0.35)',
                 transition: 'all 0.2s ease',
               }}
             >
@@ -445,9 +445,9 @@ export function PlaygroundTab({
               id="bargeInBtn"
               onClick={handleInterrupt}
               style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: '#f87171',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
+                background: 'rgba(var(--studio-danger-rgb), 0.15)',
+                color: 'var(--studio-danger)',
+                border: '1px solid rgba(var(--studio-danger-rgb), 0.35)',
                 padding: '0.65rem 1.1rem',
                 borderRadius: '8px',
                 fontWeight: 600,
@@ -469,7 +469,7 @@ export function PlaygroundTab({
         {/* Real-time VU Visualizer & Latency Metrics */}
         <div
           style={{
-            background: 'rgba(7, 10, 19, 0.6)',
+            background: 'rgba(var(--studio-base-rgb), 0.6)',
             borderRadius: '8px',
             padding: '0.85rem 1.15rem',
             border: '1px solid rgba(255, 255, 255, 0.06)',
@@ -482,7 +482,7 @@ export function PlaygroundTab({
         >
           {/* Waveform VU Meter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
               Mic Input Level:
             </span>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '24px' }}>
@@ -501,10 +501,10 @@ export function PlaygroundTab({
                       borderRadius: '2px',
                       background: active
                         ? barIndex > 6
-                          ? '#ef4444'
+                          ? 'var(--studio-danger)'
                           : barIndex > 4
-                          ? '#f59e0b'
-                          : '#10b981'
+                          ? 'var(--studio-warning)'
+                          : 'var(--studio-success)'
                         : 'rgba(255, 255, 255, 0.12)',
                       transition: 'height 0.08s ease, background 0.08s ease',
                     }}
@@ -516,7 +516,7 @@ export function PlaygroundTab({
               style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
-                color: isRecording ? '#38bdf8' : '#64748b',
+                color: isRecording ? 'var(--studio-accent)' : 'var(--studio-muted)',
                 fontWeight: 600,
                 minWidth: '38px',
               }}
@@ -526,18 +526,18 @@ export function PlaygroundTab({
           </div>
 
           {/* Engine Parameters */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.75rem', color: 'var(--studio-secondary)' }}>
             <div>
-              <span style={{ color: '#64748b' }}>STT Input: </span>
-              <strong style={{ color: '#e2e8f0' }}>16 kHz PCM (Int16)</strong>
+              <span style={{ color: 'var(--studio-muted)' }}>STT Input: </span>
+              <strong style={{ color: 'var(--studio-text)' }}>16 kHz PCM (Int16)</strong>
             </div>
             <div>
-              <span style={{ color: '#64748b' }}>Audio Output: </span>
-              <strong style={{ color: '#e2e8f0' }}>24 kHz Web Audio</strong>
+              <span style={{ color: 'var(--studio-muted)' }}>Audio Output: </span>
+              <strong style={{ color: 'var(--studio-text)' }}>24 kHz Web Audio</strong>
             </div>
             <div>
-              <span style={{ color: '#64748b' }}>Transport: </span>
-              <strong style={{ color: '#34d399' }}>Binary Frame (0x01)</strong>
+              <span style={{ color: 'var(--studio-muted)' }}>Transport: </span>
+              <strong style={{ color: 'var(--studio-success)' }}>Binary Frame (0x01)</strong>
             </div>
           </div>
         </div>
@@ -548,9 +548,9 @@ export function PlaygroundTab({
               marginTop: '0.75rem',
               padding: '0.6rem 0.9rem',
               borderRadius: '6px',
-              background: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#f87171',
+              background: 'rgba(var(--studio-danger-rgb), 0.12)',
+              border: '1px solid rgba(var(--studio-danger-rgb), 0.3)',
+              color: 'var(--studio-danger)',
               fontSize: '0.8rem',
               display: 'flex',
               alignItems: 'center',
@@ -583,10 +583,10 @@ export function PlaygroundTab({
 
             {/* Quick Multi-Language Phrases */}
             <div style={{ marginTop: '0.4rem', marginBottom: '0.6rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.73rem', color: '#94a3b8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.73rem', color: 'var(--studio-secondary)' }}>
                 <span>🌐 Quick Bilingual Phrases:</span>
                 {detectedInfo && (
-                  <span style={{ color: '#34d399', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--studio-success)', fontWeight: 600 }}>
                     Detected: {detectedInfo.language.toUpperCase()} ({Math.round(detectedInfo.confidence * 100)}% match)
                   </span>
                 )}
@@ -683,7 +683,7 @@ export function PlaygroundTab({
                 <button
                   className="btn btn-primary"
                   onClick={() => onStartVoiceCall(activeAgent)}
-                  style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)', border: 'none', color: '#fff', fontWeight: 600 }}
+                  style={{ background: 'var(--studio-accent-strong)', border: 'none', color: 'var(--studio-text)', fontWeight: 600 }}
                   title="Start live voice call where agent speaks first, listens to you, and answers back"
                 >
                   📞 Live Voice Call
@@ -692,12 +692,12 @@ export function PlaygroundTab({
               <button className="btn btn-secondary" onClick={() => { setPlaygroundTests([]); }}>Clear View</button>
             </div>
           </div>
-          
+
           <div className="playground-panel">
             <h3>Test Output</h3>
             <div className="playground-output" id="testOutput">
               {displayTests.length === 0 ? (
-                <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+                <div style={{ color: 'var(--studio-muted)', textAlign: 'center', padding: '2rem' }}>
                   No test run yet. Type a message and click "Run Test" above.
                 </div>
               ) : (
@@ -705,9 +705,9 @@ export function PlaygroundTab({
                   <div key={test.test_id} className="output-entry">
                     <div className="output-label">
                       {new Date(test.timestamp > 1e11 ? test.timestamp : test.timestamp * 1000).toLocaleTimeString()} - Test {test.test_id}
-                      <span style={{ 
-                        color: test.status === 'running' ? '#fbbf24' : 
-                               test.status === 'completed' ? '#22c55e' : '#ef4444',
+                      <span style={{
+                        color: test.status === 'running' ? 'var(--studio-warning)' :
+                               test.status === 'completed' ? 'var(--studio-success)' : 'var(--studio-danger)',
                         marginLeft: '0.5rem'
                       }}>
                         ● {test.status}
@@ -740,13 +740,13 @@ export function PlaygroundTab({
             </div>
           </div>
         </div>
-        
+
         {/* Test History */}
         <div className="card" style={{ marginTop: '1.5rem' }}>
           <h3>Test History</h3>
           <div className="playground-output" id="testHistory">
             {displayTests.length === 0 ? (
-              <div style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+              <div style={{ color: 'var(--studio-muted)', textAlign: 'center', padding: '2rem' }}>
                 No tests run yet. Run a test to see history here.
               </div>
             ) : (

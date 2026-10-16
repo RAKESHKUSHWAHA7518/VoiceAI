@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { StudioIcon } from '../common/StudioIcon';
 import { PAGE_ROUTES } from '../../routes';
 import type { TabName, Agent, UserAccount } from '../../types';
 import { IconPhone, PersonaAvatar } from '../common/Icons';
@@ -9,6 +10,8 @@ interface TopBarProps {
   onOpenAgentsTab: () => void;
   onStartVoiceCall?: () => void;
   connected: boolean;
+  onToggleNavigation: () => void;
+  navigationOpen: boolean;
 }
 
 export function TopBar({
@@ -17,6 +20,8 @@ export function TopBar({
   onOpenAgentsTab,
   onStartVoiceCall,
   connected,
+  onToggleNavigation,
+  navigationOpen,
 }: TopBarProps) {
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [allUsers, setAllUsers] = useState<UserAccount[]>([]);
@@ -56,93 +61,17 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <button id="navigation-toggle" className="studio-icon-button mobile-menu-button" onClick={onToggleNavigation} aria-label="Open navigation" aria-controls="studio-sidebar" aria-expanded={navigationOpen}><StudioIcon name="menu" /></button>
+        <span className="workspace-crumb">Workspace</span><span className="crumb-divider">/</span>
         <h1 className="topbar-title">{activeTab ? PAGE_ROUTES[activeTab].title : 'Page not found'}</h1>
       </div>
-
       <div className="topbar-right">
-        {activeAgent && onStartVoiceCall && (
-          <button
-            className="btn btn-primary btn-sm topbar-call-btn"
-            onClick={onStartVoiceCall}
-            style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              border: 'none',
-              color: '#ffffff',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              boxShadow: '0 2px 10px rgba(16, 185, 129, 0.35)',
-              cursor: 'pointer',
-              padding: '0.45rem 0.95rem',
-              borderRadius: '24px',
-              transition: 'all 0.2s ease',
-            }}
-            title="Start live conversational voice call with active agent"
-          >
-            <IconPhone size={14} color="#ffffff" />
-            <span>Call {activeAgent.name}</span>
-          </button>
-        )}
-
-        {activeAgent && (
-          <div className="active-agent-badge" onClick={onOpenAgentsTab} title="Click to manage agents">
-            <PersonaAvatar name={activeAgent.name} role={activeAgent.role} size={28} />
-            <div className="badge-info">
-              <span className="badge-name">{activeAgent.name}</span>
-              <span className="badge-role">{activeAgent.role}</span>
-            </div>
-            <span className="badge-pill">{activeAgent.llm_model}</span>
-          </div>
-        )}
-
-        {/* Enterprise Security & SOC2 / HIPAA RBAC Badge */}
-        {currentUser && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            background: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(59, 130, 246, 0.25)',
-            borderRadius: '24px',
-            padding: '0.35rem 0.75rem',
-            fontSize: '0.75rem',
-          }}>
-            <span title="SOC2 Type II & HIPAA Certified Access Control" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#60a5fa', fontWeight: 700 }}>
-              <span>🛡️</span>
-              <span style={{ fontSize: '0.65rem', background: 'rgba(30, 58, 138, 0.7)', border: '1px solid rgba(59, 130, 246, 0.4)', padding: '0.1rem 0.4rem', borderRadius: '10px', color: '#93c5fd' }}>
-                SOC2 / HIPAA
-              </span>
-            </span>
-            <select
-              style={{
-                background: 'transparent',
-                color: '#e2e8f0',
-                border: 'none',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                outline: 'none',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-              value={currentUser.id}
-              onChange={e => handleSwitchUser(e.target.value)}
-              title="Switch Active RBAC User Role"
-            >
-              {allUsers.map(u => (
-                <option key={u.id} value={u.id} style={{ background: '#070a13', color: '#fff' }}>
-                  {u.avatar} {u.name} ({u.role.replace('_', ' ').toUpperCase()})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="topbar-status">
-          <span className={`status-dot ${connected ? '' : 'disconnected'}`}></span>
-          <span className="topbar-status-text">{connected ? 'Connected' : 'Offline'}</span>
+        <div className={connected ? 'studio-connection is-connected' : 'studio-connection'} title={connected ? 'Live connection established' : 'Live connection unavailable'}>
+          <span />{connected ? 'Connected' : 'Disconnected'}
         </div>
+        {activeAgent && <button className="studio-agent-switch" onClick={onOpenAgentsTab} title="Manage selected agent"><PersonaAvatar name={activeAgent.name} role={activeAgent.role} size={26} /><span>{activeAgent.name}</span></button>}
+        {activeAgent && onStartVoiceCall && <button className="btn btn-primary topbar-call-btn" onClick={onStartVoiceCall}><IconPhone size={15} /><span>Test call</span></button>}
+        {currentUser && <label className="studio-user-select"><span className="sr-only">Switch workspace user</span><select value={currentUser.id} onChange={e => handleSwitchUser(e.target.value)}>{allUsers.map(user => <option key={user.id} value={user.id}>{user.name} · {user.role.replace(/_/g, ' ')}</option>)}</select></label>}
       </div>
     </header>
   );

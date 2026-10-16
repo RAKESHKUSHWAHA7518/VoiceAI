@@ -192,19 +192,19 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
-      case 'Positive': return '#22c55e';
-      case 'Neutral': return '#38bdf8';
-      case 'Curious': return '#a855f7';
-      case 'Frustrated': return '#ef4444';
-      default: return '#94a3b8';
+      case 'Positive': return 'var(--studio-success)';
+      case 'Neutral': return 'var(--studio-accent)';
+      case 'Curious': return 'var(--studio-chart)';
+      case 'Frustrated': return 'var(--studio-danger)';
+      default: return 'var(--studio-secondary)';
     }
   };
 
   const getQAColor = (score: number) => {
-    if (score >= 90) return '#22c55e';
-    if (score >= 80) return '#38bdf8';
-    if (score >= 70) return '#fbbf24';
-    return '#ef4444';
+    if (score >= 90) return 'var(--studio-success)';
+    if (score >= 80) return 'var(--studio-accent)';
+    if (score >= 70) return 'var(--studio-warning)';
+    return 'var(--studio-danger)';
   };
 
   const getQAGrade = (score: number) => {
@@ -445,7 +445,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
             <div className="hero-stat-box">
               <span className="stat-label">Duration</span>
               <span className="stat-val" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <IconClock size={13} color="#94a3b8" />
+                <IconClock size={13} color="var(--studio-secondary)" />
                 {formatDuration(selectedCall.duration_seconds)}
               </span>
             </div>
@@ -476,7 +476,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
           <div className="recording-card-header">
             <div className="recording-title-wrap">
               <span className="rec-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                <IconAudioWave size={26} color="#38bdf8" />
+                <IconAudioWave size={26} color="var(--studio-accent)" />
               </span>
               <div>
                 <h3 className="rec-heading">Call Audio Recording & Playback</h3>
@@ -533,7 +533,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 <div className="synth-status-text">
                   {isPlayingAudio ? (
                     <span className="active-speaking-indicator" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <IconMic size={14} color="#38bdf8" />
+                      <IconMic size={14} color="var(--studio-accent)" />
                       Speaking turn {activeSpeechTurnIndex !== null ? `#${activeSpeechTurnIndex + 1}` : ''}...
                     </span>
                   ) : (
@@ -553,7 +553,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="card-section-header">
                 <div className="section-title-wrap">
                   <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                    <IconMessageSquare size={18} color="#38bdf8" />
+                    <IconMessageSquare size={18} color="var(--studio-accent)" />
                   </span>
                   <div>
                     <h3 className="section-title">Conversation Transcript</h3>
@@ -570,7 +570,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                   >
                     {copiedTranscript ? (
                       <>
-                        <IconCheck size={13} color="#22c55e" />
+                        <IconCheck size={13} color="var(--studio-success)" />
                         <span>Copied!</span>
                       </>
                     ) : (
@@ -617,7 +617,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                       >
                         <div className="turn-avatar-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {isUser ? (
-                            <IconUser size={18} color="#94a3b8" />
+                            <IconUser size={18} color="var(--studio-secondary)" />
                           ) : (
                             <PersonaAvatar name={selectedCall.agent_name} role={selectedCall.agent_role} size={32} />
                           )}
@@ -658,7 +658,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="card-section-header">
                 <div className="section-title-wrap">
                   <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                    <IconShieldCheck size={20} color="#22c55e" />
+                    <IconShieldCheck size={20} color="var(--studio-success)" />
                   </span>
                   <div>
                     <h3 className="section-title">QA Compliance & Audit Scorecard</h3>
@@ -687,52 +687,52 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
                     <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <IconHeart size={14} color="#38bdf8" />
+                      <IconHeart size={14} color="var(--studio-accent)" />
                       <span>Empathy & Tone</span>
                     </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.empathy || 90}%</span>
                   </div>
                   <div className="qa-progress-bg">
-                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.empathy || 90}%`, background: '#38bdf8' }} />
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.empathy || 90}%`, background: 'var(--studio-accent)' }} />
                   </div>
                 </div>
 
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
                     <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <IconMessageCircle size={14} color="#22c55e" />
+                      <IconMessageCircle size={14} color="var(--studio-success)" />
                       <span>Response Clarity & Conciseness</span>
                     </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.clarity || 94}%</span>
                   </div>
                   <div className="qa-progress-bg">
-                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.clarity || 94}%`, background: '#22c55e' }} />
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.clarity || 94}%`, background: 'var(--studio-success)' }} />
                   </div>
                 </div>
 
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
                     <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <IconTarget size={14} color="#a855f7" />
+                      <IconTarget size={14} color="var(--studio-chart)" />
                       <span>Tool & Function Accuracy</span>
                     </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.tool_accuracy || 98}%</span>
                   </div>
                   <div className="qa-progress-bg">
-                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.tool_accuracy || 98}%`, background: '#a855f7' }} />
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.tool_accuracy || 98}%`, background: 'var(--studio-chart)' }} />
                   </div>
                 </div>
 
                 <div className="qa-bar-item">
                   <div className="qa-bar-row">
                     <span className="qa-metric-name" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <IconZap size={14} color="#fbbf24" />
+                      <IconZap size={14} color="var(--studio-warning)" />
                       <span>Response Speed & Fluency</span>
                     </span>
                     <span className="qa-metric-val">{selectedCall.qa_scores?.response_speed || 92}%</span>
                   </div>
                   <div className="qa-progress-bg">
-                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.response_speed || 92}%`, background: '#fbbf24' }} />
+                    <div className="qa-progress-fill" style={{ width: `${selectedCall.qa_scores?.response_speed || 92}%`, background: 'var(--studio-warning)' }} />
                   </div>
                 </div>
               </div>
@@ -743,7 +743,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="card-section-header">
                 <div className="section-title-wrap">
                   <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                    <IconFileText size={18} color="#38bdf8" />
+                    <IconFileText size={18} color="var(--studio-accent)" />
                   </span>
                   <h3 className="section-title">Executive Summary</h3>
                 </div>
@@ -758,7 +758,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               <div className="card-section-header">
                 <div className="section-title-wrap">
                   <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                    <IconSmile size={18} color="#fbbf24" />
+                    <IconSmile size={18} color="var(--studio-warning)" />
                   </span>
                   <h3 className="section-title">Sentiment & Resolution Analysis</h3>
                 </div>
@@ -791,7 +791,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 <div className="card-section-header">
                   <div className="section-title-wrap">
                     <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                      <IconTag size={17} color="#38bdf8" />
+                      <IconTag size={17} color="var(--studio-accent)" />
                     </span>
                     <h3 className="section-title">Key Topics Discussed</h3>
                   </div>
@@ -810,7 +810,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                 <div className="card-section-header">
                   <div className="section-title-wrap">
                     <span className="section-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                      <IconListCheck size={18} color="#22c55e" />
+                      <IconListCheck size={18} color="var(--studio-success)" />
                     </span>
                     <h3 className="section-title">Follow-up Action Items</h3>
                   </div>
@@ -854,7 +854,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       <div className="analytics-header-banner">
         <div className="header-text-block">
           <div className="header-badge-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-            <IconSparkles size={13} color="#38bdf8" />
+            <IconSparkles size={13} color="var(--studio-accent)" />
             <span>Voice AI Intelligence</span>
           </div>
           <h1 className="header-title">Call History & Post-Call QA</h1>
@@ -874,8 +874,8 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
       {/* Top Executive KPI Cards */}
       <div className="analytics-kpi-grid">
         <div className="analytics-kpi-card">
-          <div className="kpi-icon-wrap" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8' }}>
-            <IconPhone size={22} color="#38bdf8" />
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(var(--studio-accent-rgb), 0.12)', color: 'var(--studio-accent)' }}>
+            <IconPhone size={22} color="var(--studio-accent)" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Total Calls Logged</span>
@@ -885,8 +885,8 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         </div>
 
         <div className="analytics-kpi-card">
-          <div className="kpi-icon-wrap" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22c55e' }}>
-            <IconStar size={22} color="#22c55e" />
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(var(--studio-success-rgb), 0.12)', color: 'var(--studio-success)' }}>
+            <IconStar size={22} color="var(--studio-success)" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Average QA Score</span>
@@ -898,19 +898,19 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         </div>
 
         <div className="analytics-kpi-card">
-          <div className="kpi-icon-wrap" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#a855f7' }}>
-            <IconCheckCircle size={22} color="#a855f7" />
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(var(--studio-chart-rgb), 0.12)', color: 'var(--studio-chart)' }}>
+            <IconCheckCircle size={22} color="var(--studio-chart)" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">First-Call Resolution</span>
-            <span className="kpi-value" style={{ color: '#a855f7' }}>{resolutionRate}%</span>
+            <span className="kpi-value" style={{ color: 'var(--studio-chart)' }}>{resolutionRate}%</span>
             <span className="kpi-subtext">{resolvedCount} of {totalCalls} calls resolved</span>
           </div>
         </div>
 
         <div className="analytics-kpi-card">
-          <div className="kpi-icon-wrap" style={{ background: 'rgba(251, 191, 36, 0.12)', color: '#fbbf24' }}>
-            <IconClock size={22} color="#fbbf24" />
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(var(--studio-warning-rgb), 0.12)', color: 'var(--studio-warning)' }}>
+            <IconClock size={22} color="var(--studio-warning)" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Avg Handle Time</span>
@@ -920,8 +920,8 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         </div>
 
         <div className="analytics-kpi-card">
-          <div className="kpi-icon-wrap" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#f87171' }}>
-            <IconAudioWave size={22} color="#f87171" />
+          <div className="kpi-icon-wrap" style={{ background: 'rgba(var(--studio-danger-rgb), 0.12)', color: 'var(--studio-danger)' }}>
+            <IconAudioWave size={22} color="var(--studio-danger)" />
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Recorded Calls</span>
@@ -1016,7 +1016,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
               checked={audioOnlyFilter} 
               onChange={e => setAudioOnlyFilter(e.target.checked)} 
             />
-            <IconMic size={13} color="#4ade80" />
+            <IconMic size={13} color="var(--studio-success)" />
             <span>HD Audio Only</span>
           </label>
 
@@ -1042,7 +1042,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
         ) : filteredCalls.length === 0 ? (
           <div className="analytics-empty-state">
             <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}>
-              <IconPhoneIncoming size={48} color="#64748b" />
+              <IconPhoneIncoming size={48} color="var(--studio-muted)" />
             </div>
             <h3>No Call Records Found</h3>
             <p>
@@ -1109,7 +1109,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                     <td>
                       <div className="table-duration-cell">
                         <span className="duration-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <IconClock size={11} color="#94a3b8" />
+                          <IconClock size={11} color="var(--studio-secondary)" />
                           <span>{formatDuration(c.duration_seconds)}</span>
                         </span>
                       </div>
@@ -1147,7 +1147,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
                       <div className="table-actions-cell" onClick={e => e.stopPropagation()}>
                         {c.audio_url && (
                           <span className="table-audio-indicator" title="Audio recording available" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <IconAudioWave size={11} color="#4ade80" />
+                            <IconAudioWave size={11} color="var(--studio-success)" />
                             <span>Audio</span>
                           </span>
                         )}
@@ -1180,7 +1180,7 @@ export function AnalyticsTab({ agents, onStartVoiceCall }: AnalyticsTabProps) {
 
       {/* Quick Helper Banner */}
       <div className="call-history-footer-hint" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-        <IconLightbulb size={15} color="#fbbf24" />
+        <IconLightbulb size={15} color="var(--studio-warning)" />
         <span><strong>Tip:</strong> Click anywhere on a call row to open its conversation transcript dialogue bubbles and audio player.</span>
       </div>
     </div>

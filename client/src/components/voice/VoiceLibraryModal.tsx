@@ -199,7 +199,7 @@ export function VoiceLibraryModal({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(5, 7, 14, 0.85)',
+        background: 'rgba(var(--studio-base-rgb), 0.85)',
         backdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
@@ -209,7 +209,7 @@ export function VoiceLibraryModal({
     >
       <div
         style={{
-          background: '#0d1322',
+          background: 'var(--studio-inset)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: '16px',
           width: '100%',
@@ -235,10 +235,10 @@ export function VoiceLibraryModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span style={{ fontSize: '1.5rem' }}>🎙️</span>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--studio-text)' }}>
                 Voice Library & Live Cloning Studio
               </h2>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--studio-secondary)' }}>
                 Audible sound previews for Cartesia Sonic 3.6, ElevenLabs Turbo, and zero-shot voice clones.
               </p>
             </div>
@@ -249,8 +249,8 @@ export function VoiceLibraryModal({
               type="button"
               onClick={() => setShowCloneForm(!showCloneForm)}
               style={{
-                background: showCloneForm ? 'rgba(255, 255, 255, 0.1)' : 'linear-gradient(135deg, #38bdf8, #0284c7)',
-                color: '#ffffff',
+                background: showCloneForm ? 'rgba(255, 255, 255, 0.1)' : 'var(--studio-accent-strong)',
+                color: 'var(--studio-text)',
                 border: 'none',
                 padding: '0.5rem 1rem',
                 borderRadius: '8px',
@@ -271,7 +271,7 @@ export function VoiceLibraryModal({
               style={{
                 background: 'rgba(255, 255, 255, 0.06)',
                 border: 'none',
-                color: '#94a3b8',
+                color: 'var(--studio-secondary)',
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
@@ -293,15 +293,15 @@ export function VoiceLibraryModal({
                 style={{
                   padding: '1.25rem',
                   borderRadius: '12px',
-                  background: 'rgba(56, 189, 248, 0.08)',
-                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  background: 'rgba(var(--studio-accent-rgb), 0.08)',
+                  border: '1px solid rgba(var(--studio-accent-rgb), 0.25)',
                   marginBottom: '1.5rem',
                 }}
               >
-                <h4 style={{ margin: '0 0 0.5rem 0', color: '#38bdf8', fontSize: '1rem', fontWeight: 700 }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--studio-accent)', fontSize: '1rem', fontWeight: 700 }}>
                   🎙️ Instant Zero-Shot Voice Clone
                 </h4>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--studio-secondary)', lineHeight: 1.5 }}>
                   Speak for 5 to 15 seconds to clone your speech prosody, timbre, and acoustic qualities.
                   The generated voice profile will be immediately available across all your voice agents.
                 </p>
@@ -312,9 +312,9 @@ export function VoiceLibraryModal({
                   style={{
                     padding: '0.85rem 1rem',
                     borderRadius: '8px',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    border: '1px solid #10b981',
-                    color: '#34d399',
+                    background: 'rgba(var(--studio-success-rgb), 0.15)',
+                    border: '1px solid var(--studio-success)',
+                    color: 'var(--studio-success)',
                     fontSize: '0.9rem',
                     marginBottom: '1.25rem',
                   }}
@@ -337,14 +337,14 @@ export function VoiceLibraryModal({
                 <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
                   {isRecordingMic ? '🔴' : hasRecordedAudio ? '✅' : '🎙️'}
                 </div>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--studio-text)', marginBottom: '0.25rem' }}>
                   {isRecordingMic
                     ? `Recording Audio Sample... (${recordedDuration}s / 15s)`
                     : hasRecordedAudio
                     ? `Audio Sample Captured (${recordedDuration}s)`
                     : 'Record Live Mic Sample (5-15s)'}
                 </div>
-                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 1rem 0' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--studio-secondary)', margin: '0 0 1rem 0' }}>
                   {isRecordingMic
                     ? 'Please read any sentence in your natural conversational voice...'
                     : 'Click below and speak 1 or 2 natural sentences into your microphone.'}
@@ -356,9 +356,9 @@ export function VoiceLibraryModal({
                     onClick={isRecordingMic ? stopMicRecording : startMicRecording}
                     style={{
                       background: isRecordingMic
-                        ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
-                        : 'linear-gradient(135deg, #10b981, #059669)',
-                      color: '#ffffff',
+                        ? 'var(--studio-danger-strong)'
+                        : 'var(--studio-accent-strong)',
+                      color: 'var(--studio-text)',
                       border: 'none',
                       padding: '0.65rem 1.4rem',
                       borderRadius: '8px',
@@ -375,7 +375,7 @@ export function VoiceLibraryModal({
               {/* Form Fields */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>
                     Voice Name *
                   </label>
                   <input
@@ -390,14 +390,14 @@ export function VoiceLibraryModal({
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '8px',
                       padding: '0.65rem 0.85rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.9rem',
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>
                     Gender
                   </label>
                   <select
@@ -409,7 +409,7 @@ export function VoiceLibraryModal({
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '8px',
                       padding: '0.65rem 0.85rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.9rem',
                     }}
                   >
@@ -422,7 +422,7 @@ export function VoiceLibraryModal({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>
                     Accent / Dialect
                   </label>
                   <input
@@ -436,14 +436,14 @@ export function VoiceLibraryModal({
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '8px',
                       padding: '0.65rem 0.85rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.9rem',
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.35rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>
                     Tone & Persona
                   </label>
                   <input
@@ -457,7 +457,7 @@ export function VoiceLibraryModal({
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '8px',
                       padding: '0.65rem 0.85rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.9rem',
                     }}
                   />
@@ -465,7 +465,7 @@ export function VoiceLibraryModal({
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>
                   Description / Use Case
                 </label>
                 <textarea
@@ -479,7 +479,7 @@ export function VoiceLibraryModal({
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     borderRadius: '8px',
                     padding: '0.65rem 0.85rem',
-                    color: '#f8fafc',
+                    color: 'var(--studio-text)',
                     fontSize: '0.9rem',
                   }}
                 />
@@ -492,7 +492,7 @@ export function VoiceLibraryModal({
                   style={{
                     background: 'transparent',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#94a3b8',
+                    color: 'var(--studio-secondary)',
                     padding: '0.65rem 1.25rem',
                     borderRadius: '8px',
                     cursor: 'pointer',
@@ -505,8 +505,8 @@ export function VoiceLibraryModal({
                   type="submit"
                   disabled={isCloning}
                   style={{
-                    background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-                    color: '#ffffff',
+                    background: 'var(--studio-accent-strong)',
+                    color: 'var(--studio-text)',
                     border: 'none',
                     padding: '0.65rem 1.75rem',
                     borderRadius: '8px',
@@ -543,7 +543,7 @@ export function VoiceLibraryModal({
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     borderRadius: '8px',
                     padding: '0.6rem 0.9rem',
-                    color: '#f8fafc',
+                    color: 'var(--studio-text)',
                     fontSize: '0.85rem',
                   }}
                 />
@@ -557,7 +557,7 @@ export function VoiceLibraryModal({
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '8px',
                       padding: '0.6rem 0.85rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.85rem',
                     }}
                   >
@@ -576,7 +576,7 @@ export function VoiceLibraryModal({
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '8px',
                       padding: '0.6rem 0.85rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.85rem',
                     }}
                   >
@@ -590,11 +590,11 @@ export function VoiceLibraryModal({
 
               {/* Voice Cards Grid */}
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--studio-secondary)' }}>
                   Loading voice library...
                 </div>
               ) : filteredVoices.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--studio-secondary)' }}>
                   No voices match your filters.
                 </div>
               ) : (
@@ -605,20 +605,20 @@ export function VoiceLibraryModal({
 
                     const providerColor =
                       voice.provider === 'cartesia'
-                        ? '#38bdf8'
+                        ? 'var(--studio-accent)'
                         : voice.provider === 'elevenlabs'
-                        ? '#a855f7'
+                        ? 'var(--studio-accent)'
                         : voice.provider === 'custom_clone'
-                        ? '#34d399'
-                        : '#fbbf24';
+                        ? 'var(--studio-success)'
+                        : 'var(--studio-warning)';
 
                     return (
                       <div
                         key={voice.id}
                         style={{
-                          background: isSelected ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                          background: isSelected ? 'rgba(var(--studio-accent-rgb), 0.08)' : 'rgba(255, 255, 255, 0.03)',
                           border: isSelected
-                            ? '1.5px solid #38bdf8'
+                            ? '1.5px solid var(--studio-accent)'
                             : '1px solid rgba(255, 255, 255, 0.08)',
                           borderRadius: '12px',
                           padding: '1.15rem',
@@ -632,7 +632,7 @@ export function VoiceLibraryModal({
                         <div>
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem' }}>
                             <div>
-                              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
+                              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--studio-text)' }}>
                                 {voice.name}
                               </h4>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
@@ -650,7 +650,7 @@ export function VoiceLibraryModal({
                                 >
                                   {voice.provider === 'custom_clone' ? 'CUSTOM CLONE' : voice.provider}
                                 </span>
-                                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)' }}>
                                   {voice.gender} • {voice.accent}
                                 </span>
                               </div>
@@ -661,9 +661,9 @@ export function VoiceLibraryModal({
                                 style={{
                                   fontSize: '0.7rem',
                                   fontWeight: 700,
-                                  background: 'rgba(56, 189, 248, 0.2)',
-                                  color: '#38bdf8',
-                                  border: '1px solid #38bdf8',
+                                  background: 'rgba(var(--studio-accent-rgb), 0.2)',
+                                  color: 'var(--studio-accent)',
+                                  border: '1px solid var(--studio-accent)',
                                   padding: '0.2rem 0.5rem',
                                   borderRadius: '999px',
                                 }}
@@ -673,7 +673,7 @@ export function VoiceLibraryModal({
                             )}
                           </div>
 
-                          <p style={{ margin: '0.5rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                          <p style={{ margin: '0.5rem 0', fontSize: '0.8rem', color: 'var(--studio-secondary)', lineHeight: 1.4 }}>
                             {voice.description}
                           </p>
 
@@ -683,9 +683,9 @@ export function VoiceLibraryModal({
                               borderRadius: '6px',
                               padding: '0.5rem 0.75rem',
                               fontSize: '0.75rem',
-                              color: '#cbd5e1',
+                              color: 'var(--studio-secondary)',
                               fontStyle: 'italic',
-                              borderLeft: '2px solid rgba(56, 189, 248, 0.4)',
+                              borderLeft: '2px solid rgba(var(--studio-accent-rgb), 0.4)',
                             }}
                           >
                             "{voice.sample_text}"
@@ -698,9 +698,9 @@ export function VoiceLibraryModal({
                             type="button"
                             onClick={() => handlePlayPreview(voice.id)}
                             style={{
-                              background: isPlaying ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-                              color: isPlaying ? '#38bdf8' : '#e2e8f0',
-                              border: isPlaying ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
+                              background: isPlaying ? 'rgba(var(--studio-accent-rgb), 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                              color: isPlaying ? 'var(--studio-accent)' : 'var(--studio-text)',
+                              border: isPlaying ? '1px solid var(--studio-accent)' : '1px solid rgba(255, 255, 255, 0.12)',
                               padding: '0.45rem 0.9rem',
                               borderRadius: '6px',
                               fontSize: '0.8rem',
@@ -723,8 +723,8 @@ export function VoiceLibraryModal({
                             style={{
                               background: isSelected
                                 ? 'rgba(255, 255, 255, 0.06)'
-                                : 'linear-gradient(135deg, #0284c7, #0369a1)',
-                              color: '#ffffff',
+                                : 'var(--studio-accent-strong)',
+                              color: 'var(--studio-text)',
                               border: 'none',
                               padding: '0.45rem 1rem',
                               borderRadius: '6px',

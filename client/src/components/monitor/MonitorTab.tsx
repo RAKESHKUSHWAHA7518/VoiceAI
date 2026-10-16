@@ -128,6 +128,10 @@ export function MonitorTab({
 
   // Live waveform animation
   useEffect(() => {
+    const theme = getComputedStyle(document.documentElement);
+    const userColor = theme.getPropertyValue('--studio-accent').trim();
+    const agentColor = theme.getPropertyValue('--studio-chart').trim();
+    let frame = 0;
     const animate = () => {
       const canvasUser = canvasUserRef.current;
       const canvasAgent = canvasAgentRef.current;
@@ -154,12 +158,13 @@ export function MonitorTab({
         ctx.stroke();
       };
 
-      drawWaveform(canvasUser, audioLevelUser, '#60a5fa');
-      drawWaveform(canvasAgent, audioLevelAgent, '#4ade80');
-      requestAnimationFrame(animate);
+      drawWaveform(canvasUser, audioLevelUser, userColor);
+      drawWaveform(canvasAgent, audioLevelAgent, agentColor);
+      frame = requestAnimationFrame(animate);
     };
 
     animate();
+    return () => cancelAnimationFrame(frame);
   }, [audioLevelUser, audioLevelAgent]);
 
   const getMetricClass = (value: number | undefined, warningThreshold: number, dangerThreshold: number) => {
@@ -250,14 +255,14 @@ export function MonitorTab({
       </div>
 
       {/* PHASE 5: REAL-TIME SUB-500MS LATENCY WATERFALL PROFILER CARD */}
-      <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-surface, #1e293b)' }}>
+      <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
               <span style={{
-                background: totalMs <= 550 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                color: totalMs <= 550 ? '#34d399' : '#f87171',
-                border: `1px solid ${totalMs <= 550 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                background: totalMs <= 550 ? 'rgba(var(--studio-success-rgb), 0.2)' : 'rgba(var(--studio-danger-rgb), 0.2)',
+                color: totalMs <= 550 ? 'var(--studio-success)' : 'var(--studio-danger)',
+                border: `1px solid ${totalMs <= 550 ? 'rgba(var(--studio-success-rgb), 0.4)' : 'rgba(var(--studio-danger-rgb), 0.4)'}`,
                 borderRadius: '20px',
                 padding: '3px 10px',
                 fontSize: '0.78rem',
@@ -269,7 +274,7 @@ export function MonitorTab({
                 Sub-500ms Turn Latency Waterfall Profiler
               </h2>
             </div>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.88rem' }}>
+            <p style={{ margin: 0, color: 'var(--studio-secondary)', fontSize: '0.88rem' }}>
               Every dialogue turn profiled across sub-steps: VAD End-of-Speech → Streaming ASR → LLM First Token (TTFT) → TTS Chunk → Audio Buffer Playout. Target: <strong>p95 ≤ 600ms</strong>.
             </p>
           </div>
@@ -288,36 +293,36 @@ export function MonitorTab({
 
         {/* 4 Waterfall Summary Badges */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginBottom: '0.2rem' }}>P50 Turn Latency</div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#34d399' }}>
+          <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.76rem', color: 'var(--studio-secondary)', marginBottom: '0.2rem' }}>P50 Turn Latency</div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--studio-success)' }}>
               {waterfallReport?.p50_e2e_ms || 485}ms
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Target: ≤ 500ms</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--studio-secondary)' }}>Target: ≤ 500ms</div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginBottom: '0.2rem' }}>P95 Turn Latency</div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#38bdf8' }}>
+          <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.76rem', color: 'var(--studio-secondary)', marginBottom: '0.2rem' }}>P95 Turn Latency</div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--studio-accent)' }}>
               {waterfallReport?.p95_e2e_ms || 528}ms
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Target: ≤ 600ms</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--studio-secondary)' }}>Target: ≤ 600ms</div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginBottom: '0.2rem' }}>Budget Compliance</div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#a855f7' }}>
+          <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.76rem', color: 'var(--studio-secondary)', marginBottom: '0.2rem' }}>Budget Compliance</div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--studio-chart)' }}>
               {waterfallReport?.budget_compliance_rate || 96}%
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Turns ≤ 550ms</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--studio-secondary)' }}>Turns ≤ 550ms</div>
           </div>
 
-          <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginBottom: '0.2rem' }}>Main Bottleneck</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase' }}>
+          <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.76rem', color: 'var(--studio-secondary)', marginBottom: '0.2rem' }}>Main Bottleneck</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--studio-warning)', textTransform: 'uppercase' }}>
               {activeTurn?.bottleneck_stage || 'LLM TTFT'}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Highest share of turn</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--studio-secondary)' }}>Highest share of turn</div>
           </div>
         </div>
 
@@ -326,20 +331,20 @@ export function MonitorTab({
           <div style={{
             padding: '1.25rem',
             borderRadius: '10px',
-            background: 'rgba(15, 23, 42, 0.8)',
+            background: 'rgba(var(--studio-inset-rgb), 0.8)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             marginBottom: '1.5rem',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
               <div>
-                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--studio-text)' }}>
                   Turn Telemetry Trace: {activeTurn.turn_id}
                 </span>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: '0.5rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--studio-secondary)', marginLeft: '0.5rem' }}>
                   "{activeTurn.user_query}"
                 </span>
               </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: activeTurn.total_e2e_ms <= 550 ? '#34d399' : '#f87171' }}>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: activeTurn.total_e2e_ms <= 550 ? 'var(--studio-success)' : 'var(--studio-danger)' }}>
                 Total: {activeTurn.total_e2e_ms}ms
               </div>
             </div>
@@ -350,13 +355,13 @@ export function MonitorTab({
               <div
                 style={{
                   width: `${vadPct}%`,
-                  background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
+                  background: 'linear-gradient(90deg, var(--studio-accent-strong), var(--studio-accent))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  color: '#fff',
+                  color: 'var(--studio-text)',
                   borderRight: '1px solid rgba(0,0,0,0.3)',
                 }}
                 title={`VAD EOS Detection: ${activeTurn.stages.vad_eos_ms}ms`}
@@ -368,13 +373,13 @@ export function MonitorTab({
               <div
                 style={{
                   width: `${asrPct}%`,
-                  background: 'linear-gradient(90deg, #4f46e5, #6366f1)',
+                  background: 'linear-gradient(90deg, var(--studio-chart-strong), var(--studio-chart))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  color: '#fff',
+                  color: 'var(--studio-text)',
                   borderRight: '1px solid rgba(0,0,0,0.3)',
                 }}
                 title={`Streaming ASR Finalization: ${activeTurn.stages.asr_ms}ms`}
@@ -386,13 +391,13 @@ export function MonitorTab({
               <div
                 style={{
                   width: `${llmPct}%`,
-                  background: 'linear-gradient(90deg, #7c3aed, #a855f7)',
+                  background: 'linear-gradient(90deg, var(--studio-chart-strong), var(--studio-chart))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  color: '#fff',
+                  color: 'var(--studio-text)',
                   borderRight: '1px solid rgba(0,0,0,0.3)',
                 }}
                 title={`LLM Time-to-First-Token: ${activeTurn.stages.llm_ttft_ms}ms`}
@@ -404,13 +409,13 @@ export function MonitorTab({
               <div
                 style={{
                   width: `${ttsPct}%`,
-                  background: 'linear-gradient(90deg, #059669, #10b981)',
+                  background: 'linear-gradient(90deg, var(--studio-success-strong), var(--studio-success))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  color: '#fff',
+                  color: 'var(--studio-text)',
                   borderRight: '1px solid rgba(0,0,0,0.3)',
                 }}
                 title={`TTS First Audio Chunk: ${activeTurn.stages.tts_first_chunk_ms}ms`}
@@ -422,13 +427,13 @@ export function MonitorTab({
               <div
                 style={{
                   width: `${netPct}%`,
-                  background: 'linear-gradient(90deg, #d97706, #f59e0b)',
+                  background: 'linear-gradient(90deg, var(--studio-warning-strong), var(--studio-warning))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.75rem',
                   fontWeight: 700,
-                  color: '#fff',
+                  color: 'var(--studio-text)',
                 }}
                 title={`Network Transport & Audio Playout: ${activeTurn.stages.network_playout_ms}ms`}
               >
@@ -439,33 +444,33 @@ export function MonitorTab({
             {/* Stage Legend */}
             <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', marginTop: '0.85rem', fontSize: '0.78rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: '#38bdf8' }} />
-                <span style={{ color: '#94a3b8' }}>VAD EOS (Silero ONNX):</span>
-                <strong style={{ color: '#fff' }}>{activeTurn.stages.vad_eos_ms}ms</strong>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--studio-accent)' }} />
+                <span style={{ color: 'var(--studio-secondary)' }}>VAD EOS (Silero ONNX):</span>
+                <strong style={{ color: 'var(--studio-text)' }}>{activeTurn.stages.vad_eos_ms}ms</strong>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: '#6366f1' }} />
-                <span style={{ color: '#94a3b8' }}>ASR (Deepgram WS):</span>
-                <strong style={{ color: '#fff' }}>{activeTurn.stages.asr_ms}ms</strong>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--studio-chart)' }} />
+                <span style={{ color: 'var(--studio-secondary)' }}>ASR (Deepgram WS):</span>
+                <strong style={{ color: 'var(--studio-text)' }}>{activeTurn.stages.asr_ms}ms</strong>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: '#a855f7' }} />
-                <span style={{ color: '#94a3b8' }}>LLM TTFT (GPT-4o-mini):</span>
-                <strong style={{ color: '#fff' }}>{activeTurn.stages.llm_ttft_ms}ms</strong>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--studio-chart)' }} />
+                <span style={{ color: 'var(--studio-secondary)' }}>LLM TTFT (GPT-4o-mini):</span>
+                <strong style={{ color: 'var(--studio-text)' }}>{activeTurn.stages.llm_ttft_ms}ms</strong>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: '#10b981' }} />
-                <span style={{ color: '#94a3b8' }}>TTS Chunk (Cartesia WS):</span>
-                <strong style={{ color: '#fff' }}>{activeTurn.stages.tts_first_chunk_ms}ms</strong>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--studio-success)' }} />
+                <span style={{ color: 'var(--studio-secondary)' }}>TTS Chunk (Cartesia WS):</span>
+                <strong style={{ color: 'var(--studio-text)' }}>{activeTurn.stages.tts_first_chunk_ms}ms</strong>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b' }} />
-                <span style={{ color: '#94a3b8' }}>Network & Playout:</span>
-                <strong style={{ color: '#fff' }}>{activeTurn.stages.network_playout_ms}ms</strong>
+                <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--studio-warning)' }} />
+                <span style={{ color: 'var(--studio-secondary)' }}>Network & Playout:</span>
+                <strong style={{ color: 'var(--studio-text)' }}>{activeTurn.stages.network_playout_ms}ms</strong>
               </div>
             </div>
           </div>
@@ -474,7 +479,7 @@ export function MonitorTab({
         {/* Recent Waterfall Turns Log */}
         {waterfallReport?.recent_turns && (
           <div>
-            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#f8fafc', marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--studio-text)', marginBottom: '0.75rem' }}>
               Historical Turn Breakdown Log (Click to inspect waterfall)
             </div>
 
@@ -488,8 +493,8 @@ export function MonitorTab({
                     style={{
                       padding: '0.65rem 0.85rem',
                       borderRadius: '6px',
-                      background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(15, 23, 42, 0.5)',
-                      border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.05)',
+                      background: isSelected ? 'rgba(var(--studio-accent-rgb), 0.12)' : 'rgba(var(--studio-inset-rgb), 0.5)',
+                      border: isSelected ? '1px solid var(--studio-accent)' : '1px solid rgba(255, 255, 255, 0.05)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
@@ -498,19 +503,19 @@ export function MonitorTab({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <span style={{ fontFamily: 'monospace', color: '#60a5fa' }}>{span.turn_id}</span>
-                      <span style={{ color: '#e2e8f0', maxWidth: '340px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--studio-accent)' }}>{span.turn_id}</span>
+                      <span style={{ color: 'var(--studio-text)', maxWidth: '340px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         "{span.user_query}"
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <span style={{ color: '#94a3b8' }}>
+                      <span style={{ color: 'var(--studio-secondary)' }}>
                         VAD {span.stages.vad_eos_ms}ms • ASR {span.stages.asr_ms}ms • LLM {span.stages.llm_ttft_ms}ms • TTS {span.stages.tts_first_chunk_ms}ms
                       </span>
                       <span style={{
                         fontWeight: 700,
-                        color: span.total_e2e_ms <= 550 ? '#34d399' : '#f87171',
+                        color: span.total_e2e_ms <= 550 ? 'var(--studio-success)' : 'var(--studio-danger)',
                       }}>
                         {span.total_e2e_ms}ms
                       </span>
@@ -528,7 +533,7 @@ export function MonitorTab({
         <h2>Live Transcript</h2>
         <div className="transcript-list" id="transcriptList">
           {transcripts.length === 0 ? (
-            <div className="transcript-item" style={{ color: '#64748b', textAlign: 'center', padding: '2rem' }}>
+            <div className="transcript-item" style={{ color: 'var(--studio-muted)', textAlign: 'center', padding: '2rem' }}>
               No transcript yet. Start speaking...
             </div>
           ) : (

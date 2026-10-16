@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { AgentRoster } from './AgentRoster';
+import React, { useState, useEffect, useRef } from 'react';
+import { StudioIcon } from '../common/StudioIcon';
 import type { Agent, ToolItem } from '../../types';
 import { VoiceLibraryModal } from '../voice/VoiceLibraryModal';
 const PRESET_AVATARS = ['🤖', '👩‍💼', '👨‍⚕️', '🛎️', '🎙️', '⚡', '💼', '🎧'];
 
 interface AgentsTabProps {
   agents: Agent[];
+  loading?: boolean;
+  error?: string;
+  onRetry?: () => void;
   activeAgent: Agent | null;
   onSelectAgent: (agent: Agent) => void;
   onSaveAgent: (agent: Partial<Agent>) => Promise<void>;
@@ -41,6 +46,9 @@ export const AVAILABLE_LANGUAGES = [
 
 export function AgentsTab({
   agents,
+  loading = false,
+  error,
+  onRetry,
   activeAgent,
   onSelectAgent,
   onSaveAgent,
@@ -95,8 +103,11 @@ export function AgentsTab({
   const [formDefaultLang, setFormDefaultLang] = useState<string>('en');
   const [formAutoSwitch, setFormAutoSwitch] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState('');
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const openCreateModal = () => {
+    setSaveError('');
     setEditingAgent(null);
     setFormId('');
     setFormName('');
@@ -116,6 +127,7 @@ export function AgentsTab({
   };
 
   const openEditModal = (agent: Agent) => {
+    setSaveError('');
     setEditingAgent(agent);
     setFormId(agent.id);
     setFormName(agent.name);
@@ -176,187 +188,69 @@ export function AgentsTab({
       });
       closeModal();
     } catch (err) {
-      console.error('Failed to save agent:', err);
+      setSaveError(err instanceof Error ? err.message : 'Could not save your agent. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
+  useEffect(() => {
+    if (isCreatingNew) openCreateModal();
+  }, [isCreatingNew]);
+
+  useEffect(() => {
+    if (!showModal || showVoiceLibrary) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !saving) closeModal();
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, select, textarea') || []).filter(element => element.offsetParent !== null);
+      const first = controls[0]; const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); previous?.focus(); };
+  }, [showModal, showVoiceLibrary, saving]);
+
   return (
     <div className="agents-page">
-      {/* Top Action Header */}
-      <div className="agents-header">
-        <div>
-          <h2>Voice Agents Roster</h2>
-          <p className="agents-subtitle">
-            Configure, customize, and deploy multi-persona voice agents with dedicated voices and tools.
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowVoiceLibrary(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-          >
-            🎙️ Voice Library & Cloning
-          </button>
-          <button className="btn btn-primary" onClick={openCreateModal}>
-            + Create New Agent
-          </button>
-        </div>
-      </div>
-
-      {/* Agents Grid */}
-      <div className="agents-grid">
-        {agents.map((agent) => {
-          const isActive = activeAgent?.id === agent.id;
-          return (
-            <div key={agent.id} className={`agent-card ${isActive ? 'agent-card-active' : ''}`}>
-              <div className="agent-card-top">
-                <span className="agent-card-avatar">{agent.avatar || '🤖'}</span>
-                <div className="agent-card-meta">
-                  <div className="agent-card-title-row">
-                    <h3 className="agent-card-name">{agent.name}</h3>
-                    {isActive && <span className="active-tag">Active</span>}
-                  </div>
-                  <div className="agent-card-role">{agent.role}</div>
-                </div>
-              </div>
-
-              <div className="agent-card-prompt">
-                "{agent.system_prompt}"
-              </div>
-
-              {agent.greeting && (
-                <div className="agent-card-greeting">
-                  <span className="spec-label">🗣️ Speaks First:</span>
-                  <div className="greeting-text">"{agent.greeting}"</div>
-                </div>
-              )}
-
-              <div className="agent-card-specs">
-                <div className="spec-item">
-                  <span className="spec-label">Model:</span>
-                  <span className="spec-val">{agent.llm_model}</span>
-                </div>
-                <div className="spec-item">
-                  <span className="spec-label">Temp:</span>
-                  <span className="spec-val">{agent.llm_temperature}</span>
-                </div>
-                <div className="spec-item">
-                  <span className="spec-label">Voice:</span>
-                  <span className="spec-val" title={agent.voice_id}>Sonic 3.6</span>
-                </div>
-              </div>
-
-              <div className="agent-card-tools">
-                <span className="spec-label">Enabled Tools:</span>
-                <div className="tools-tag-list">
-                  {(agent.assigned_tools && agent.assigned_tools.length > 0) ? (
-                    agent.assigned_tools.map(tool => (
-                      <span key={tool} className="tool-pill">{tool}</span>
-                    ))
-                  ) : (
-                    <span className="no-tools-text">No tools assigned</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Supported Languages */}
-              <div style={{ marginTop: '0.65rem', padding: '0.45rem 0.65rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '0.35rem' }}>
-                  <span className="spec-label" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    🌐 Languages:
-                  </span>
-                  {agent.auto_switch_language !== false && (
-                    <span style={{ fontSize: '0.65rem', background: '#059669', color: '#fff', padding: '0.08rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
-                      ⚡ Auto-Switch
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {(agent.languages_supported || ['en']).map(langCode => {
-                    const lang = AVAILABLE_LANGUAGES.find(l => l.code === langCode);
-                    return (
-                      <span key={langCode} style={{ fontSize: '0.72rem', padding: '0.12rem 0.4rem', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '4px', color: '#93c5fd' }}>
-                        {lang?.flag || '🌐'} {lang?.name.split(' ')[0] || langCode.toUpperCase()}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="agent-card-actions">
-                <button 
-                  className="btn btn-primary btn-sm" 
-                  onClick={() => onStartVoiceCall ? onStartVoiceCall(agent) : onTestAgent(agent)}
-                  style={{ background: '#2563eb', fontWeight: 600 }}
-                  title="Start live two-way conversational voice call"
-                >
-                  📞 Live Call
-                </button>
-                {!isActive ? (
-                  <button className="btn btn-outline btn-sm" onClick={() => onSelectAgent(agent)}>
-                    Select
-                  </button>
-                ) : (
-                  <button className="btn btn-success btn-sm" disabled>
-                    ✓ Selected
-                  </button>
-                )}
-                <button className="btn btn-secondary btn-sm" onClick={() => onTestAgent(agent)}>
-                  🧪 Playground
-                </button>
-                <button className="btn btn-outline btn-sm" onClick={() => openEditModal(agent)}>
-                  ✏️ Edit
-                </button>
-                {!agent.is_default && (
-                  <button 
-                    className="btn btn-danger btn-sm" 
-                    onClick={() => {
-                      if (confirm(`Delete agent "${agent.name}"?`)) onDeleteAgent(agent.id);
-                    }}
-                  >
-                    🗑️
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <AgentRoster agents={agents} activeAgent={activeAgent} voices={voicesList} loading={loading} error={error} onRetry={onRetry} onCreate={openCreateModal} onEdit={openEditModal} onSelect={onSelectAgent} onTest={onTestAgent} onCall={onStartVoiceCall} onDelete={onDeleteAgent} onVoiceLibrary={() => setShowVoiceLibrary(true)} />
 
       {/* Agent Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => { if (!saving) closeModal(); }}>
+          <div ref={dialogRef} className="modal-card" role="dialog" aria-modal="true" aria-labelledby="agent-dialog-title" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingAgent ? `Edit Agent: ${editingAgent.name}` : 'Create New Voice Agent'}</h3>
-              <button className="modal-close-btn" onClick={closeModal}>✕</button>
+              <h3 id="agent-dialog-title">{editingAgent ? `Edit agent: ${editingAgent.name}` : 'Create a voice agent'}</h3>
+              <button className="modal-close-btn" aria-label="Close agent editor" disabled={saving} onClick={closeModal}><StudioIcon name="close" /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="agent-form">
+              {saveError && <div className="studio-feedback" role="alert">{saveError}</div>}
               <div className="form-row">
                 <div className="form-group flex-1">
-                  <label className="form-label">Agent Name *</label>
+                  <label htmlFor="agent-name" className="form-label">Agent Name *</label>
                   <input
                     type="text"
                     className="form-input"
                     placeholder="e.g. Maya, Jordan, Travel Scout"
-                    value={formName}
+                    id="agent-name" value={formName}
                     onChange={e => setFormName(e.target.value)}
                     required
                   />
                 </div>
 
                 <div className="form-group flex-1">
-                  <label className="form-label">Role / Tagline</label>
+                  <label htmlFor="agent-role" className="form-label">Role / Tagline</label>
                   <input
                     type="text"
                     className="form-input"
                     placeholder="e.g. Customer Support Lead"
-                    value={formRole}
+                    id="agent-role" value={formRole}
                     onChange={e => setFormRole(e.target.value)}
                   />
                 </div>
@@ -382,14 +276,14 @@ export function AgentsTab({
               <div className="form-row">
                 <div className="form-group flex-1">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                    <label className="form-label" style={{ margin: 0 }}>Voice Model</label>
+                    <label htmlFor="agent-voice" className="form-label" style={{ margin: 0 }}>Voice Model</label>
                     <button
                       type="button"
                       onClick={() => setShowVoiceLibrary(true)}
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#38bdf8',
+                        color: 'var(--studio-accent)',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -401,22 +295,22 @@ export function AgentsTab({
                   </div>
                   <select
                     className="form-select"
-                    value={formVoiceId}
+                    id="agent-voice" value={formVoiceId}
                     onChange={e => setFormVoiceId(e.target.value)}
                   >
                     {voicesList.map(v => (
                       <option key={v.id} value={v.id}>
-                        {v.name} ({v.provider === 'custom_clone' ? 'Custom Clone' : v.provider})
+                        {v.name}{v.provider ? ` (${v.provider === 'custom_clone' ? 'Custom Clone' : v.provider})` : ''}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="form-group flex-1">
-                  <label className="form-label">LLM Model</label>
+                  <label htmlFor="agent-model" className="form-label">LLM Model</label>
                   <select
                     className="form-select"
-                    value={formModel}
+                    id="agent-model" value={formModel}
                     onChange={e => setFormModel(e.target.value)}
                   >
                     <option value="gpt-4o-mini">GPT-4o Mini (Fast & Low Latency)</option>
@@ -426,14 +320,14 @@ export function AgentsTab({
                 </div>
 
                 <div className="form-group" style={{ width: '130px' }}>
-                  <label className="form-label">Temperature: {formTemp}</label>
+                  <label htmlFor="agent-temperature" className="form-label">Temperature: {formTemp}</label>
                   <input
                     type="range"
                     min="0"
                     max="1"
                     step="0.1"
                     className="form-input"
-                    value={formTemp}
+                    id="agent-temperature" value={formTemp}
                     onChange={e => setFormTemp(parseFloat(e.target.value))}
                   />
                 </div>
@@ -441,38 +335,38 @@ export function AgentsTab({
 
               {/* Initial Greeting (Agent Speaks First) */}
               <div className="form-group">
-                <label className="form-label">🗣️ Initial Greeting (Agent Speaks First)</label>
+                <label htmlFor="agent-greeting" className="form-label">🗣️ Initial Greeting (Agent Speaks First)</label>
                 <input
                   type="text"
                   className="form-input"
                   placeholder="e.g. Hello! How can I assist you today?"
-                  value={formGreeting}
+                  id="agent-greeting" value={formGreeting}
                   onChange={e => setFormGreeting(e.target.value)}
                 />
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem', display: 'block' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginTop: '0.25rem', display: 'block' }}>
                   The agent speaks this greeting aloud first when a call begins before listening to the user.
                 </span>
               </div>
 
               {/* System Prompt */}
               <div className="form-group">
-                <label className="form-label">System Prompt (Persona, Tone & Instructions)</label>
+                <label htmlFor="agent-prompt" className="form-label">System Prompt (Persona, Tone & Instructions)</label>
                 <textarea
                   className="form-textarea"
                   rows={4}
                   placeholder="You are a helpful voice assistant. Speak naturally in concise sentences..."
-                  value={formPrompt}
+                  id="agent-prompt" value={formPrompt}
                   onChange={e => setFormPrompt(e.target.value)}
                 />
               </div>
 
               {/* Multilingual & Auto-Switching Config */}
-              <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+              <div className="form-group" style={{ background: 'rgba(var(--studio-accent-rgb), 0.05)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(var(--studio-accent-rgb), 0.2)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
                     🌐 Multi-Language Auto-Detection & Bilingual Voice
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer', color: '#60a5fa' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--studio-accent)' }}>
                     <input
                       type="checkbox"
                       checked={formAutoSwitch}
@@ -481,7 +375,7 @@ export function AgentsTab({
                     Enable Mid-Call Auto-Switch
                   </label>
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.75rem' }}>
                   When enabled, the pipeline detects if a caller switches language mid-stream and seamlessly adapts system prompt persona and native TTS voice model.
                 </span>
 
@@ -499,9 +393,9 @@ export function AgentsTab({
                           borderRadius: '6px',
                           fontSize: '0.8rem',
                           cursor: 'pointer',
-                          background: isChecked ? 'rgba(37, 99, 235, 0.25)' : 'rgba(255, 255, 255, 0.04)',
-                          border: isChecked ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.1)',
-                          color: isChecked ? '#bfdbfe' : '#cbd5e1',
+                          background: isChecked ? 'rgba(var(--studio-accent-rgb), 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                          border: isChecked ? '1px solid var(--studio-accent)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          color: isChecked ? 'var(--studio-accent)' : 'var(--studio-secondary)',
                         }}
                       >
                         <input
@@ -516,7 +410,7 @@ export function AgentsTab({
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem' }}>
-                  <span style={{ color: '#94a3b8' }}>Default Spoken Language:</span>
+                  <span style={{ color: 'var(--studio-secondary)' }}>Default Spoken Language:</span>
                   <select
                     className="form-select"
                     style={{ width: 'auto', padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}
@@ -550,7 +444,7 @@ export function AgentsTab({
                           <span className="tool-select-title">
                             {t.label || toolId}
                             {t.is_custom && (
-                              <span style={{ marginLeft: '0.4rem', background: '#3b82f6', color: '#fff', fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                              <span style={{ marginLeft: '0.4rem', background: 'var(--studio-accent)', color: 'var(--studio-inset)', fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
                                 Custom
                               </span>
                             )}
@@ -565,7 +459,7 @@ export function AgentsTab({
 
               {/* Modal Buttons */}
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
+                <button type="button" className="btn btn-secondary" disabled={saving} onClick={closeModal}>
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>

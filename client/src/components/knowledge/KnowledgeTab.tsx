@@ -271,11 +271,11 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
 
   const getFileIcon = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'pdf': return <IconFilePdf size={16} color="#ef4444" />;
-      case 'md': return <IconFileText size={16} color="#38bdf8" />;
-      case 'json': return <IconFileCode size={16} color="#fbbf24" />;
-      case 'csv': return <IconFileText size={16} color="#34d399" />;
-      default: return <IconFile size={16} color="#94a3b8" />;
+      case 'pdf': return <IconFilePdf size={16} color="var(--studio-danger)" />;
+      case 'md': return <IconFileText size={16} color="var(--studio-accent)" />;
+      case 'json': return <IconFileCode size={16} color="var(--studio-warning)" />;
+      case 'csv': return <IconFileText size={16} color="var(--studio-success)" />;
+      default: return <IconFile size={16} color="var(--studio-secondary)" />;
     }
   };
 
@@ -295,20 +295,20 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
               <div style={{
-                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2))',
+                background: 'var(--studio-raised)',
                 padding: '0.5rem',
                 borderRadius: '8px',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
+                border: '1px solid rgba(var(--studio-accent-rgb), 0.3)',
                 display: 'flex',
                 alignItems: 'center'
               }}>
-                <IconBook size={24} color="#38bdf8" />
+                <IconBook size={24} color="var(--studio-accent)" />
               </div>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 className="header-title">
                 Knowledge Base & Document RAG
               </h1>
             </div>
-            <p style={{ margin: 0, color: 'var(--text-secondary, #94a3b8)', fontSize: '0.95rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary, var(--studio-secondary))', fontSize: '0.95rem' }}>
               Ingest enterprise policies, guidelines, and product manuals. Automatically ground voice agent responses in verified facts with low-latency vector retrieval.
             </p>
           </div>
@@ -344,9 +344,9 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
 
         {errorMsg && (
           <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            color: '#f87171',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            background: 'rgba(var(--studio-danger-rgb), 0.1)',
+            color: 'var(--studio-danger)',
+            border: '1px solid rgba(var(--studio-danger-rgb), 0.3)',
             padding: '0.65rem 1rem',
             borderRadius: '8px',
             marginBottom: '1rem',
@@ -364,60 +364,60 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
         }}>
           <div className="card" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Indexed Documents
               </span>
-              <IconDatabase size={18} color="#38bdf8" />
+              <IconDatabase size={18} color="var(--studio-accent)" />
             </div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: '#f8fafc' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: 'var(--studio-text)' }}>
               {documents.length}
             </div>
-            <span style={{ fontSize: '0.8rem', color: '#38bdf8', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--studio-accent)', marginTop: '0.25rem', display: 'block' }}>
               PDF, Markdown, JSON & CSV
             </span>
           </div>
 
           <div className="card" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Semantic Chunks
               </span>
-              <IconLayers size={18} color="#818cf8" />
+              <IconLayers size={18} color="var(--studio-accent)" />
             </div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: '#f8fafc' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: 'var(--studio-text)' }}>
               {totalChunks}
             </div>
-            <span style={{ fontSize: '0.8rem', color: '#818cf8', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--studio-accent)', marginTop: '0.25rem', display: 'block' }}>
               350-token semantic windows
             </span>
           </div>
 
           <div className="card" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Retrieval Latency
               </span>
-              <IconClock size={18} color="#34d399" />
+              <IconClock size={18} color="var(--studio-success)" />
             </div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: '#34d399' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: 'var(--studio-success)' }}>
               &lt; 18ms
             </div>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--studio-secondary)', marginTop: '0.25rem', display: 'block' }}>
               Strict &lt; 35ms voice budget met
             </span>
           </div>
 
           <div className="card" style={{ padding: '1.25rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Grounding Precision
               </span>
-              <IconShieldCheck size={18} color="#fbbf24" />
+              <IconShieldCheck size={18} color="var(--studio-warning)" />
             </div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: '#f8fafc' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 700, color: 'var(--studio-text)' }}>
               99.4%
             </div>
-            <span style={{ fontSize: '0.8rem', color: '#fbbf24', marginTop: '0.25rem', display: 'block' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--studio-warning)', marginTop: '0.25rem', display: 'block' }}>
               Zero hallucination guardrail
             </span>
           </div>
@@ -431,16 +431,16 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
         <div className="card" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <IconBook size={18} color="#38bdf8" />
+              <IconBook size={18} color="var(--studio-accent)" />
               <h2 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>Indexed Documents</h2>
-              <span style={{ fontSize: '0.78rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.78rem', background: 'rgba(var(--studio-accent-rgb), 0.15)', color: 'var(--studio-accent)', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 600 }}>
                 {filteredDocs.length}
               </span>
             </div>
 
             {/* Agent Filter Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Filter Agent:</label>
+              <label style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)' }}>Filter Agent:</label>
               <select
                 className="select"
                 value={selectedAgentFilter}
@@ -457,7 +457,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
 
           {/* Search bar */}
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
-            <div style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748b', display: 'flex' }}>
+            <div style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--studio-muted)', display: 'flex' }}>
               <IconSearch size={15} />
             </div>
             <input
@@ -472,15 +472,15 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
 
           {/* Table */}
           {loading ? (
-            <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--studio-secondary)' }}>
               <div className="spinner" style={{ margin: '0 auto 0.75rem' }}></div>
               Loading Knowledge Base...
             </div>
           ) : filteredDocs.length === 0 ? (
             <div style={{ padding: '2.5rem', textAlign: 'center', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '8px' }}>
-              <IconBook size={32} color="#64748b" style={{ margin: '0 auto 0.5rem', display: 'block' }} />
-              <p style={{ margin: 0, fontWeight: 600, color: '#f1f5f9' }}>No documents found</p>
-              <p style={{ margin: '0.25rem 0 1rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+              <IconBook size={32} color="var(--studio-muted)" style={{ margin: '0 auto 0.5rem', display: 'block' }} />
+              <p style={{ margin: 0, fontWeight: 600, color: 'var(--studio-text)' }}>No documents found</p>
+              <p style={{ margin: '0.25rem 0 1rem', fontSize: '0.85rem', color: 'var(--studio-secondary)' }}>
                 Upload a policy file or click "Seed Enterprise Policies" to load defaults.
               </p>
               <button className="btn btn-secondary" onClick={handleSeedDefaults} style={{ fontSize: '0.82rem' }}>
@@ -491,7 +491,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#94a3b8', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--studio-secondary)', textAlign: 'left' }}>
                     <th style={{ padding: '0.65rem 0.5rem' }}>Document</th>
                     <th style={{ padding: '0.65rem 0.5rem' }}>Target Agent</th>
                     <th style={{ padding: '0.65rem 0.5rem' }}>Chunks</th>
@@ -516,10 +516,10 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                               {getFileIcon(doc.file_type)}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#f8fafc', marginBottom: '0.15rem' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--studio-text)', marginBottom: '0.15rem' }}>
                                 {doc.title}
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--studio-muted)', fontFamily: 'monospace' }}>
                                 {doc.filename}
                               </div>
                             </div>
@@ -531,11 +531,11 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                             {agent ? (
                               <PersonaAvatar name={agent.name} role={agent.role} size={24} />
                             ) : (
-                              <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
+                              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--studio-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
                                 GL
                               </div>
                             )}
-                            <span style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)' }}>
                               {getAgentName(doc.agent_id)}
                             </span>
                           </div>
@@ -545,9 +545,9 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                           <button
                             onClick={() => handleInspectChunks(doc)}
                             style={{
-                              background: 'rgba(129, 140, 248, 0.15)',
-                              border: '1px solid rgba(129, 140, 248, 0.3)',
-                              color: '#818cf8',
+                              background: 'rgba(var(--studio-accent-rgb), 0.15)',
+                              border: '1px solid rgba(var(--studio-accent-rgb), 0.3)',
+                              color: 'var(--studio-accent)',
                               padding: '0.2rem 0.55rem',
                               borderRadius: '6px',
                               fontSize: '0.78rem',
@@ -564,7 +564,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                           </button>
                         </td>
 
-                        <td style={{ padding: '0.85rem 0.5rem', color: '#94a3b8', fontSize: '0.8rem' }}>
+                        <td style={{ padding: '0.85rem 0.5rem', color: 'var(--studio-secondary)', fontSize: '0.8rem' }}>
                           {formatBytes(doc.file_size)}
                         </td>
 
@@ -573,7 +573,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                             className="btn-icon"
                             onClick={() => handleDeleteDoc(doc.id, doc.title)}
                             title="Delete document"
-                            style={{ color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.35rem' }}
+                            style={{ color: 'var(--studio-danger)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.35rem' }}
                           >
                             <IconTrash size={15} />
                           </button>
@@ -590,18 +590,18 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
         {/* RIGHT COLUMN: Interactive Live RAG Query Simulator */}
         <div className="card" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
-            <IconSparkles size={18} color="#38bdf8" />
+            <IconSparkles size={18} color="var(--studio-accent)" />
             <h2 style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0 }}>
               Live RAG Retrieval Simulator
             </h2>
           </div>
-          <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+          <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--studio-secondary)' }}>
             Test live semantic retrieval and evaluate real-time answers grounded strictly in your indexed documents.
           </p>
 
           {/* Quick Query Pills */}
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.45rem' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--studio-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.45rem' }}>
               Sample Voice Inquiries:
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -636,7 +636,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
           {/* Test Form */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.25rem' }}>
             <div>
-              <label style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+              <label style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                 Test Query:
               </label>
               <textarea
@@ -651,7 +651,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                   Target Agent:
                 </label>
                 <select
@@ -668,7 +668,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
               </div>
 
               <div>
-                <label style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                   Top-K Chunks: {testTopK}
                 </label>
                 <input
@@ -677,7 +677,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                   max="4"
                   value={testTopK}
                   onChange={(e) => setTestTopK(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#38bdf8' }}
+                  style={{ width: '100%', accentColor: 'var(--studio-accent)' }}
                 />
               </div>
             </div>
@@ -717,17 +717,17 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'rgba(56, 189, 248, 0.08)',
-                border: '1px solid rgba(56, 189, 248, 0.2)',
+                background: 'rgba(var(--studio-accent-rgb), 0.08)',
+                border: '1px solid rgba(var(--studio-accent-rgb), 0.2)',
                 borderRadius: '8px',
                 padding: '0.65rem 0.85rem',
                 marginBottom: '1rem',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem', color: '#f8fafc' }}>
-                  <IconClock size={15} color="#38bdf8" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem', color: 'var(--studio-text)' }}>
+                  <IconClock size={15} color="var(--studio-accent)" />
                   <span>Retrieval Latency: <strong>{queryResults.latency_ms}ms</strong></span>
                 </div>
-                <div style={{ fontSize: '0.82rem', color: '#38bdf8', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.82rem', color: 'var(--studio-accent)', fontWeight: 600 }}>
                   {queryResults.results.length} Chunks Matched
                 </div>
               </div>
@@ -735,8 +735,8 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
               {/* Grounded Conversational Spoken Answer */}
               {queryResults.grounded_answer && (
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(56, 189, 248, 0.06))',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  background: 'var(--studio-raised)',
+                  border: '1px solid rgba(var(--studio-accent-rgb), 0.3)',
                   borderRadius: '10px',
                   padding: '1rem',
                   marginBottom: '1rem',
@@ -744,7 +744,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                       <PersonaAvatar name={getAgentName(testAgentId)} size={22} />
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#f8fafc' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--studio-text)' }}>
                         Grounded Spoken Voice Answer
                       </span>
                     </div>
@@ -760,19 +760,19 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                         gap: '0.35rem',
                       }}
                     >
-                      <IconPlay size={12} color="#38bdf8" />
+                      <IconPlay size={12} color="var(--studio-accent)" />
                       <span>Speak Aloud</span>
                     </button>
                   </div>
 
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#e2e8f0', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--studio-text)', lineHeight: 1.5 }}>
                     "{queryResults.grounded_answer}"
                   </p>
                 </div>
               )}
 
               {/* Matched Excerpts */}
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--studio-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                 Retrieved Vector Chunks:
               </div>
 
@@ -788,14 +788,14 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#38bdf8' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.84rem', color: 'var(--studio-accent)' }}>
                         {res.title}
                       </div>
                       <span style={{
                         fontSize: '0.74rem',
                         fontWeight: 700,
-                        background: res.score >= 0.5 ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                        color: res.score >= 0.5 ? '#34d399' : '#fbbf24',
+                        background: res.score >= 0.5 ? 'rgba(var(--studio-success-rgb), 0.2)' : 'rgba(var(--studio-warning-rgb), 0.2)',
+                        color: res.score >= 0.5 ? 'var(--studio-success)' : 'var(--studio-warning)',
                         padding: '0.15rem 0.45rem',
                         borderRadius: '4px',
                       }}>
@@ -806,7 +806,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                     <p style={{
                       margin: 0,
                       fontSize: '0.82rem',
-                      color: '#cbd5e1',
+                      color: 'var(--studio-secondary)',
                       lineHeight: 1.45,
                       fontFamily: 'monospace',
                       background: 'rgba(255, 255, 255, 0.02)',
@@ -829,7 +829,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <IconUploadCloud size={20} color="#38bdf8" />
+                <IconUploadCloud size={20} color="var(--studio-accent)" />
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Upload Knowledge Document</h3>
               </div>
               <button className="btn-icon" onClick={() => setIsUploadModalOpen(false)}>
@@ -839,7 +839,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
 
             <form onSubmit={handleFileUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={{ fontSize: '0.84rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.84rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                   Target Voice Agent:
                 </label>
                 <select
@@ -856,7 +856,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
               </div>
 
               <div>
-                <label style={{ fontSize: '0.84rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.84rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                   Document Title (Optional):
                 </label>
                 <input
@@ -870,15 +870,15 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
               </div>
 
               <div>
-                <label style={{ fontSize: '0.84rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.84rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                   Select File (.pdf, .md, .txt, .json, .csv):
                 </label>
                 <div style={{
-                  border: '2px dashed rgba(56, 189, 248, 0.4)',
+                  border: '2px dashed rgba(var(--studio-accent-rgb), 0.4)',
                   borderRadius: '8px',
                   padding: '1.5rem',
                   textAlign: 'center',
-                  background: 'rgba(56, 189, 248, 0.03)',
+                  background: 'rgba(var(--studio-accent-rgb), 0.03)',
                   cursor: 'pointer',
                 }}>
                   <input
@@ -889,11 +889,11 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                     id="docFileInput"
                   />
                   <label htmlFor="docFileInput" style={{ cursor: 'pointer', display: 'block' }}>
-                    <IconUploadCloud size={28} color="#38bdf8" style={{ margin: '0 auto 0.5rem', display: 'block' }} />
-                    <span style={{ fontSize: '0.9rem', color: '#f8fafc', fontWeight: 600 }}>
+                    <IconUploadCloud size={28} color="var(--studio-accent)" style={{ margin: '0 auto 0.5rem', display: 'block' }} />
+                    <span style={{ fontSize: '0.9rem', color: 'var(--studio-text)', fontWeight: 600 }}>
                       {uploadFile ? uploadFile.name : 'Click to select or drag and drop file'}
                     </span>
-                    <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginTop: '0.25rem' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--studio-muted)', display: 'block', marginTop: '0.25rem' }}>
                       PDF, Markdown, TXT, JSON, CSV (Max 25MB)
                     </span>
                   </label>
@@ -928,7 +928,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <IconFileText size={20} color="#38bdf8" />
+                <IconFileText size={20} color="var(--studio-accent)" />
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>Add Text Document / FAQ</h3>
               </div>
               <button className="btn-icon" onClick={() => setIsTextModalOpen(false)}>
@@ -939,7 +939,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
             <form onSubmit={handleTextIngestion} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '0.75rem' }}>
                 <div>
-                  <label style={{ fontSize: '0.84rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.84rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                     Document Title:
                   </label>
                   <input
@@ -954,7 +954,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.84rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.84rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                     Assigned Agent:
                   </label>
                   <select
@@ -972,7 +972,7 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
               </div>
 
               <div>
-                <label style={{ fontSize: '0.84rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+                <label style={{ fontSize: '0.84rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                   Policy Content / FAQs (Markdown or Plain Text):
                 </label>
                 <textarea
@@ -1014,10 +1014,10 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.75rem' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <IconLayers size={18} color="#818cf8" />
+                  <IconLayers size={18} color="var(--studio-accent)" />
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Semantic Chunk Inspector</h3>
                 </div>
-                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)' }}>
                   {inspectChunksDoc.title} ({inspectChunks.length} chunks)
                 </span>
               </div>
@@ -1027,12 +1027,12 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
             </div>
 
             {inspectLoading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--studio-secondary)' }}>
                 <div className="spinner" style={{ margin: '0 auto 0.5rem' }}></div>
                 Loading chunk splits...
               </div>
             ) : inspectChunks.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center' }}>No chunks recorded for this document.</p>
+              <p style={{ color: 'var(--studio-secondary)', textAlign: 'center' }}>No chunks recorded for this document.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {inspectChunks.map((chk, i) => (
@@ -1046,14 +1046,14 @@ export function KnowledgeTab({ agents, activeAgent, playVoice }: KnowledgeTabPro
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#818cf8', background: 'rgba(129, 140, 248, 0.15)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--studio-accent)', background: 'rgba(var(--studio-accent-rgb), 0.15)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
                         Chunk #{i + 1}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--studio-muted)' }}>
                         {chk.metadata?.token_count || 0} tokens
                       </span>
                     </div>
-                    <pre style={{ margin: 0, fontSize: '0.82rem', color: '#e2e8f0', whiteSpace: 'pre-wrap', fontFamily: 'monospace', lineHeight: 1.5 }}>
+                    <pre style={{ margin: 0, fontSize: '0.82rem', color: 'var(--studio-text)', whiteSpace: 'pre-wrap', fontFamily: 'monospace', lineHeight: 1.5 }}>
                       {chk.text}
                     </pre>
                   </div>

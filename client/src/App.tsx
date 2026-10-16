@@ -24,8 +24,11 @@ import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useDashboardState } from './hooks/useDashboardState';
 import type { TabName, Agent } from './types';
 import './index.css';
+import './studio.css';
 
 function App() {
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const closeNavigation = useCallback(() => setNavigationOpen(false), []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const activeTab = PAGE_NAMES.find(page => matchPath({ path: PAGE_ROUTES[page].path, end: true }, pathname)) ?? null;
@@ -35,8 +38,11 @@ function App() {
   }, [navigate, pathname]);
   useEffect(() => {
     document.title = `${activeTab ? PAGE_ROUTES[activeTab].title : 'Page not found'} | VoiceAI`;
+    setNavigationOpen(false);
   }, [activeTab]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(true);
+  const [agentsError, setAgentsError] = useState('');
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null);
   const [isCreatingNewAgent, setIsCreatingNewAgent] = useState<boolean>(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState<boolean>(false);
@@ -221,6 +227,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(agentData),
       });
+      if (!res.ok) throw new Error('Could not save your agent. Please try again.');
       const data = await res.json();
       if (data.agents) {
         setAgents(data.agents);
@@ -230,12 +237,14 @@ function App() {
       }
     } catch (err) {
       console.error('Failed to save agent:', err);
+      throw err;
     }
   }, [handleSelectAgent]);
 
   const handleDeleteAgent = useCallback(async (agentId: string) => {
     try {
       const res = await fetch(`/api/agents/${agentId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Could not delete your agent. Please try again.');
       const data = await res.json();
       if (data.agents) {
         setAgents(data.agents);
@@ -245,6 +254,7 @@ function App() {
       }
     } catch (err) {
       console.error('Failed to delete agent:', err);
+      throw err;
     }
   }, [activeAgent, handleSelectAgent]);
 
@@ -262,25 +272,28 @@ function App() {
     }
   }, [activeAgent, handleSelectAgent]);
 
+  const loadAgents = useCallback(async () => {
+    setAgentsLoading(true);
+    setAgentsError('');
+    try {
+      const response = await fetch('/api/agents');
+      if (!response.ok) throw new Error('Unable to load agents');
+      const data = await response.json();
+      if (!Array.isArray(data.agents)) throw new Error('Invalid agent response');
+      setAgents(data.agents);
+      if (data.agents.length) handleSelectAgent(data.agents[0]);
+      else setActiveAgent(null);
+    } catch {
+      setAgentsError('We couldn’t load your agents. Check your connection and try again.');
+    } finally {
+      setAgentsLoading(false);
+    }
+  }, [handleSelectAgent]);
+
+  useEffect(() => { void loadAgents(); }, [loadAgents]);
+
   // Fetch initial data
   useEffect(() => {
-    // Load agents
-    fetch('/api/agents')
-      .then(r => r.json())
-      .then(data => {
-        if (data.agents && data.agents.length > 0) {
-          setAgents(data.agents);
-          setActiveAgent(data.agents[0]);
-          setPlaygroundConfig(prev => ({
-            ...prev,
-            voice_id: data.agents[0].voice_id,
-            system_prompt: data.agents[0].system_prompt,
-            llm_model: data.agents[0].llm_model,
-            llm_temperature: data.agents[0].llm_temperature,
-          }));
-        }
-      })
-      .catch(console.error);
 
     fetch('/api/playground/config')
       .then(r => r.json())
@@ -409,6 +422,9 @@ function App() {
       case 'agents':
         return (
           <AgentsTab
+            loading={agentsLoading}
+            error={agentsError}
+            onRetry={loadAgents}
             agents={agents}
             activeAgent={activeAgent}
             onSelectAgent={handleSelectAgent}
@@ -504,6 +520,9 @@ function App() {
         return null;
     }
   }, [
+    agentsLoading,
+    agentsError,
+    loadAgents,
     agents,
     activeAgent,
     handleSelectAgent,
@@ -532,7 +551,10 @@ function App() {
 
   return (
     <div className="app-layout">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <Sidebar
+        open={navigationOpen}
+        onClose={closeNavigation}
         agents={agents}
         activeAgent={activeAgent}
         onSelectAgent={handleSelectAgent}
@@ -545,13 +567,15 @@ function App() {
       />
       <div className="main-wrapper">
         <TopBar
+          navigationOpen={navigationOpen}
+          onToggleNavigation={() => setNavigationOpen(open => !open)}
           activeTab={activeTab}
           activeAgent={activeAgent}
           onOpenAgentsTab={() => navigateToPage('agents')}
           onStartVoiceCall={() => handleStartVoiceCall(activeAgent)}
           connected={connected}
         />
-        <main className="content-container">
+        <main id="main-content" tabIndex={-1} className="content-container" data-page={activeTab || 'not-found'}>
           <Routes>
             <Route path="/" element={<Navigate to={PAGE_ROUTES.agents.path} replace />} />
             {PAGE_NAMES.map(page => (

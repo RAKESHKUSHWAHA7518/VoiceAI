@@ -1,25 +1,9 @@
-// ============================================================================
-// Modern Sidebar Navigation Component
-// Enterprise logo & SVG navigation icons (no emojis)
-// ============================================================================
-
-import React from 'react';
+import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PAGE_ROUTES } from '../../routes';
 import type { TabName, Agent, DashboardState } from '../../types';
-import {
-  LogoVoiceAI,
-  IconBot,
-  IconFlask,
-  IconBook,
-  IconPhone,
-  IconHistory,
-  IconActivity,
-  IconInspector,
-  IconHeadphones,
-  IconTarget,
-  PersonaAvatar,
-} from '../common/Icons';
+import { IconBot, IconFlask, IconBook, IconPhone, IconHistory, IconActivity, IconInspector, IconHeadphones, IconTarget, PersonaAvatar } from '../common/Icons';
+import { StudioIcon } from '../common/StudioIcon';
 
 interface SidebarProps {
   agents: Agent[];
@@ -28,107 +12,73 @@ interface SidebarProps {
   onCreateAgent: () => void;
   connected: boolean;
   dashboardState: DashboardState;
+  open: boolean;
+  onClose: () => void;
 }
 
-export function Sidebar({
-  agents,
-  activeAgent,
-  onSelectAgent,
-  onCreateAgent,
-  connected,
-  dashboardState,
-}: SidebarProps) {
-  const navItems: { id: TabName; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'agents', label: 'Agents Studio', icon: <IconBot size={18} />, badge: `${agents.length}` },
-    { id: 'campaigns', label: 'Outbound Campaigns', icon: <IconPhone size={18} />, badge: 'NEW' },
-    { id: 'knowledge', label: 'Knowledge & RAG', icon: <IconBook size={18} /> },
-    { id: 'evals', label: 'Evals & Test Suite', icon: <IconTarget size={18} /> },
-    { id: 'hitl', label: 'HITL Supervision', icon: <IconHeadphones size={18} />, badge: 'LIVE' },
-    { id: 'playground', label: 'Playground', icon: <IconFlask size={18} /> },
-    { id: 'telephony', label: 'Telephony & Lines', icon: <IconPhone size={18} /> },
-    { id: 'analytics', label: 'Call History & QA', icon: <IconHistory size={18} /> },
-    { id: 'monitor', label: 'Live Monitor', icon: <IconActivity size={18} /> },
-    { id: 'inspector', label: 'Inspector & Tools', icon: <IconInspector size={18} /> },
-  ];
+const navigation = [
+  { label: 'BUILD', items: [
+    { id: 'agents', label: 'Voice agents', icon: IconBot },
+    { id: 'knowledge', label: 'Knowledge base', icon: IconBook },
+    { id: 'playground', label: 'Playground', icon: IconFlask },
+    { id: 'evals', label: 'Evaluations', icon: IconTarget },
+  ] },
+  { label: 'OPERATE', items: [
+    { id: 'campaigns', label: 'Campaigns', icon: IconTarget },
+    { id: 'telephony', label: 'Phone numbers', icon: IconPhone },
+    { id: 'hitl', label: 'Human handoff', icon: IconHeadphones },
+  ] },
+  { label: 'OBSERVE', items: [
+    { id: 'analytics', label: 'Call history', icon: IconHistory },
+    { id: 'monitor', label: 'Live monitor', icon: IconActivity },
+    { id: 'inspector', label: 'Inspector', icon: IconInspector },
+  ] },
+];
+
+export function Sidebar({ agents, activeAgent, onSelectAgent, onCreateAgent, connected, dashboardState, open, onClose }: SidebarProps) {
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    panel.current?.querySelector<HTMLButtonElement>('.sidebar-close')?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)') || []).filter(element => element.offsetParent !== null);
+      const first = controls[0]; const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKeyDown); previous?.focus(); };
+  }, [open, onClose]);
 
   return (
-    <aside className="sidebar">
-      {/* Brand Header with Vector Logo */}
-      <div className="sidebar-brand">
-        <div className="brand-icon-wrap" style={{ display: 'flex', alignItems: 'center' }}>
-          <LogoVoiceAI size={38} />
+    <>
+      {open && <button className="sidebar-scrim" aria-label="Close navigation" tabIndex={-1} onClick={onClose} />}
+      <aside ref={panel} id="studio-sidebar" className={`sidebar ${open ? 'is-open' : ''}`} aria-label="Main navigation">
+        <div className="sidebar-brand">
+          <span className="studio-brand-mark"><StudioIcon name="voice" size={22} /></span>
+          <div className="brand-info"><h2>VoiceAI<span>studio</span></h2></div>
+          <button className="studio-icon-button sidebar-close" aria-label="Close navigation" onClick={onClose}><StudioIcon name="close" /></button>
         </div>
-        <div className="brand-info">
-          <h2>VoiceAI</h2>
-          <span className="brand-subtitle">Agent Studio</span>
-        </div>
-      </div>
-
-      {/* Main Navigation */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-title">Navigation</div>
-        <nav className="sidebar-nav">
-          {navItems.map(({ id, label, icon, badge }) => (
-            <NavLink
-              key={id}
-              to={PAGE_ROUTES[id].path}
-              end
-              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
-            >
-              <span className="nav-icon" style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
-              <span className="nav-label">{label}</span>
-              {badge && <span className="nav-badge">{badge}</span>}
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-
-      {/* Agents Quick Switcher */}
-      <div className="sidebar-section sidebar-agents-section">
-        <div className="sidebar-section-header">
-          <span className="sidebar-section-title">Active Agents</span>
-          <button
-            className="sidebar-action-btn"
-            title="Create New Agent"
-            onClick={onCreateAgent}
-          >
-            + New
-          </button>
-        </div>
-
-        <div className="sidebar-agents-list">
-          {agents.map((agent) => {
-            const isSelected = activeAgent?.id === agent.id;
-            return (
-              <div
-                key={agent.id}
-                className={`sidebar-agent-item ${isSelected ? 'active' : ''}`}
-                onClick={() => onSelectAgent(agent)}
-              >
-                <PersonaAvatar name={agent.name} role={agent.role} size={28} />
-                <div className="agent-meta">
-                  <div className="agent-name">{agent.name}</div>
-                  <div className="agent-role">{agent.role}</div>
-                </div>
-                {isSelected && <span className="agent-active-dot" title="Active Agent">●</span>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Sidebar Footer */}
-      <div className="sidebar-footer">
-        <div className="connection-status">
-          <span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`}></span>
-          <div className="status-details">
-            <span className="status-label">{connected ? 'WebSocket Live' : 'Offline'}</span>
-            <span className="status-sub">
-              {dashboardState.session_id ? `Session: ${dashboardState.session_id.substring(0, 8)}...` : 'Port 8000/ws'}
-            </span>
+        <div className="workspace-card"><span className="workspace-avatar">W</span><div><strong>My workspace</strong><small>Voice agent platform</small></div></div>
+        <div className="sidebar-scroll">
+          {navigation.map(group => <div className="sidebar-section" key={group.label}>
+            <div className="sidebar-section-title">{group.label}</div>
+            <nav className="sidebar-nav" aria-label={group.label.toLowerCase()}>
+              {group.items.map(({ id, label, icon: Icon }) => <NavLink key={id} to={PAGE_ROUTES[id as TabName].path} end onClick={onClose} className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}><span className="nav-icon"><Icon size={17} /></span><span className="nav-label">{label}</span>{id === 'agents' && <span className="nav-badge">{agents.length}</span>}</NavLink>)}
+            </nav>
+          </div>)}
+          <div className="sidebar-section sidebar-agents-section">
+            <div className="sidebar-section-header"><span className="sidebar-section-title">YOUR AGENTS</span><button className="studio-icon-button" title="Create agent" aria-label="Create agent" onClick={() => { onCreateAgent(); onClose(); }}><StudioIcon name="plus" size={15} /></button></div>
+            <div className="sidebar-agents-list">{agents.map(agent => <button key={agent.id} className={`sidebar-agent-item ${activeAgent?.id === agent.id ? 'active' : ''}`} aria-pressed={activeAgent?.id === agent.id} onClick={() => { onSelectAgent(agent); onClose(); }}><PersonaAvatar name={agent.name} role={agent.role} size={25} /><span className="agent-meta"><span className="agent-name">{agent.name}</span></span>{activeAgent?.id === agent.id && <span className="agent-active-dot" aria-label="Selected">●</span>}</button>)}</div>
           </div>
         </div>
-      </div>
-    </aside>
+        <div className="sidebar-footer"><div className="connection-status"><span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`} /><div className="status-details"><span className="status-label">{connected ? 'Live connection ready' : 'Live connection offline'}</span><span className="status-sub">{dashboardState.session_id ? 'Session in progress' : 'Your next conversation starts here'}</span></div></div></div>
+      </aside>
+    </>
   );
 }

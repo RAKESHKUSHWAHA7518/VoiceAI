@@ -105,7 +105,7 @@ export function CalendarWidget() {
   return (
     <div
       style={{
-        background: 'rgba(15, 23, 42, 0.75)',
+        background: 'rgba(var(--studio-inset-rgb), 0.75)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         borderRadius: '12px',
         padding: '1.25rem',
@@ -130,16 +130,16 @@ export function CalendarWidget() {
           <span style={{ fontSize: '1.25rem' }}>📅</span>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--studio-text)' }}>
                 In-Call Calendar & Appointments
               </h3>
               <span
                 style={{
                   fontSize: '0.7rem',
                   fontWeight: 700,
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#34d399',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  background: 'rgba(var(--studio-success-rgb), 0.15)',
+                  color: 'var(--studio-success)',
+                  border: '1px solid rgba(var(--studio-success-rgb), 0.3)',
                   padding: '0.15rem 0.5rem',
                   borderRadius: '999px',
                 }}
@@ -147,8 +147,8 @@ export function CalendarWidget() {
                 {activeConfirmed.length} CONFIRMED
               </span>
             </div>
-            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
-              Voice AI tools <code style={{ color: '#38bdf8' }}>check_availability</code> and <code style={{ color: '#38bdf8' }}>book_appointment</code> update this live schedule.
+            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--studio-secondary)' }}>
+              Voice AI tools <code style={{ color: 'var(--studio-accent)' }}>check_availability</code> and <code style={{ color: 'var(--studio-accent)' }}>book_appointment</code> update this live schedule.
             </p>
           </div>
         </div>
@@ -161,7 +161,7 @@ export function CalendarWidget() {
             style={{
               background: 'rgba(255, 255, 255, 0.06)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#94a3b8',
+              color: 'var(--studio-secondary)',
               padding: '0.4rem 0.65rem',
               borderRadius: '6px',
               cursor: 'pointer',
@@ -174,9 +174,9 @@ export function CalendarWidget() {
             type="button"
             onClick={() => setShowManualModal(true)}
             style={{
-              background: 'linear-gradient(135deg, #10b981, #059669)',
+              background: 'var(--studio-accent-strong)',
               border: 'none',
-              color: '#ffffff',
+              color: 'var(--studio-text)',
               padding: '0.45rem 0.9rem',
               borderRadius: '6px',
               fontSize: '0.8rem',
@@ -211,9 +211,9 @@ export function CalendarWidget() {
                 borderRadius: '6px',
                 fontSize: '0.8rem',
                 fontWeight: 600,
-                border: activeDateTab === 'today' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                background: activeDateTab === 'today' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                color: activeDateTab === 'today' ? '#38bdf8' : '#94a3b8',
+                border: activeDateTab === 'today' ? '1px solid var(--studio-accent)' : '1px solid rgba(255, 255, 255, 0.08)',
+                background: activeDateTab === 'today' ? 'rgba(var(--studio-accent-rgb), 0.15)' : 'transparent',
+                color: activeDateTab === 'today' ? 'var(--studio-accent)' : 'var(--studio-secondary)',
                 cursor: 'pointer',
               }}
             >
@@ -228,9 +228,9 @@ export function CalendarWidget() {
                 borderRadius: '6px',
                 fontSize: '0.8rem',
                 fontWeight: 600,
-                border: activeDateTab === 'tomorrow' ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
-                background: activeDateTab === 'tomorrow' ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                color: activeDateTab === 'tomorrow' ? '#38bdf8' : '#94a3b8',
+                border: activeDateTab === 'tomorrow' ? '1px solid var(--studio-accent)' : '1px solid rgba(255, 255, 255, 0.08)',
+                background: activeDateTab === 'tomorrow' ? 'rgba(var(--studio-accent-rgb), 0.15)' : 'transparent',
+                color: activeDateTab === 'tomorrow' ? 'var(--studio-accent)' : 'var(--studio-secondary)',
                 cursor: 'pointer',
               }}
             >
@@ -238,23 +238,23 @@ export function CalendarWidget() {
             </button>
           </div>
 
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--studio-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
             Available Time Slots
           </div>
 
           {loading ? (
-            <div style={{ color: '#64748b', fontSize: '0.8rem', padding: '1rem 0' }}>Loading slots...</div>
+            <div style={{ color: 'var(--studio-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>Loading slots...</div>
           ) : slotsToDisplay.length === 0 ? (
-            <div style={{ color: '#ef4444', fontSize: '0.8rem', padding: '1rem 0' }}>No open slots for this date.</div>
+            <div style={{ color: 'var(--studio-danger)', fontSize: '0.8rem', padding: '1rem 0' }}>No open slots for this date.</div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(95px, 1fr))', gap: '0.5rem' }}>
               {slotsToDisplay.map((slot) => (
                 <div
                   key={slot}
                   style={{
-                    background: 'rgba(16, 185, 129, 0.08)',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                    color: '#34d399',
+                    background: 'rgba(var(--studio-success-rgb), 0.08)',
+                    border: '1px solid rgba(var(--studio-success-rgb), 0.25)',
+                    color: 'var(--studio-success)',
                     padding: '0.45rem 0.6rem',
                     borderRadius: '6px',
                     fontSize: '0.75rem',
@@ -281,12 +281,12 @@ export function CalendarWidget() {
             overflowY: 'auto',
           }}
         >
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.65rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--studio-secondary)', textTransform: 'uppercase', marginBottom: '0.65rem' }}>
             Confirmed Consultations
           </div>
 
           {appointments.length === 0 ? (
-            <div style={{ color: '#64748b', fontSize: '0.8rem', padding: '1rem 0' }}>
+            <div style={{ color: 'var(--studio-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>
               No appointments scheduled yet. Speak to your agent to test booking!
             </div>
           ) : (
@@ -297,8 +297,8 @@ export function CalendarWidget() {
                   <div
                     key={apt.id}
                     style={{
-                      background: isCancelled ? 'rgba(239, 68, 68, 0.06)' : 'rgba(255, 255, 255, 0.04)',
-                      border: isCancelled ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: isCancelled ? 'rgba(var(--studio-danger-rgb), 0.06)' : 'rgba(255, 255, 255, 0.04)',
+                      border: isCancelled ? '1px solid rgba(var(--studio-danger-rgb), 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '6px',
                       padding: '0.65rem 0.85rem',
                       display: 'flex',
@@ -309,10 +309,10 @@ export function CalendarWidget() {
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--studio-accent)', fontFamily: 'monospace' }}>
                           {apt.id}
                         </span>
-                        <strong style={{ fontSize: '0.85rem', color: isCancelled ? '#94a3b8' : '#f8fafc' }}>
+                        <strong style={{ fontSize: '0.85rem', color: isCancelled ? 'var(--studio-secondary)' : 'var(--studio-text)' }}>
                           {apt.customer_name}
                         </strong>
                         <span
@@ -322,16 +322,16 @@ export function CalendarWidget() {
                             textTransform: 'uppercase',
                             padding: '0.1rem 0.4rem',
                             borderRadius: '4px',
-                            background: isCancelled ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.15)',
-                            color: isCancelled ? '#f87171' : '#34d399',
+                            background: isCancelled ? 'rgba(var(--studio-danger-rgb), 0.2)' : 'rgba(var(--studio-success-rgb), 0.15)',
+                            color: isCancelled ? 'var(--studio-danger)' : 'var(--studio-success)',
                           }}
                         >
                           {apt.status}
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-                        📅 {apt.date} at <strong style={{ color: '#e2e8f0' }}>{apt.time}</strong> • {apt.service}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginTop: '0.2rem' }}>
+                        📅 {apt.date} at <strong style={{ color: 'var(--studio-text)' }}>{apt.time}</strong> • {apt.service}
                       </div>
                     </div>
 
@@ -343,7 +343,7 @@ export function CalendarWidget() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#ef4444',
+                          color: 'var(--studio-danger)',
                           cursor: 'pointer',
                           fontSize: '0.8rem',
                           padding: '0.2rem 0.4rem',
@@ -367,7 +367,7 @@ export function CalendarWidget() {
             position: 'fixed',
             inset: 0,
             zIndex: 99999,
-            background: 'rgba(5, 7, 14, 0.85)',
+            background: 'rgba(var(--studio-base-rgb), 0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -376,7 +376,7 @@ export function CalendarWidget() {
         >
           <div
             style={{
-              background: '#0f172a',
+              background: 'var(--studio-inset)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: '12px',
               padding: '1.5rem',
@@ -385,15 +385,15 @@ export function CalendarWidget() {
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
             }}
           >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#f8fafc' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--studio-text)' }}>
               Schedule Appointment Slot
             </h3>
 
             {bookingSuccessMsg && (
               <div
                 style={{
-                  background: 'rgba(16, 185, 129, 0.2)',
-                  color: '#34d399',
+                  background: 'rgba(var(--studio-success-rgb), 0.2)',
+                  color: 'var(--studio-success)',
                   padding: '0.6rem 0.8rem',
                   borderRadius: '6px',
                   fontSize: '0.85rem',
@@ -406,7 +406,7 @@ export function CalendarWidget() {
 
             <form onSubmit={handleManualBook}>
               <div style={{ marginBottom: '0.85rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.3rem' }}>
                   Customer Name *
                 </label>
                 <input
@@ -421,14 +421,14 @@ export function CalendarWidget() {
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     borderRadius: '6px',
                     padding: '0.55rem 0.75rem',
-                    color: '#f8fafc',
+                    color: 'var(--studio-text)',
                     fontSize: '0.85rem',
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: '0.85rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.3rem' }}>
                   Customer Phone
                 </label>
                 <input
@@ -442,7 +442,7 @@ export function CalendarWidget() {
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     borderRadius: '6px',
                     padding: '0.55rem 0.75rem',
-                    color: '#f8fafc',
+                    color: 'var(--studio-text)',
                     fontSize: '0.85rem',
                   }}
                 />
@@ -450,7 +450,7 @@ export function CalendarWidget() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.3rem' }}>
                     Date
                   </label>
                   <select
@@ -462,7 +462,7 @@ export function CalendarWidget() {
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '6px',
                       padding: '0.55rem 0.75rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.85rem',
                     }}
                   >
@@ -472,7 +472,7 @@ export function CalendarWidget() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.3rem' }}>
                     Time Slot
                   </label>
                   <select
@@ -484,7 +484,7 @@ export function CalendarWidget() {
                       border: '1px solid rgba(255, 255, 255, 0.12)',
                       borderRadius: '6px',
                       padding: '0.55rem 0.75rem',
-                      color: '#f8fafc',
+                      color: 'var(--studio-text)',
                       fontSize: '0.85rem',
                     }}
                   >
@@ -496,7 +496,7 @@ export function CalendarWidget() {
               </div>
 
               <div style={{ marginBottom: '1.25rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--studio-secondary)', marginBottom: '0.3rem' }}>
                   Service / Reason
                 </label>
                 <input
@@ -510,7 +510,7 @@ export function CalendarWidget() {
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     borderRadius: '6px',
                     padding: '0.55rem 0.75rem',
-                    color: '#f8fafc',
+                    color: 'var(--studio-text)',
                     fontSize: '0.85rem',
                   }}
                 />
@@ -523,7 +523,7 @@ export function CalendarWidget() {
                   style={{
                     background: 'transparent',
                     border: '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#94a3b8',
+                    color: 'var(--studio-secondary)',
                     padding: '0.5rem 1rem',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -535,8 +535,8 @@ export function CalendarWidget() {
                 <button
                   type="submit"
                   style={{
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                    color: '#ffffff',
+                    background: 'var(--studio-accent-strong)',
+                    color: 'var(--studio-text)',
                     border: 'none',
                     padding: '0.5rem 1.25rem',
                     borderRadius: '6px',

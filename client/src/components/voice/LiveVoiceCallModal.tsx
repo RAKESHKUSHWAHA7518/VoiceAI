@@ -531,10 +531,10 @@ export function LiveVoiceCallModal({
           <div className="scorecard-loading-content">
             <div className="scorecard-pulse-icon">📋</div>
             <div className="scorecard-loading-spinner"></div>
-            <h3 style={{ margin: '16px 0 8px 0', color: '#f8fafc', fontSize: '18px' }}>
+            <h3 style={{ margin: '16px 0 8px 0', color: 'var(--studio-text)', fontSize: '18px' }}>
               Generating Post-Call AI Intelligence...
             </h3>
-            <p style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '360px', margin: '0 auto' }}>
+            <p style={{ color: 'var(--studio-secondary)', fontSize: '13px', maxWidth: '360px', margin: '0 auto' }}>
               Evaluating conversation sentiment, tool execution accuracy, resolution status, and QA compliance score...
             </p>
           </div>
@@ -603,10 +603,10 @@ export function LiveVoiceCallModal({
 
             {/* AI Summary */}
             <div className="scorecard-summary-box">
-              <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: 'var(--studio-accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Executive AI Summary
               </h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#cbd5e1', lineHeight: '1.5' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--studio-secondary)', lineHeight: '1.5' }}>
                 {scorecardResult.summary}
               </p>
             </div>
@@ -614,10 +614,10 @@ export function LiveVoiceCallModal({
             {/* Action Items */}
             {scorecardResult.action_items && scorecardResult.action_items.length > 0 && (
               <div className="scorecard-action-box">
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '13px', color: 'var(--studio-accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Next Follow-up Action Items
                 </h4>
-                <ul style={{ margin: 0, paddingLeft: '18px', color: '#e2e8f0', fontSize: '13px' }}>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: 'var(--studio-text)', fontSize: '13px' }}>
                   {scorecardResult.action_items.map((item: string, idx: number) => (
                     <li key={idx} style={{ marginBottom: '4px' }}>{item}</li>
                   ))}
@@ -686,7 +686,7 @@ export function LiveVoiceCallModal({
               <select
                 style={{
                   background: 'transparent',
-                  color: '#93c5fd',
+                  color: 'var(--studio-accent)',
                   border: 'none',
                   fontSize: '0.78rem',
                   fontWeight: 600,
@@ -704,7 +704,7 @@ export function LiveVoiceCallModal({
                 title="Active Spoken Language (Bilingual Switching)"
               >
                 {CALL_LANGUAGES.map(lang => (
-                  <option key={lang.code} value={lang.code} style={{ background: '#0f172a', color: '#fff' }}>
+                  <option key={lang.code} value={lang.code} style={{ background: 'var(--studio-inset)', color: 'var(--studio-text)' }}>
                     {lang.flag} {lang.name}
                   </option>
                 ))}
@@ -713,8 +713,8 @@ export function LiveVoiceCallModal({
                 type="button"
                 onClick={() => setAutoDetectLang(prev => !prev)}
                 style={{
-                  background: autoDetectLang ? '#059669' : 'rgba(255,255,255,0.1)',
-                  color: '#fff',
+                  background: autoDetectLang ? 'var(--studio-success-strong)' : 'rgba(255,255,255,0.1)',
+                  color: 'var(--studio-text)',
                   border: 'none',
                   borderRadius: '10px',
                   padding: '0.1rem 0.35rem',
@@ -752,8 +752,8 @@ export function LiveVoiceCallModal({
           {/* Multilingual Switch Notice Badge */}
           {switchNotice && (
             <div style={{
-              background: 'linear-gradient(90deg, rgba(37, 99, 235, 0.95), rgba(16, 185, 129, 0.95))',
-              color: '#ffffff',
+              background: 'var(--studio-raised)',
+              color: 'var(--studio-text)',
               padding: '0.35rem 0.85rem',
               borderRadius: '20px',
               fontSize: '0.78rem',
@@ -762,7 +762,7 @@ export function LiveVoiceCallModal({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
-              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+              boxShadow: '0 4px 14px rgba(var(--studio-success-rgb), 0.35)',
             }}>
               <span>🌐</span> {switchNotice}
             </div>

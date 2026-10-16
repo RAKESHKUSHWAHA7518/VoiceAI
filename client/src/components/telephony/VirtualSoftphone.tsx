@@ -176,7 +176,7 @@ export function VirtualSoftphone() {
   return (
     <div
       style={{
-        background: 'rgba(15, 23, 42, 0.85)',
+        background: 'rgba(var(--studio-inset-rgb), 0.85)',
         border: '1px solid rgba(255, 255, 255, 0.08)',
         borderRadius: '16px',
         padding: '1.5rem',
@@ -201,7 +201,7 @@ export function VirtualSoftphone() {
           <span style={{ fontSize: '1.4rem' }}>☎️</span>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--studio-text)' }}>
                 Virtual PSTN Softphone & Web Dialpad
               </h3>
               <span
@@ -213,22 +213,22 @@ export function VirtualSoftphone() {
                   borderRadius: '999px',
                   background:
                     callState === 'connected'
-                      ? 'rgba(16, 185, 129, 0.2)'
+                      ? 'rgba(var(--studio-success-rgb), 0.2)'
                       : callState === 'dialing'
-                      ? 'rgba(245, 158, 11, 0.2)'
-                      : 'rgba(56, 189, 248, 0.15)',
+                      ? 'rgba(var(--studio-warning-rgb), 0.2)'
+                      : 'rgba(var(--studio-accent-rgb), 0.15)',
                   color:
                     callState === 'connected'
-                      ? '#34d399'
+                      ? 'var(--studio-success)'
                       : callState === 'dialing'
-                      ? '#fbbf24'
-                      : '#38bdf8',
+                      ? 'var(--studio-warning)'
+                      : 'var(--studio-accent)',
                   border:
                     callState === 'connected'
-                      ? '1px solid rgba(16, 185, 129, 0.35)'
+                      ? '1px solid rgba(var(--studio-success-rgb), 0.35)'
                       : callState === 'dialing'
-                      ? '1px solid rgba(245, 158, 11, 0.35)'
-                      : '1px solid rgba(56, 189, 248, 0.25)',
+                      ? '1px solid rgba(var(--studio-warning-rgb), 0.35)'
+                      : '1px solid rgba(var(--studio-accent-rgb), 0.25)',
                 }}
               >
                 {callState === 'connected'
@@ -238,32 +238,32 @@ export function VirtualSoftphone() {
                   : 'CARRIER READY'}
               </span>
             </div>
-            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--studio-secondary)' }}>
               Dual-Tone Multi-Frequency (DTMF) dialer connecting directly to Twilio PSTN TwiML Media Streams.
             </p>
           </div>
         </div>
 
         {/* Network Quality Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem', color: 'var(--studio-secondary)' }}>
           <div>
-            Trunk: <strong style={{ color: '#38bdf8' }}>Twilio Voice</strong>
+            Trunk: <strong style={{ color: 'var(--studio-accent)' }}>Twilio Voice</strong>
           </div>
           <div>
-            Codec: <strong style={{ color: '#e2e8f0' }}>G.711 $\mu$-law</strong>
+            Codec: <strong style={{ color: 'var(--studio-text)' }}>G.711 $\mu$-law</strong>
           </div>
           <div>
-            Jitter: <strong style={{ color: '#34d399' }}>3.8ms</strong>
+            Jitter: <strong style={{ color: 'var(--studio-success)' }}>3.8ms</strong>
           </div>
         </div>
       </div>
 
       {/* Main Grid: Softphone Device vs Carrier Diagnostics */}
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="studio-softphone-grid">
         {/* Softphone Hardware Chassis */}
         <div
           style={{
-            background: 'linear-gradient(180deg, #111827 0%, #0b0f19 100%)',
+            background: 'var(--studio-accent-strong)',
             border: '1.5px solid rgba(255, 255, 255, 0.12)',
             borderRadius: '20px',
             padding: '1.25rem',
@@ -274,17 +274,17 @@ export function VirtualSoftphone() {
           {/* LCD Display */}
           <div
             style={{
-              background: 'rgba(5, 7, 14, 0.95)',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
+              background: 'rgba(var(--studio-base-rgb), 0.95)',
+              border: '1px solid rgba(var(--studio-accent-rgb), 0.25)',
               borderRadius: '12px',
               padding: '0.85rem 1rem',
               marginBottom: '1.25rem',
               boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.8)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#64748b', marginBottom: '0.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--studio-muted)', marginBottom: '0.25rem' }}>
               <span>LINE 1 • PSTN ACTIVE</span>
-              <span style={{ color: callState === 'connected' ? '#34d399' : '#64748b', fontWeight: 700 }}>
+              <span style={{ color: callState === 'connected' ? 'var(--studio-success)' : 'var(--studio-muted)', fontWeight: 700 }}>
                 {callState === 'connected' ? formatTimer(callDuration) : 'READY'}
               </span>
             </div>
@@ -294,7 +294,7 @@ export function VirtualSoftphone() {
                 fontSize: '1.25rem',
                 fontFamily: 'monospace',
                 fontWeight: 700,
-                color: '#f8fafc',
+                color: 'var(--studio-text)',
                 letterSpacing: '0.05em',
                 minHeight: '30px',
                 display: 'flex',
@@ -313,7 +313,7 @@ export function VirtualSoftphone() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: 'var(--studio-secondary)',
                   fontSize: '0.75rem',
                   cursor: 'pointer',
                   padding: 0,
@@ -327,7 +327,7 @@ export function VirtualSoftphone() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#ef4444',
+                  color: 'var(--studio-danger)',
                   fontSize: '0.75rem',
                   cursor: 'pointer',
                   padding: 0,
@@ -350,7 +350,7 @@ export function VirtualSoftphone() {
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '12px',
                   padding: '0.75rem 0',
-                  color: '#f8fafc',
+                  color: 'var(--studio-text)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -365,7 +365,7 @@ export function VirtualSoftphone() {
               >
                 <span style={{ fontSize: '1.2rem', fontWeight: 700, lineHeight: 1 }}>{digit}</span>
                 {letters && (
-                  <span style={{ fontSize: '0.55rem', fontWeight: 600, color: '#64748b', letterSpacing: '0.1em', marginTop: '2px' }}>
+                  <span style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--studio-muted)', letterSpacing: '0.1em', marginTop: '2px' }}>
                     {letters}
                   </span>
                 )}
@@ -381,8 +381,8 @@ export function VirtualSoftphone() {
                 onClick={handleDial}
                 style={{
                   gridColumn: '1 / -1',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: '#ffffff',
+                  background: 'var(--studio-accent-strong)',
+                  color: 'var(--studio-text)',
                   border: 'none',
                   padding: '0.85rem',
                   borderRadius: '12px',
@@ -393,7 +393,7 @@ export function VirtualSoftphone() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.5rem',
-                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.35)',
+                  boxShadow: '0 4px 16px rgba(var(--studio-success-rgb), 0.35)',
                 }}
               >
                 <span>📞</span>
@@ -405,9 +405,9 @@ export function VirtualSoftphone() {
                   type="button"
                   onClick={() => setIsMuted(!isMuted)}
                   style={{
-                    background: isMuted ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-                    color: isMuted ? '#fbbf24' : '#e2e8f0',
-                    border: isMuted ? '1px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.12)',
+                    background: isMuted ? 'rgba(var(--studio-warning-rgb), 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                    color: isMuted ? 'var(--studio-warning)' : 'var(--studio-text)',
+                    border: isMuted ? '1px solid var(--studio-warning)' : '1px solid rgba(255, 255, 255, 0.12)',
                     padding: '0.85rem',
                     borderRadius: '12px',
                     fontWeight: 600,
@@ -422,15 +422,15 @@ export function VirtualSoftphone() {
                   type="button"
                   onClick={handleHangup}
                   style={{
-                    background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
-                    color: '#ffffff',
+                    background: 'var(--studio-danger-strong)',
+                    color: 'var(--studio-text)',
                     border: 'none',
                     padding: '0.85rem',
                     borderRadius: '12px',
                     fontWeight: 700,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(239, 68, 68, 0.35)',
+                    boxShadow: '0 4px 16px rgba(var(--studio-danger-rgb), 0.35)',
                   }}
                 >
                   End Call
@@ -451,28 +451,28 @@ export function VirtualSoftphone() {
               border: '1px solid rgba(255, 255, 255, 0.06)',
             }}
           >
-            <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+            <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--studio-text)' }}>
               📡 Telephony Carrier Stream Status
             </h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', fontSize: '0.8rem' }}>
               <div>
-                <span style={{ color: '#64748b' }}>Call SID: </span>
-                <strong style={{ color: '#38bdf8', fontFamily: 'monospace' }}>
+                <span style={{ color: 'var(--studio-muted)' }}>Call SID: </span>
+                <strong style={{ color: 'var(--studio-accent)', fontFamily: 'monospace' }}>
                   {callSession?.call_sid || 'CA_standby_idle'}
                 </strong>
               </div>
               <div>
-                <span style={{ color: '#64748b' }}>Destination: </span>
-                <strong style={{ color: '#e2e8f0' }}>{callSession?.to_number || phoneNumber}</strong>
+                <span style={{ color: 'var(--studio-muted)' }}>Destination: </span>
+                <strong style={{ color: 'var(--studio-text)' }}>{callSession?.to_number || phoneNumber}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b' }}>Caller ID: </span>
-                <strong style={{ color: '#e2e8f0' }}>{callSession?.from_number || '+1 (555) 902-8800'}</strong>
+                <span style={{ color: 'var(--studio-muted)' }}>Caller ID: </span>
+                <strong style={{ color: 'var(--studio-text)' }}>{callSession?.from_number || '+1 (555) 902-8800'}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b' }}>Agent: </span>
-                <strong style={{ color: '#34d399' }}>{callSession?.agent_name || 'Maya (Support Lead)'}</strong>
+                <span style={{ color: 'var(--studio-muted)' }}>Agent: </span>
+                <strong style={{ color: 'var(--studio-success)' }}>{callSession?.agent_name || 'Maya (Support Lead)'}</strong>
               </div>
             </div>
           </div>
@@ -487,10 +487,10 @@ export function VirtualSoftphone() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
+              <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--studio-secondary)', textTransform: 'uppercase' }}>
                 Twilio TwiML Carrier Payload
               </h4>
-              <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--studio-accent)', fontFamily: 'monospace' }}>
                 Content-Type: text/xml
               </span>
             </div>
@@ -498,10 +498,10 @@ export function VirtualSoftphone() {
             <pre
               style={{
                 margin: 0,
-                background: 'rgba(5, 7, 14, 0.95)',
+                background: 'rgba(var(--studio-base-rgb), 0.95)',
                 padding: '0.85rem',
                 borderRadius: '8px',
-                color: '#34d399',
+                color: 'var(--studio-success)',
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
                 overflowX: 'auto',
@@ -531,12 +531,12 @@ export function VirtualSoftphone() {
               border: '1px solid rgba(255, 255, 255, 0.06)',
             }}
           >
-            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--studio-secondary)', textTransform: 'uppercase' }}>
               Live DTMF Tone Injections ({dtmfLogs.length})
             </h4>
 
             {dtmfLogs.length === 0 ? (
-              <div style={{ color: '#64748b', fontSize: '0.78rem' }}>
+              <div style={{ color: 'var(--studio-muted)', fontSize: '0.78rem' }}>
                 Press dialpad digits during an active call to transmit live DTMF in-band telephony tones.
               </div>
             ) : (
@@ -545,20 +545,20 @@ export function VirtualSoftphone() {
                   <div
                     key={i}
                     style={{
-                      background: 'rgba(56, 189, 248, 0.1)',
-                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      background: 'rgba(var(--studio-accent-rgb), 0.1)',
+                      border: '1px solid rgba(var(--studio-accent-rgb), 0.25)',
                       borderRadius: '6px',
                       padding: '0.35rem 0.65rem',
                       fontSize: '0.75rem',
-                      color: '#e2e8f0',
+                      color: 'var(--studio-text)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.4rem',
                     }}
                   >
-                    <strong style={{ color: '#38bdf8', fontSize: '0.9rem' }}>'{log.digit}'</strong>
-                    <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>({log.freqs})</span>
-                    <span style={{ color: '#64748b', fontSize: '0.65rem' }}>{log.time}</span>
+                    <strong style={{ color: 'var(--studio-accent)', fontSize: '0.9rem' }}>'{log.digit}'</strong>
+                    <span style={{ color: 'var(--studio-secondary)', fontSize: '0.7rem' }}>({log.freqs})</span>
+                    <span style={{ color: 'var(--studio-muted)', fontSize: '0.65rem' }}>{log.time}</span>
                   </div>
                 ))}
               </div>

@@ -186,14 +186,14 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '1.25rem',
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.95))',
+          background: 'var(--studio-surface)',
           border: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.65rem' }}>
             <span style={{ fontSize: '1.5rem' }}>📞</span>
-            <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <h2 className="header-title">
               Outbound Campaign Auto-Dialer & Batch Calling
             </h2>
             <span
@@ -203,15 +203,15 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                 textTransform: 'uppercase',
                 padding: '0.2rem 0.55rem',
                 borderRadius: '999px',
-                background: runningDialers > 0 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(148, 163, 184, 0.15)',
-                color: runningDialers > 0 ? '#4ade80' : '#94a3b8',
-                border: runningDialers > 0 ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(148, 163, 184, 0.2)',
+                background: runningDialers > 0 ? 'rgba(var(--studio-success-rgb), 0.2)' : 'rgba(var(--studio-secondary-rgb), 0.15)',
+                color: runningDialers > 0 ? 'var(--studio-success)' : 'var(--studio-secondary)',
+                border: runningDialers > 0 ? '1px solid rgba(var(--studio-success-rgb), 0.4)' : '1px solid rgba(var(--studio-secondary-rgb), 0.2)',
               }}
             >
               {runningDialers > 0 ? `● ${runningDialers} DIALER ACTIVE` : 'ALL DIALERS IDLE'}
             </span>
           </div>
-          <p style={{ margin: '0.4rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
+          <p style={{ margin: '0.4rem 0 0 0', color: 'var(--studio-secondary)', fontSize: '0.85rem' }}>
             Orchestrate progressive & predictive voice AI outbound campaigns with live CSV lead lists, call concurrency, and automated call dispositions.
           </p>
         </div>
@@ -228,7 +228,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
               fontWeight: 700,
               padding: '0.65rem 1.25rem',
               borderRadius: '8px',
-              boxShadow: '0 4px 16px rgba(56, 189, 248, 0.25)',
+              boxShadow: '0 4px 16px rgba(var(--studio-accent-rgb), 0.25)',
             }}
           >
             <span>+</span>
@@ -251,7 +251,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
           <div className="analytics-kpi-title">TOTAL LEADS IN SYSTEM</div>
           <div className="analytics-kpi-value">{totalLeads}</div>
           <div className="analytics-kpi-sub">
-            <span style={{ color: '#38bdf8' }}>{totalCompleted} calls completed</span>
+            <span style={{ color: 'var(--studio-accent)' }}>{totalCompleted} calls completed</span>
           </div>
         </div>
 
@@ -259,7 +259,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
           <div className="analytics-kpi-title">OVERALL CONNECTION RATE</div>
           <div className="analytics-kpi-value">{overallConnectRate}%</div>
           <div className="analytics-kpi-sub">
-            <span style={{ color: '#22c55e' }}>{totalConnected} live pickups</span>
+            <span style={{ color: 'var(--studio-success)' }}>{totalConnected} live pickups</span>
           </div>
         </div>
 
@@ -280,7 +280,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
         <div className="card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Active Campaigns</h3>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{campaigns.length} total</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--studio-muted)' }}>{campaigns.length} total</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -296,18 +296,18 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                     padding: '1rem',
                     borderRadius: '10px',
                     border: isSelected
-                      ? '1px solid rgba(56, 189, 248, 0.5)'
+                      ? '1px solid rgba(var(--studio-accent-rgb), 0.5)'
                       : '1px solid rgba(255, 255, 255, 0.06)',
                     background: isSelected
-                      ? 'linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0.8))'
-                      : 'rgba(15, 23, 42, 0.5)',
+                      ? 'var(--studio-surface)'
+                      : 'rgba(var(--studio-inset-rgb), 0.5)',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    boxShadow: isSelected ? '0 4px 20px rgba(14, 165, 233, 0.15)' : 'none',
+                    boxShadow: isSelected ? '0 4px 20px rgba(var(--studio-accent-rgb), 0.15)' : 'none',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#f1f5f9' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--studio-text)' }}>
                       {camp.name}
                     </h4>
                     <span
@@ -319,33 +319,33 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                         borderRadius: '4px',
                         background:
                           camp.status === 'running'
-                            ? 'rgba(34, 197, 94, 0.2)'
+                            ? 'rgba(var(--studio-success-rgb), 0.2)'
                             : camp.status === 'paused'
-                            ? 'rgba(234, 179, 8, 0.2)'
+                            ? 'rgba(var(--studio-warning-rgb), 0.2)'
                             : camp.status === 'completed'
-                            ? 'rgba(56, 189, 248, 0.2)'
-                            : 'rgba(148, 163, 184, 0.2)',
+                            ? 'rgba(var(--studio-accent-rgb), 0.2)'
+                            : 'rgba(var(--studio-secondary-rgb), 0.2)',
                         color:
                           camp.status === 'running'
-                            ? '#4ade80'
+                            ? 'var(--studio-success)'
                             : camp.status === 'paused'
-                            ? '#facc15'
+                            ? 'var(--studio-warning)'
                             : camp.status === 'completed'
-                            ? '#38bdf8'
-                            : '#94a3b8',
+                            ? 'var(--studio-accent)'
+                            : 'var(--studio-secondary)',
                       }}
                     >
                       {camp.status}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.65rem' }}>
-                    Agent: <strong style={{ color: '#cbd5e1' }}>{camp.agent_name}</strong> • Concurrency: {camp.concurrent_lines} lines
+                  <div style={{ fontSize: '0.78rem', color: 'var(--studio-secondary)', marginBottom: '0.65rem' }}>
+                    Agent: <strong style={{ color: 'var(--studio-secondary)' }}>{camp.agent_name}</strong> • Concurrency: {camp.concurrent_lines} lines
                   </div>
 
                   {/* Progress Bar */}
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--studio-secondary)', marginBottom: '0.25rem' }}>
                       <span>Progress: {camp.completed_calls} / {camp.total_leads}</span>
                       <span>{percent}%</span>
                     </div>
@@ -354,7 +354,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                         style={{
                           width: `${percent}%`,
                           height: '100%',
-                          background: camp.status === 'running' ? '#22c55e' : '#38bdf8',
+                          background: camp.status === 'running' ? 'var(--studio-success)' : 'var(--studio-accent)',
                           transition: 'width 0.3s ease',
                         }}
                       />
@@ -376,7 +376,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                       <button
                         type="button"
                         className="btn btn-success btn-sm"
-                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem', background: '#16a34a', border: 'none' }}
+                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem', background: 'var(--studio-success-strong)', border: 'none' }}
                         onClick={(e) => { e.stopPropagation(); handleStartCampaign(camp.id); }}
                       >
                         ▶ Start
@@ -394,7 +394,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem', color: '#f87171' }}
+                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.72rem', color: 'var(--studio-danger)' }}
                       title="Delete campaign"
                       onClick={(e) => { e.stopPropagation(); handleDeleteCampaign(camp.id); }}
                     >
@@ -415,7 +415,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{selectedCampaign.name}</h3>
-                  <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                  <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem', color: 'var(--studio-secondary)' }}>
                     {selectedCampaign.description}
                   </p>
                 </div>
@@ -442,7 +442,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                     <button
                       type="button"
                       className="btn btn-success btn-sm"
-                      style={{ background: '#16a34a', border: 'none' }}
+                      style={{ background: 'var(--studio-success-strong)', border: 'none' }}
                       onClick={() => handleStartCampaign(selectedCampaign.id)}
                     >
                       ▶ Launch Auto-Dialer
@@ -453,12 +453,12 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
 
               {/* Disposition Pills Breakdown */}
               <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.65rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--studio-secondary)', textTransform: 'uppercase', marginBottom: '0.65rem' }}>
                   Disposition Distribution:
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {Object.entries(selectedCampaign.disposition_breakdown || {}).length === 0 ? (
-                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>No calls logged yet</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--studio-muted)' }}>No calls logged yet</span>
                   ) : (
                     Object.entries(selectedCampaign.disposition_breakdown).map(([disp, count]) => (
                       <div
@@ -474,8 +474,8 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                           gap: '0.45rem',
                         }}
                       >
-                        <span style={{ fontWeight: 600, color: '#cbd5e1' }}>{disp}:</span>
-                        <strong style={{ color: '#38bdf8' }}>{count}</strong>
+                        <span style={{ fontWeight: 600, color: 'var(--studio-secondary)' }}>{disp}:</span>
+                        <strong style={{ color: 'var(--studio-accent)' }}>{count}</strong>
                       </div>
                     ))
                   )}
@@ -491,7 +491,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                 </h4>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Filter Status:</label>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)' }}>Filter Status:</label>
                   <select
                     className="form-select form-select-sm"
                     value={statusFilter}
@@ -509,7 +509,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
               </div>
 
               {filteredContacts.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b', fontSize: '0.85rem' }}>
+                <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--studio-muted)', fontSize: '0.85rem' }}>
                   No contacts found matching the filter.
                 </div>
               ) : (
@@ -530,11 +530,11 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                     <tbody>
                       {filteredContacts.map(c => (
                         <tr key={c.id}>
-                          <td style={{ fontWeight: 600, color: '#f1f5f9' }}>{c.name}</td>
-                          <td style={{ fontFamily: 'monospace', whiteSpace: 'nowrap', color: '#38bdf8' }}>
+                          <td style={{ fontWeight: 600, color: 'var(--studio-text)' }}>{c.name}</td>
+                          <td style={{ fontFamily: 'monospace', whiteSpace: 'nowrap', color: 'var(--studio-accent)' }}>
                             {c.phone_number}
                           </td>
-                          <td style={{ color: '#94a3b8' }}>{c.company || '—'}</td>
+                          <td style={{ color: 'var(--studio-secondary)' }}>{c.company || '—'}</td>
                           <td>
                             <span
                               style={{
@@ -545,20 +545,20 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                                 borderRadius: '4px',
                                 background:
                                   c.status === 'completed'
-                                    ? 'rgba(34, 197, 94, 0.15)'
+                                    ? 'rgba(var(--studio-success-rgb), 0.15)'
                                     : c.status === 'dialing'
-                                    ? 'rgba(56, 189, 248, 0.25)'
+                                    ? 'rgba(var(--studio-accent-rgb), 0.25)'
                                     : c.status === 'failed'
-                                    ? 'rgba(239, 68, 68, 0.15)'
-                                    : 'rgba(148, 163, 184, 0.15)',
+                                    ? 'rgba(var(--studio-danger-rgb), 0.15)'
+                                    : 'rgba(var(--studio-secondary-rgb), 0.15)',
                                 color:
                                   c.status === 'completed'
-                                    ? '#4ade80'
+                                    ? 'var(--studio-success)'
                                     : c.status === 'dialing'
-                                    ? '#38bdf8'
+                                    ? 'var(--studio-accent)'
                                     : c.status === 'failed'
-                                    ? '#f87171'
-                                    : '#94a3b8',
+                                    ? 'var(--studio-danger)'
+                                    : 'var(--studio-secondary)',
                               }}
                             >
                               {c.status}
@@ -569,9 +569,9 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                               value={c.disposition}
                               onChange={(e) => handleUpdateDisposition(c.id, e.target.value)}
                               style={{
-                                background: 'rgba(15, 23, 42, 0.6)',
+                                background: 'rgba(var(--studio-inset-rgb), 0.6)',
                                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                                color: '#e2e8f0',
+                                color: 'var(--studio-text)',
                                 fontSize: '0.72rem',
                                 borderRadius: '4px',
                                 padding: '0.2rem 0.4rem',
@@ -586,10 +586,10 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                               <option value="Unreachable">Unreachable</option>
                             </select>
                           </td>
-                          <td style={{ fontFamily: 'monospace', color: '#94a3b8' }}>
+                          <td style={{ fontFamily: 'monospace', color: 'var(--studio-secondary)' }}>
                             {c.duration_sec > 0 ? `${c.duration_sec}s` : '—'}
                           </td>
-                          <td style={{ maxWidth: '240px', color: '#cbd5e1', fontSize: '0.78rem' }}>
+                          <td style={{ maxWidth: '240px', color: 'var(--studio-secondary)', fontSize: '0.78rem' }}>
                             {c.summary || '—'}
                           </td>
                           <td>
@@ -625,7 +625,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
             </div>
           </div>
         ) : (
-          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+          <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--studio-muted)' }}>
             Select a campaign on the left or create a new one to begin.
           </div>
         )}
@@ -716,7 +716,7 @@ export function CampaignsTab({ agents, onStartVoiceCall }: CampaignsTabProps) {
                   <label className="form-label" style={{ margin: 0 }}>Import Initial Leads (CSV Format)</label>
                   <button
                     type="button"
-                    style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--studio-accent)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
                     onClick={() => {
                       setNewCampCsv(`Name,Phone Number,Company,Notes
 Dr. Gregory House,+1 (555) 710-8291,Princeton Plainsboro,Internal Medicine Checkup
@@ -775,16 +775,16 @@ Robert Chase,+1 (555) 843-1920,St. Sebastian Ortho,Surgical Follow-up`);
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--studio-secondary)' }}>
                 Paste CSV data with headers (Name, Phone Number, Company, etc.). Contacts will be queued into the dialer immediately.
               </p>
 
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>CSV Content:</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--studio-muted)' }}>CSV Content:</span>
                   <button
                     type="button"
-                    style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--studio-accent)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
                     onClick={() => {
                       setCsvInput(`Name,Phone Number,Company,Variable
 Samantha Carter,+1 (555) 912-4019,SGC Aerospace,Telemetry Review

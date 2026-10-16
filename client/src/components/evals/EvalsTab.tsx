@@ -98,12 +98,12 @@ export function EvalsTab({ agents }: EvalsTabProps) {
 
   const getCategoryColor = (cat: string) => {
     switch (cat.toLowerCase()) {
-      case 'policy': return '#38bdf8';
-      case 'guardrails': return '#ef4444';
-      case 'tools': return '#a855f7';
-      case 'reasoning': return '#f59e0b';
-      case 'escalation': return '#ec4899';
-      default: return '#94a3b8';
+      case 'policy': return 'var(--studio-accent)';
+      case 'guardrails': return 'var(--studio-danger)';
+      case 'tools': return 'var(--studio-accent)';
+      case 'reasoning': return 'var(--studio-warning)';
+      case 'escalation': return 'var(--studio-accent)';
+      default: return 'var(--studio-secondary)';
     }
   };
 
@@ -118,20 +118,20 @@ export function EvalsTab({ agents }: EvalsTabProps) {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
             <div style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2))',
+              background: 'var(--studio-raised)',
               padding: '0.5rem',
               borderRadius: '8px',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
+              border: '1px solid rgba(var(--studio-success-rgb), 0.3)',
               display: 'flex',
               alignItems: 'center'
             }}>
-              <IconFlask size={24} color="#10b981" />
+              <IconFlask size={24} color="var(--studio-success)" />
             </div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 className="header-title">
               Automated Testing & Batch Evals
             </h1>
           </div>
-          <p style={{ margin: 0, color: 'var(--text-secondary, #94a3b8)', fontSize: '0.95rem' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary, var(--studio-secondary))', fontSize: '0.95rem' }}>
             Run simulated multi-turn conversations against voice agents. Validate compliance, hallucination defense, prompt injection resistance, and tool accuracy before deploying to production.
           </p>
         </div>
@@ -155,54 +155,54 @@ export function EvalsTab({ agents }: EvalsTabProps) {
         gap: '1rem',
         marginBottom: '1.5rem'
       }}>
-        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, #1e293b)' }}>
-          <div style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
-            <IconTarget size={14} color="#38bdf8" />
+        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
+          <div style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+            <IconTarget size={14} color="var(--studio-accent)" />
             Active Test Suites
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--studio-text)' }}>
             {suites.length}
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, #1e293b)' }}>
-          <div style={{ fontSize: '0.82rem', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
-            <IconCheck size={14} color="#4ade80" />
+        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
+          <div style={{ fontSize: '0.82rem', color: 'var(--studio-success)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+            <IconCheck size={14} color="var(--studio-success)" />
             Historical Pass Rate
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#4ade80' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--studio-success)' }}>
             {avgPassRate}%
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, #1e293b)' }}>
-          <div style={{ fontSize: '0.82rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
-            <IconShieldCheck size={14} color="#38bdf8" />
+        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
+          <div style={{ fontSize: '0.82rem', color: 'var(--studio-accent)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+            <IconShieldCheck size={14} color="var(--studio-accent)" />
             Hallucination Defense
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#38bdf8' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--studio-accent)' }}>
             100%
           </div>
         </div>
 
-        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, #1e293b)' }}>
-          <div style={{ fontSize: '0.82rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
-            <IconClock size={14} color="#f59e0b" />
+        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
+          <div style={{ fontSize: '0.82rem', color: 'var(--studio-warning)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+            <IconClock size={14} color="var(--studio-warning)" />
             Avg Voice Turnaround
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f59e0b' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--studio-warning)' }}>
             {selectedRun?.metrics?.avg_turn_latency_ms || 312}ms
           </div>
         </div>
       </div>
 
       {/* Batch Runner Control Deck */}
-      <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-surface, #1e293b)', marginBottom: '1.5rem' }}>
+      <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-surface, var(--studio-surface))', marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
             {/* Suite Picker */}
             <div style={{ minWidth: '260px', flex: 1 }}>
-              <label style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+              <label style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                 Select Test Suite:
               </label>
               <select
@@ -221,7 +221,7 @@ export function EvalsTab({ agents }: EvalsTabProps) {
 
             {/* Target Agent Picker */}
             <div style={{ minWidth: '200px' }}>
-              <label style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '0.35rem' }}>
+              <label style={{ fontSize: '0.82rem', color: 'var(--studio-secondary)', display: 'block', marginBottom: '0.35rem' }}>
                 Target Voice Agent:
               </label>
               <select
@@ -250,8 +250,8 @@ export function EvalsTab({ agents }: EvalsTabProps) {
               gap: '0.5rem',
               fontSize: '0.9rem',
               fontWeight: 600,
-              background: 'linear-gradient(135deg, #059669, #10b981)',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              background: 'var(--studio-accent-strong)',
+              boxShadow: '0 4px 12px rgba(var(--studio-success-rgb), 0.3)',
             }}
           >
             <IconZap size={16} />
@@ -260,7 +260,7 @@ export function EvalsTab({ agents }: EvalsTabProps) {
         </div>
 
         {selectedSuite && (
-          <div style={{ marginTop: '0.85rem', fontSize: '0.83rem', color: '#94a3b8' }}>
+          <div style={{ marginTop: '0.85rem', fontSize: '0.83rem', color: 'var(--studio-secondary)' }}>
             ℹ️ {selectedSuite.description}
           </div>
         )}
@@ -274,8 +274,8 @@ export function EvalsTab({ agents }: EvalsTabProps) {
             padding: '8px 16px',
             border: 'none',
             background: 'transparent',
-            borderBottom: activeTab === 'scorecard' ? '2px solid #10b981' : 'none',
-            color: activeTab === 'scorecard' ? '#fff' : '#94a3b8',
+            borderBottom: activeTab === 'scorecard' ? '2px solid var(--studio-success)' : 'none',
+            color: activeTab === 'scorecard' ? 'var(--studio-text)' : 'var(--studio-secondary)',
             fontWeight: activeTab === 'scorecard' ? 600 : 400,
             cursor: 'pointer',
             fontSize: '0.9rem',
@@ -289,8 +289,8 @@ export function EvalsTab({ agents }: EvalsTabProps) {
             padding: '8px 16px',
             border: 'none',
             background: 'transparent',
-            borderBottom: activeTab === 'history' ? '2px solid #10b981' : 'none',
-            color: activeTab === 'history' ? '#fff' : '#94a3b8',
+            borderBottom: activeTab === 'history' ? '2px solid var(--studio-success)' : 'none',
+            color: activeTab === 'history' ? 'var(--studio-text)' : 'var(--studio-secondary)',
             fontWeight: activeTab === 'history' ? 600 : 400,
             cursor: 'pointer',
             fontSize: '0.9rem',
@@ -302,20 +302,20 @@ export function EvalsTab({ agents }: EvalsTabProps) {
 
       {/* Tab Content */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--studio-secondary)' }}>
           Loading evaluation suites...
         </div>
       ) : activeTab === 'scorecard' && selectedRun ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Scorecard Summary Card */}
-          <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-surface, #1e293b)' }}>
+          <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
                   <span style={{
-                    background: selectedRun.pass_rate >= 80 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                    color: selectedRun.pass_rate >= 80 ? '#34d399' : '#f87171',
-                    border: `1px solid ${selectedRun.pass_rate >= 80 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                    background: selectedRun.pass_rate >= 80 ? 'rgba(var(--studio-success-rgb), 0.2)' : 'rgba(var(--studio-danger-rgb), 0.2)',
+                    color: selectedRun.pass_rate >= 80 ? 'var(--studio-success)' : 'var(--studio-danger)',
+                    border: `1px solid ${selectedRun.pass_rate >= 80 ? 'rgba(var(--studio-success-rgb), 0.4)' : 'rgba(var(--studio-danger-rgb), 0.4)'}`,
                     borderRadius: '20px',
                     padding: '3px 10px',
                     fontSize: '0.78rem',
@@ -327,16 +327,16 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                     {selectedRun.suite_name}
                   </h2>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                  Agent Tested: <strong style={{ color: '#e2e8f0' }}>{selectedRun.agent_name}</strong> • Scenarios: {selectedRun.total_tests} • Duration: {selectedRun.duration_ms}ms • Date: {new Date(selectedRun.timestamp).toLocaleTimeString()}
+                <div style={{ fontSize: '0.85rem', color: 'var(--studio-secondary)' }}>
+                  Agent Tested: <strong style={{ color: 'var(--studio-text)' }}>{selectedRun.agent_name}</strong> • Scenarios: {selectedRun.total_tests} • Duration: {selectedRun.duration_ms}ms • Date: {new Date(selectedRun.timestamp).toLocaleTimeString()}
                 </div>
               </div>
 
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '2.4rem', fontWeight: 800, color: selectedRun.overall_score >= 80 ? '#34d399' : '#f87171', lineHeight: 1 }}>
+                <div style={{ fontSize: '2.4rem', fontWeight: 800, color: selectedRun.overall_score >= 80 ? 'var(--studio-success)' : 'var(--studio-danger)', lineHeight: 1 }}>
                   {selectedRun.overall_score}%
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--studio-secondary)', marginTop: '0.2rem' }}>
                   Overall Compliance Score
                 </div>
               </div>
@@ -344,50 +344,50 @@ export function EvalsTab({ agents }: EvalsTabProps) {
 
             {/* 5 Evaluator Radar Metrics */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
-              <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Goal Completion</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>{selectedRun.metrics.goal_completion_rate}%</div>
+              <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>Goal Completion</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--studio-text)' }}>{selectedRun.metrics.goal_completion_rate}%</div>
                 <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ width: `${selectedRun.metrics.goal_completion_rate}%`, height: '100%', background: '#38bdf8', borderRadius: 2 }} />
+                  <div style={{ width: `${selectedRun.metrics.goal_completion_rate}%`, height: '100%', background: 'var(--studio-accent)', borderRadius: 2 }} />
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Hallucination Defense</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>{selectedRun.metrics.hallucination_defense_score}%</div>
+              <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>Hallucination Defense</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--studio-text)' }}>{selectedRun.metrics.hallucination_defense_score}%</div>
                 <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ width: `${selectedRun.metrics.hallucination_defense_score}%`, height: '100%', background: '#10b981', borderRadius: 2 }} />
+                  <div style={{ width: `${selectedRun.metrics.hallucination_defense_score}%`, height: '100%', background: 'var(--studio-success)', borderRadius: 2 }} />
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Tool Accuracy</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>{selectedRun.metrics.tool_accuracy_score}%</div>
+              <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>Tool Accuracy</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--studio-text)' }}>{selectedRun.metrics.tool_accuracy_score}%</div>
                 <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ width: `${selectedRun.metrics.tool_accuracy_score}%`, height: '100%', background: '#a855f7', borderRadius: 2 }} />
+                  <div style={{ width: `${selectedRun.metrics.tool_accuracy_score}%`, height: '100%', background: 'var(--studio-accent)', borderRadius: 2 }} />
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Guardrail Defense</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>{selectedRun.metrics.guardrail_compliance_score}%</div>
+              <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>Guardrail Defense</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--studio-text)' }}>{selectedRun.metrics.guardrail_compliance_score}%</div>
                 <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ width: `${selectedRun.metrics.guardrail_compliance_score}%`, height: '100%', background: '#ef4444', borderRadius: 2 }} />
+                  <div style={{ width: `${selectedRun.metrics.guardrail_compliance_score}%`, height: '100%', background: 'var(--studio-danger)', borderRadius: 2 }} />
                 </div>
               </div>
 
-              <div style={{ background: 'rgba(15, 23, 42, 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.35rem' }}>Turnaround Latency</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>{selectedRun.metrics.avg_turn_latency_ms}ms</div>
+              <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.5)', padding: '0.75rem', borderRadius: '6px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--studio-secondary)', marginBottom: '0.35rem' }}>Turnaround Latency</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--studio-text)' }}>{selectedRun.metrics.avg_turn_latency_ms}ms</div>
                 <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ width: `70%`, height: '100%', background: '#f59e0b', borderRadius: 2 }} />
+                  <div style={{ width: `70%`, height: '100%', background: 'var(--studio-warning)', borderRadius: 2 }} />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Test Scenarios List Accordion */}
-          <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-surface, #1e293b)' }}>
+          <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 600 }}>
               Evaluated Scenarios ({selectedRun.results.length})
             </h3>
@@ -400,8 +400,8 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                     key={r.test_case_id}
                     style={{
                       borderRadius: '8px',
-                      background: 'rgba(15, 23, 42, 0.5)',
-                      border: r.passed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.4)',
+                      background: 'rgba(var(--studio-inset-rgb), 0.5)',
+                      border: r.passed ? '1px solid rgba(var(--studio-success-rgb), 0.3)' : '1px solid rgba(var(--studio-danger-rgb), 0.4)',
                       overflow: 'hidden',
                     }}
                   >
@@ -419,8 +419,8 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <span style={{
-                          background: r.passed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                          color: r.passed ? '#34d399' : '#f87171',
+                          background: r.passed ? 'rgba(var(--studio-success-rgb), 0.2)' : 'rgba(var(--studio-danger-rgb), 0.2)',
+                          color: r.passed ? 'var(--studio-success)' : 'var(--studio-danger)',
                           padding: '2px 8px',
                           borderRadius: '4px',
                           fontSize: '0.75rem',
@@ -442,13 +442,13 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                           {r.category}
                         </span>
 
-                        <span style={{ fontWeight: 600, fontSize: '0.92rem', color: '#f8fafc' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--studio-text)' }}>
                           {r.test_name}
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.82rem', color: '#94a3b8' }}>
-                        <span>Score: <strong style={{ color: r.passed ? '#34d399' : '#f87171' }}>{r.score}/100</strong></span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.82rem', color: 'var(--studio-secondary)' }}>
+                        <span>Score: <strong style={{ color: r.passed ? 'var(--studio-success)' : 'var(--studio-danger)' }}>{r.score}/100</strong></span>
                         <span>Latency: {r.latency_ms}ms</span>
                         <span>{isExpanded ? '▲' : '▼'}</span>
                       </div>
@@ -456,9 +456,9 @@ export function EvalsTab({ agents }: EvalsTabProps) {
 
                     {/* Expanded Body: Dialogue & Judge Feedback */}
                     {isExpanded && (
-                      <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(15, 23, 42, 0.8)' }}>
+                      <div style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(var(--studio-inset-rgb), 0.8)' }}>
                         <div style={{ marginBottom: '0.75rem' }}>
-                          <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.4rem', fontWeight: 600 }}>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--studio-secondary)', marginBottom: '0.4rem', fontWeight: 600 }}>
                             SIMULATED DIALOGUE:
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -468,13 +468,13 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                                 style={{
                                   padding: '0.6rem 0.85rem',
                                   borderRadius: '6px',
-                                  background: msg.role === 'user' ? 'rgba(30, 41, 59, 0.8)' : 'rgba(16, 185, 129, 0.1)',
-                                  borderLeft: msg.role === 'user' ? '3px solid #60a5fa' : '3px solid #10b981',
+                                  background: msg.role === 'user' ? 'rgba(var(--studio-surface-rgb), 0.8)' : 'rgba(var(--studio-success-rgb), 0.1)',
+                                  borderLeft: msg.role === 'user' ? '3px solid var(--studio-accent)' : '3px solid var(--studio-success)',
                                   fontSize: '0.85rem',
-                                  color: '#e2e8f0',
+                                  color: 'var(--studio-text)',
                                 }}
                               >
-                                <strong style={{ color: msg.role === 'user' ? '#60a5fa' : '#10b981', marginRight: '0.5rem' }}>
+                                <strong style={{ color: msg.role === 'user' ? 'var(--studio-accent)' : 'var(--studio-success)', marginRight: '0.5rem' }}>
                                   {msg.role === 'user' ? '👤 Customer Sim' : '🤖 Voice Agent'}:
                                 </strong>
                                 {msg.text}
@@ -487,12 +487,12 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                         <div style={{
                           padding: '0.75rem',
                           borderRadius: '6px',
-                          background: 'rgba(56, 189, 248, 0.08)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          background: 'rgba(var(--studio-accent-rgb), 0.08)',
+                          border: '1px solid rgba(var(--studio-accent-rgb), 0.25)',
                           fontSize: '0.83rem',
-                          color: '#bae6fd'
+                          color: 'var(--studio-accent)'
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, marginBottom: '0.2rem', color: '#38bdf8' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, marginBottom: '0.2rem', color: 'var(--studio-accent)' }}>
                             <IconSparkles size={14} />
                             <span>AI Judge Verdict & Rationale:</span>
                           </div>
@@ -508,10 +508,10 @@ export function EvalsTab({ agents }: EvalsTabProps) {
         </div>
       ) : (
         /* Historical Runs Table */
-        <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-surface, #1e293b)' }}>
+        <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', textAlign: 'left' }}>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--studio-secondary)', textAlign: 'left' }}>
                 <th style={{ padding: '0.65rem' }}>Run ID</th>
                 <th style={{ padding: '0.65rem' }}>Suite</th>
                 <th style={{ padding: '0.65rem' }}>Agent</th>
@@ -525,12 +525,12 @@ export function EvalsTab({ agents }: EvalsTabProps) {
             <tbody>
               {runs.map((r) => (
                 <tr key={r.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <td style={{ padding: '0.65rem', fontFamily: 'monospace', color: '#60a5fa' }}>{r.id.slice(0, 16)}...</td>
+                  <td style={{ padding: '0.65rem', fontFamily: 'monospace', color: 'var(--studio-accent)' }}>{r.id.slice(0, 16)}...</td>
                   <td style={{ padding: '0.65rem' }}>{r.suite_name}</td>
                   <td style={{ padding: '0.65rem', fontWeight: 600 }}>{r.agent_name}</td>
                   <td style={{ padding: '0.65rem' }}>
                     <span style={{
-                      color: r.pass_rate >= 80 ? '#34d399' : '#f87171',
+                      color: r.pass_rate >= 80 ? 'var(--studio-success)' : 'var(--studio-danger)',
                       fontWeight: 700,
                     }}>
                       {r.pass_rate}% ({r.passed_tests}/{r.total_tests})
@@ -538,7 +538,7 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                   </td>
                   <td style={{ padding: '0.65rem', fontWeight: 700 }}>{r.overall_score}%</td>
                   <td style={{ padding: '0.65rem' }}>{r.metrics?.avg_turn_latency_ms || 312}ms</td>
-                  <td style={{ padding: '0.65rem', color: '#94a3b8' }}>{new Date(r.timestamp).toLocaleTimeString()}</td>
+                  <td style={{ padding: '0.65rem', color: 'var(--studio-secondary)' }}>{new Date(r.timestamp).toLocaleTimeString()}</td>
                   <td style={{ padding: '0.65rem' }}>
                     <button
                       className="btn btn-secondary"
