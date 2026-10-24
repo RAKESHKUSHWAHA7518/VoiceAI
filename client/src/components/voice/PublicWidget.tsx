@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { streamTurn, endConversation } from '../../utils/conversation';
 import { useConversationRecording } from '../../hooks/useConversationRecording';
 import { useContinuousVoice } from '../../hooks/useContinuousVoice';
+import { SpeechQueue } from '../../../../shared/streamingSpeech';
 interface Session { session_id: string; token: string; greeting: string; agent_name: string; runtime_mode: 'demo' | 'live'; speech_output: string; recording_enabled?: boolean }
 export function PublicWidget() {
   const [ended, setEnded] = useState(false);
@@ -12,9 +13,10 @@ export function PublicWidget() {
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [readAloud, setReadAloud] = useState(true);
   const submitRef = useRef<(text: string) => void>(() => {});
   const generation = useRef(0); const alive = useRef(true);
+  const speechQueue = useRef<SpeechQueue>();
   const recording = useConversationRecording(session, () => { voiceRef.current.pause(); setBusy(false); setEnded(true); });
   const recordingRef = useRef(recording); recordingRef.current = recording;
-  const voice = useContinuousVoice('en-US', text => submitRef.current(text), () => { generation.current++; controller.current?.abort(); setBusy(false); setPartial(''); }, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud', token: session?.token }, { onPlayback: audio => recordingRef.current.attachPlayback(audio) });
+  const voice = useContinuousVoice('en-US', text => submitRef.current(text), () => { generation.current++; controller.current?.abort(); speechQueue.current?.cancel(); speechQueue.current = undefined; setBusy(false); setPartial(''); }, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud', token: session?.token }, { silenceMs: 600, onPlayback: audio => recordingRef.current.attachPlayback(audio) });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -40,15 +42,20 @@ export function PublicWidget() {
   }, []);
   const send = async (text: string) => {
     if (!session || ended || !text.trim()) return;
-    controller.current?.abort(); const token = ++generation.current; voice.thinking(); setInput(''); setBusy(true); setError(''); setPartial('');
+    controller.current?.abort(); speechQueue.current?.cancel(); speechQueue.current = undefined; const token = ++generation.current; voice.thinking(); setInput(''); setBusy(true); setError(''); setPartial('');
     setMessages(previous => [...previous, { role: 'user', text }]);
-    const request = new AbortController(); controller.current = request; let pending = '';
+    const request = new AbortController(); controller.current = request; let pending = ''; let streamedSpeech = false;
     try {
-      const result = await streamTurn(session.session_id, text, delta => { if (token === generation.current && alive.current) { pending += delta; setPartial(pending); } }, request.signal, session.token);
+      const result = await streamTurn(session.session_id, text, delta => { if (token === generation.current && alive.current) { pending += delta; setPartial(pending); } }, request.signal, session.token, undefined, segment => {
+        if (token !== generation.current || !alive.current || !readAloud || session.speech_output !== 'cloud') return;
+        if (!speechQueue.current) { speechQueue.current = new SpeechQueue(); streamedSpeech = true; voice.streamReply(speechQueue.current); }
+        speechQueue.current.push(segment);
+      });
       if (token !== generation.current || !alive.current) return;
       setMessages(previous => [...previous, { role: 'assistant', text: result.output }]);
-      if (readAloud) voice.speak(result.output); else voice.recover();
-    } catch (err) { if (!request.signal.aborted && alive.current) { setError(err instanceof Error ? err.message : 'The response failed.'); voice.recover(); } }
+      (speechQueue.current as SpeechQueue | undefined)?.close();
+      if (readAloud && !streamedSpeech) voice.speak(result.output); else if (!streamedSpeech) voice.recover();
+    } catch (err) { if (token === generation.current && !request.signal.aborted && alive.current) { (speechQueue.current as SpeechQueue | undefined)?.cancel(); voice.cancelReply(); setError(err instanceof Error ? err.message : 'The response failed.'); voice.recover(); } }
     finally { if (token === generation.current && alive.current) { setPartial(''); setBusy(false); } }
   };
   submitRef.current = text => { void send(text); };

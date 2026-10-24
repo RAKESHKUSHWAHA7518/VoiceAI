@@ -38,12 +38,38 @@ test('new speech interrupts playback without letting stale playback callbacks re
   const f = fixture(); f.controller.start(); f.engines[0].onstart(); f.controller.speak('Which day works best?');
   const oldEnd = f.speeches[0].onend; const oldError = f.speeches[0].onerror;
   f.result('Actually cancel that', false);
+  expect(f.controller.state.phase).toBe('speaking');
+  jest.advanceTimersByTime(260); f.result('Actually cancel that', false);
   expect(f.controller.state.phase).toBe('listening');
   expect(f.interrupt).toHaveBeenCalledTimes(2); // Initial start cleanup and this interruption.
   f.result('Actually cancel that'); jest.advanceTimersByTime(750);
   oldEnd(); oldError();
   expect(f.controller.state.phase).toBe('thinking');
   expect(f.text).toHaveBeenCalledWith('Actually cancel that');
+});
+
+test('cloud endpoint flushes finalized speech immediately and never submits interim words', () => {
+  const f = fixture(); f.controller.start(); f.engines[0].onstart();
+  f.result('Please book'); f.result('a room', false); f.engines[0].onutteranceend();
+  expect(f.text).not.toHaveBeenCalled();
+  f.result('a room'); f.engines[0].onutteranceend();
+  expect(f.text).toHaveBeenCalledWith('Please book a room');
+  jest.advanceTimersByTime(1000); expect(f.text).toHaveBeenCalledTimes(1);
+});
+
+test('isolated interim noise and filler words do not interrupt playback', () => {
+  const f = fixture(); f.controller.start(); f.engines[0].onstart(); f.controller.speak('Your reservation is confirmed');
+  const calls = f.interrupt.mock.calls.length;
+  f.result('noise', false); jest.advanceTimersByTime(500); f.result('um');
+  expect(f.interrupt).toHaveBeenCalledTimes(calls); expect(f.controller.state.phase).toBe('speaking');
+  f.result('stop'); expect(f.controller.state.phase).toBe('listening');
+});
+
+test('manual interruption stops typed reply playback even when the microphone is inactive', () => {
+  const f = fixture(); f.controller.speak('A typed answer');
+  f.controller.cancelReply(); expect(f.controller.state.phase).toBe('idle');
+  const cancels = f.cancel.mock.calls.length; f.speeches[0].onend();
+  expect(f.controller.state.phase).toBe('idle'); expect(f.cancel).toHaveBeenCalledTimes(cancels);
 });
 test('suppresses recognizable playback echo and reconnects after normal silence', () => {
   const f = fixture(); f.controller.start(); f.engines[0].onstart(); f.controller.speak('Welcome to our hotel');

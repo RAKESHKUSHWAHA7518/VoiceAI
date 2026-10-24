@@ -4,6 +4,7 @@ import { IconMic } from '../common/Icons';
 import { openConversation, openDemoConversation, streamTurn, endConversation, type ConversationSession } from '../../utils/conversation';
 import { useContinuousVoice } from '../../hooks/useContinuousVoice';
 import { useConversationRecording } from '../../hooks/useConversationRecording';
+import { SpeechQueue } from '../../../../shared/streamingSpeech';
 interface Props { isOpen: boolean; onClose: () => void; agent: Agent | null; onRunTest?: (input: string) => Promise<PlaygroundTest | undefined>; onViewAnalytics?: () => void; demo?: boolean; embedded?: boolean }
 export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onViewAnalytics, embedded = false }: Props) {
   const [prepared, setPrepared] = useState(!embedded);
@@ -13,6 +14,10 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   const [phase, setPhase] = useState<'connecting' | 'ready' | 'thinking' | 'speaking' | 'ended'>('connecting');
   const [input, setInput] = useState(''); const [partial, setPartial] = useState(''); const [error, setError] = useState('');
   const [elapsed, setElapsed] = useState<number | null>(null);
+  const [firstTextMs, setFirstTextMs] = useState<number | null>(null);
+  const [firstAudioMs, setFirstAudioMs] = useState<number | null>(null);
+  const turnTiming = useRef<{ start: number; text: boolean; audio: boolean }>();
+  const speechQueue = useRef<SpeechQueue>();
   const sessionRef = useRef<ConversationSession | null>(null); const mounted = useRef(false);
   const generation = useRef(0); const request = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDivElement>(null); const submitRef = useRef<(text: string) => void>(() => {});
@@ -20,32 +25,38 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   const interrupt = () => {
     generation.current++;
     request.current?.abort();
+    request.current = null; speechQueue.current?.cancel(); speechQueue.current = undefined;
+    turnTiming.current = undefined;
+    voiceRef.current?.cancelReply();
     setPartial('');
     setPhase('ready');
-    if (sessionRef.current) {
-      const s = sessionRef.current;
-      void fetch(`/api/${s.token ? 'public/sessions' : 'conversations'}/${s.session_id}/interrupt`, {
-        method: 'POST',
-        headers: s.token ? { Authorization: `Bearer ${s.token}` } : {}
-      }).catch(() => {});
-    }
+    // Aborting the response cancels that exact server turn. A separate interrupt
+    // request can arrive late and accidentally cancel the replacement turn.
   };
   const recording = useConversationRecording(session, () => { voiceRef.current.pause(); setPhase('ended'); });
   const recordingRef = useRef(recording); recordingRef.current = recording;
-  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 1200, onPlayback: audio => recordingRef.current.attachPlayback(audio) });
+  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 600, onPlayback: audio => recordingRef.current.attachPlayback(audio), onAudioStarted: () => { const timing = turnTiming.current; if (timing && !timing.audio) { timing.audio = true; setFirstAudioMs(Math.round(performance.now() - timing.start)); } } });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const stop = () => { voiceRef.current.pause(); interrupt(); };
   const submit = async (text: string) => {
     if (!text.trim() || !sessionRef.current || phase === 'ended') return;
     interrupt(); voiceRef.current.thinking(); const token = generation.current; const controller = new AbortController(); request.current = controller;
-    setError(''); setInput(''); setPhase('thinking'); setElapsed(null);
+    setError(''); setInput(''); setPhase('thinking'); setElapsed(null); setFirstTextMs(null); setFirstAudioMs(null);
     setMessages(previous => [...previous, { role: 'user', text }]);
     let pending = ''; const start = performance.now();
+    turnTiming.current = { start, text: false, audio: false };
+    let streamedSpeech = false;
     try {
-      const result = await streamTurn(sessionRef.current.session_id, text, delta => { if (mounted.current && generation.current === token) { pending += delta; setPartial(pending); } }, controller.signal, sessionRef.current.token);
+      const result = await streamTurn(sessionRef.current.session_id, text, delta => { if (mounted.current && generation.current === token) { pending += delta; setPartial(pending); if (turnTiming.current && !turnTiming.current.text) { turnTiming.current.text = true; setFirstTextMs(Math.round(performance.now() - start)); } } }, controller.signal, sessionRef.current.token, undefined, segment => {
+        if (!mounted.current || generation.current !== token || sessionRef.current?.speech_output !== 'cloud') return;
+        if (!speechQueue.current) { speechQueue.current = new SpeechQueue(); streamedSpeech = true; voiceRef.current.streamReply(speechQueue.current); }
+        speechQueue.current.push(segment);
+      });
       if (!mounted.current || generation.current !== token) return;
-      setMessages(previous => [...previous, { role: 'assistant', text: result.output }]); setPartial(''); setElapsed(Math.round(performance.now() - start)); setPhase('ready'); voiceRef.current.speak(result.output);
-    } catch (err) { if (mounted.current && generation.current === token) { setPhase('ready'); setPartial(''); setError(err instanceof Error ? err.message : 'Could not complete the message.'); voiceRef.current.recover(); } }
+      speechQueue.current?.close();
+      setMessages(previous => [...previous, { role: 'assistant', text: result.output }]); setPartial(''); setElapsed(Math.round(performance.now() - start)); setPhase('ready'); if (!streamedSpeech) voiceRef.current.speak(result.output);
+    } catch (err) { if (mounted.current && generation.current === token) { speechQueue.current?.cancel(); voiceRef.current.cancelReply(); setPhase('ready'); setPartial(''); setError(err instanceof Error ? err.message : 'Could not complete the message.'); voiceRef.current.recover(); } }
+    finally { if (request.current === controller) request.current = null; }
   };
   submitRef.current = text => { void submit(text); };
   useEffect(() => {
@@ -89,7 +100,7 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
       <div className="voice-transcript" role="log" aria-label="Conversation transcript">{messages.map((message, index) => <div className={`voice-message ${message.role}`} key={index}><strong>{message.role === 'user' ? 'You' : agent.name}</strong><p>{message.text}</p></div>)}{(voice.partial || partial) && <div className="voice-message pending"><p>{voice.partial || partial}</p></div>}</div>
       {error && <p className="workflow-error" role="alert">{error}</p>}
       <form className="voice-text-form" onSubmit={event => { event.preventDefault(); void submit(input); }}><input className="form-input" aria-label="Your message" placeholder="Or type a message…" maxLength={4000} value={input} onChange={event => setInput(event.target.value)} /><button className="btn btn-primary" disabled={!session || !input.trim() || phase === 'thinking' || phase === 'ended'}>Send</button></form>
-      {elapsed !== null && <small className="voice-timing">Response received in {elapsed} ms · excludes speech recognition and playback</small>}
+      {(firstTextMs !== null || firstAudioMs !== null || elapsed !== null) && <small className="voice-timing">{firstTextMs !== null && <>First text {firstTextMs} ms · </>}{firstAudioMs !== null && <>First audio {firstAudioMs} ms · </>}{elapsed !== null && <>Answer complete {elapsed} ms · </>}Measured from turn submission; excludes speech recognition.</small>}
     </section></div>
     {session?.recording_enabled && <p role="status" style={{ padding: '0 24px' }}>{recording.status === 'recording' ? '🔴 Recording both voices' : recording.status === 'saving' ? 'Saving recording… keep this window open' : recording.status === 'saved' ? 'Recording saved to History' : recording.status === 'paused' ? 'Recording paused' : 'Recording available when you start the microphone'}{recording.error && <span role="alert"> · {recording.error} <button className="btn btn-secondary" onClick={() => void recording.finish().catch(() => {})}>Retry saving</button></span>}</p>}
     <footer className="workflow-footer"><p>{session?.speech_output === 'cloud' ? 'Live audio goes to Deepgram; reply text goes to Cartesia. Uses provider credits. ' : ''}{!prepared ? 'Connect the test to load voice and recording availability. ' : session?.recording_enabled ? 'Starting the microphone records your voice and the AI voice for your private conversation history (up to five minutes).' : 'Audio is not stored for browser-only voice.'}{demo ? ' Sign in to save your own conversations.' : ' Your transcript is private to your workspace.'}</p><div>{embedded && prepared && <button className="btn btn-primary" disabled={recording.status === 'saving'} onClick={async () => { try { stop(); setPhase('ended'); await recording.finish(); setRestart(value => value + 1); } catch {} }}>New test</button>}{onViewAnalytics && !demo && <button className="btn btn-secondary" onClick={onViewAnalytics}>View history</button>}<button className="btn btn-danger" disabled={!session || recording.status === 'saving' || phase === 'ended'} onClick={() => void finishConversation()}>End conversation</button></div></footer>

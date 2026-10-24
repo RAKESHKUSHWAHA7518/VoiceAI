@@ -2,7 +2,7 @@ import { DeepgramRecognition, CartesiaSynthesis } from '../utils/cloudSpeech';
 import { useEffect, useRef, useState } from 'react';
 import { ContinuousVoice, type VoiceState } from '../../../shared/continuousVoice';
 
-export function useContinuousVoice(language: string, onText: (text: string) => void, onInterrupt: () => void, cloud?: { sessionId: string; enabled: boolean; token?: string }, options?: { speakerMode?: boolean; silenceMs?: number; onPlayback?: (audio: HTMLAudioElement) => void }) {
+export function useContinuousVoice(language: string, onText: (text: string) => void, onInterrupt: () => void, cloud?: { sessionId: string; enabled: boolean; token?: string }, options?: { speakerMode?: boolean; silenceMs?: number; onPlayback?: (audio: HTMLAudioElement) => void; onAudioStarted?: () => void }) {
   const [state, setState] = useState<VoiceState>({ phase: 'idle', active: false, partial: '', error: '' });
   const cloudRef = useRef(cloud); cloudRef.current = cloud;
   const optionsRef = useRef(options); optionsRef.current = options;
@@ -15,6 +15,7 @@ export function useContinuousVoice(language: string, onText: (text: string) => v
     synthesis: { cancel: () => { synthesis.current?.cancel(); window.speechSynthesis?.cancel(); }, speak: speech => { if (cloudRef.current?.enabled) { synthesis.current!.speak(speech); return; } if (!window.speechSynthesis) throw new Error('Unsupported'); window.speechSynthesis.speak(speech); } },
     changed: value => { if (mounted.current) setState(value); },
     text: text => callbacks.current.onText(text), interrupt: () => callbacks.current.onInterrupt(),
+    playbackStarted: () => optionsRef.current?.onAudioStarted?.(),
   }, language, optionsRef.current);
   useEffect(() => {
     if (controller.current && options?.speakerMode !== undefined) {
@@ -22,6 +23,6 @@ export function useContinuousVoice(language: string, onText: (text: string) => v
     }
   }, [options?.speakerMode]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.dispose(); controller.current = undefined; }; }, [language, cloud?.sessionId, cloud?.enabled]);
-  return { ...state, start: (greeting?: string) => get().start(greeting), pause: () => controller.current?.pause(), thinking: () => get().thinking(), speak: (text: string) => get().speak(text), recover: () => controller.current?.recover(), setSpeakerMode: (enabled: boolean) => controller.current?.setSpeakerMode(enabled) };
+  return { ...state, start: (greeting?: string) => get().start(greeting), pause: () => controller.current?.pause(), thinking: () => get().thinking(), speak: (text: string) => get().speak(text), streamReply: (segments: AsyncIterable<import('../../../shared/streamingSpeech').SpeechChunk>) => get().speak('', segments), cancelReply: () => controller.current?.cancelReply(), recover: () => controller.current?.recover(), setSpeakerMode: (enabled: boolean) => controller.current?.setSpeakerMode(enabled) };
 }
 

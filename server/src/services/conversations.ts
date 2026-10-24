@@ -8,12 +8,14 @@ import config from '../config';
 import { cloudinaryReady } from './cloudinary_media';
 import { saveConversationRecord, ConversationRecord } from './conversation_history';
 import logger from '../utils/logger';
+import { SentenceBuffer } from '../../../shared/streamingSpeech';
 
 export const runtimeMode = () => process.env.VOICEAI_RUNTIME_MODE === 'live' ? 'live' : 'demo';
 interface Conversation {
   id: string; workspace_id: string; agent: AgentRecord; expires_at: number;
   history: Array<{ role: 'user' | 'assistant'; content: string }>;
   active?: AbortController; turns: number; attempts: number;
+  speech?: { turn_id: string; segments: string[]; cancelled: boolean };
   mode: 'demo' | 'live'; tools_enabled: boolean; archive?: ConversationRecord;
 }
 const sessions = new Map<string, Conversation>();
@@ -44,21 +46,28 @@ export function closeConversation(workspace: string, id: string) {
   if (session.archive) void saveConversationRecord({ ...session.archive, status: 'ended', updated_at: Date.now() }).catch(() => logger.error('Could not finalize conversation history', { session_id: id }));
   return true;
 }
-export function interruptConversation(workspace: string, id: string) { const session = findConversation(workspace, id); session?.active?.abort(); return !!session; }
+export function interruptConversation(workspace: string, id: string) { const session = findConversation(workspace, id); session?.active?.abort(); if (session?.speech) session.speech.cancelled = true; return !!session; }
 export function closeAgentConversations(workspace: string, agent: string) {
   for (const session of sessions.values()) if (session.workspace_id === workspace && session.agent.id === agent) closeConversation(workspace, session.id);
 }
 
-export async function* conversationTurn(session: Conversation, text: string) {
+export async function* conversationTurn(session: Conversation, text: string, abort = new AbortController()) {
   if (session.active) throw new Error('TURN_ACTIVE');
   if (session.attempts >= 100) throw new Error('TURN_LIMIT');
   session.attempts++;
-  const abort = new AbortController(); session.active = abort;
-  const timeout = setTimeout(() => abort.abort(), 45000);
+  session.active = abort;
+  let timedOut = false;
+  const timeout = setTimeout(() => { timedOut = true; abort.abort(); }, 45000);
   const start = performance.now();
   let firstToken: number | null = null;
   const mode = session.mode;
   const turnId = crypto.randomUUID();
+  const speech = { turn_id: turnId, segments: [] as string[], cancelled: false }; session.speech = speech;
+  const sentences = new SentenceBuffer();
+  const speechEvents = (delta: string, finish = false) => sentences.push(delta, finish).map(value => {
+    const segment_index = speech.segments.push(value) - 1;
+    return { type: 'speech' as const, text: value, turn_id: turnId, segment_index };
+  });
   let output = '';
   const toolEvents: Array<{ name: string; status: 'completed' | 'error'; result: string; timestamp: number }> = [];
   try {
@@ -79,6 +88,7 @@ export async function* conversationTurn(session: Conversation, text: string) {
       for (const part of reply.match(/\S+\s*/g) || []) {
         if (abort.signal.aborted) throw new Error('TURN_CANCELLED');
         output += part; yield { type: 'delta', text: part, turn_id: turnId };
+        for (const event of speechEvents(part)) yield event;
       }
     } else {
       const groq = session.agent.llm_model.startsWith('groq/');
@@ -101,6 +111,7 @@ export async function* conversationTurn(session: Conversation, text: string) {
             firstToken ??= performance.now(); output += chunk.content; roundText += chunk.content;
             if (output.length > 10000) throw new Error('OUTPUT_LIMIT');
             yield { type: 'delta', text: chunk.content, turn_id: turnId };
+            for (const event of speechEvents(chunk.content)) yield event;
           }
         }
         if (!requested.length) break;
@@ -119,6 +130,7 @@ export async function* conversationTurn(session: Conversation, text: string) {
       if (!output.trim()) throw new Error('EMPTY_RESPONSE');
     }
     if (abort.signal.aborted) throw new Error('TURN_CANCELLED');
+    for (const event of speechEvents('', true)) yield event;
     if (session.archive) {
       const archive: ConversationRecord = { ...session.archive, updated_at: Date.now(), processing_ms: performance.now() - start, turn_outcomes: [...(session.archive.turn_outcomes || []), { id: turnId, input: text, output, status: 'completed', timestamp: Date.now(), tool_events: toolEvents }], tool_events: [...(session.archive.tool_events || []), ...toolEvents], sources: sources.map(source => ({ doc_id: source.doc_id, title: source.title })), messages: [...session.archive.messages, { role: 'user', text, timestamp: Date.now() }, { role: 'assistant', text: output, timestamp: Date.now() }] };
       try { await saveConversationRecord(archive); session.archive = archive; } catch { logger.error('Could not save conversation record', { session_id: session.id }); throw new Error('HISTORY_SAVE_FAILED'); }
@@ -127,12 +139,13 @@ export async function* conversationTurn(session: Conversation, text: string) {
     session.turns++; session.expires_at = Date.now() + MAX_AGE;
     yield { type: 'complete', turn_id: turnId, output, tool_events: toolEvents, runtime_mode: mode, sources: sources.map(source => ({ doc_id: source.doc_id, title: source.title })), metrics: { retrieval_ms: retrievalMs, llm_ttft_ms: firstToken === null ? null : firstToken - start - retrievalMs, processing_ms: performance.now() - start, audible_latency_ms: null } };
   } catch (error) {
+    speech.cancelled = true;
     if (session.archive && !(error instanceof Error && error.message === 'HISTORY_SAVE_FAILED')) {
-      const archive: ConversationRecord = { ...session.archive, status: sessions.has(session.id) ? 'active' : 'ended', updated_at: Date.now(), turn_outcomes: [...(session.archive.turn_outcomes || []), { id: turnId, input: text, output, status: abort.signal.aborted ? 'interrupted' : 'error', timestamp: Date.now(), tool_events: toolEvents }] };
+      const archive: ConversationRecord = { ...session.archive, status: sessions.has(session.id) ? 'active' : 'ended', updated_at: Date.now(), turn_outcomes: [...(session.archive.turn_outcomes || []), { id: turnId, input: text, output, status: abort.signal.aborted && !timedOut ? 'interrupted' : 'error', timestamp: Date.now(), tool_events: toolEvents }] };
       try { await saveConversationRecord(archive); session.archive = archive; } catch { logger.error('Could not save failed turn outcome', { session_id: session.id }); }
     }
-    if (abort.signal.aborted) throw new Error('TURN_CANCELLED'); throw error;
+    if (abort.signal.aborted) throw new Error(timedOut ? 'TURN_TIMEOUT' : 'TURN_CANCELLED'); throw error;
   }
-  finally { clearTimeout(timeout); if (session.active === abort) session.active = undefined; }
+  finally { clearTimeout(timeout); if (abort.signal.aborted) speech.cancelled = true; if (session.active === abort) session.active = undefined; }
 }
 

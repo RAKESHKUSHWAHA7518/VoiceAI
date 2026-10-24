@@ -8,6 +8,7 @@ export interface VoiceDependencies {
   changed: (state: VoiceState) => void;
   text: (text: string) => void;
   interrupt: () => void;
+  playbackStarted?: () => void;
 }
 export interface VoiceOptions { silenceMs?: number; speakerMode?: boolean }
 export class ContinuousVoice {
@@ -20,6 +21,8 @@ export class ContinuousVoice {
   private connectedAt = 0; private echoUntil = 0;
   private silenceMs: number;
   private speakerMode: boolean;
+  private bargeCandidate = 0;
+  private bargeLast = 0;
   constructor(private deps: VoiceDependencies, private language: string, options: VoiceOptions = {}) {
     const testRuntime = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV === 'test';
     this.silenceMs = options.silenceMs ?? (testRuntime ? 750 : 1200);
@@ -29,7 +32,7 @@ export class ContinuousVoice {
   private update(patch: Partial<VoiceState>) { this.state = { ...this.state, ...patch }; this.deps.changed({ ...this.state }); }
   private clearTimers() { clearTimeout(this.startup); clearTimeout(this.retry); clearTimeout(this.endpoint); clearTimeout(this.watchdog); }
   private silence() { this.playback++; this.speech = null; clearTimeout(this.watchdog); this.deps.synthesis.cancel(); }
-  private disconnect() { const old = this.engine; this.engine = null; if (old) { old.onstart = old.onend = old.onerror = old.onresult = old.onprogress = null; try { old.abort(); } catch {} } }
+  private disconnect() { const old = this.engine; this.engine = null; if (old) { old.onstart = old.onend = old.onerror = old.onresult = old.onprogress = old.onutteranceend = null; try { old.abort(); } catch {} } }
   pause() { this.epoch++; this.clearTimers(); this.disconnect(); this.silence(); this.finals = this.latest = ''; this.deps.interrupt(); this.update({ phase: 'paused', active: false, partial: '', detail: '' }); }
   dispose() { this.pause(); }
   private fail(error: string) { this.pause(); this.update({ phase: 'error', error }); }
@@ -44,6 +47,7 @@ export class ContinuousVoice {
       const engine = this.deps.recognition(); this.engine = engine;
       engine.lang = this.language; engine.continuous = true; engine.interimResults = true;
       engine.onprogress = (detail: string) => { if (token === this.epoch && this.state.active) this.update({ detail }); };
+      engine.onutteranceend = () => { if (token === this.epoch && this.state.active && !this.latest.trim()) this.flush(); };
       engine.onstart = () => {
         if (token !== this.epoch) return;
         clearTimeout(this.startup);
@@ -81,10 +85,19 @@ export class ContinuousVoice {
             const matches = incomingWords.filter(w => spokenWords.has(w)).length;
             if (matches / incomingWords.length >= 0.5) return;
           }
-          if (this.speakerMode) return; // In speaker mode, disregard mic leakage while audio plays
+          if (this.speakerMode && this.state.phase === 'speaking') return;
         }
         this.restarts = 0;
         if (this.state.phase === 'speaking') {
+          const words = incoming.split(/\s+/);
+          if (/^(um|uh|hmm|ah)$/i.test(incoming)) return;
+          // Ignore isolated interim noise; a finalized phrase or sustained speech can barge in.
+          if (!final) {
+            if (!this.bargeCandidate || Date.now() - this.bargeLast > 500) this.bargeCandidate = Date.now();
+            this.bargeLast = Date.now();
+            if (words.length < 2 || Date.now() - this.bargeCandidate < 250) return;
+          } else if (words.length < 2 && !/^(stop|cancel|wait|no)$/i.test(incoming)) return;
+          this.bargeCandidate = 0;
           this.silence();
           this.deps.interrupt();
           this.update({ phase: 'listening' });
@@ -120,14 +133,20 @@ export class ContinuousVoice {
   }
   thinking() { this.silence(); clearTimeout(this.endpoint); this.finals = this.latest = ''; this.spoken = ''; this.update({ phase: 'thinking', partial: '', error: '' }); }
   recover() { if (this.state.active) this.update({ phase: 'listening' }); }
-  speak(text: string) {
+  cancelReply() { this.silence(); this.bargeCandidate = 0; this.update({ phase: this.state.active ? 'listening' : 'idle' }); }
+  speak(text: string, segments?: AsyncIterable<import('./streamingSpeech').SpeechChunk>) {
     this.silence(); this.spoken = text;
     const token = this.playback; const speech = this.deps.utterance(text); this.speech = speech; speech.lang = this.language;
+    if (segments) {
+      const self = this;
+      speech.segments = (async function* () { for await (const segment of segments) { if (token !== self.playback) return; self.spoken += ' ' + segment.text; yield segment; } })();
+    }
+    speech.onstart = () => { if (token === this.playback) { this.update({ phase: 'speaking' }); this.deps.playbackStarted?.(); } };
     const done = () => { if (token !== this.playback || this.speech !== speech) return; clearTimeout(this.watchdog); this.speech = null; this.echoUntil = Date.now() + 800; this.update({ phase: this.state.active ? 'listening' : 'idle' }); };
     speech.onend = done;
     speech.onerror = (event: any) => { if (token === this.playback) this.fail(event?.message || 'Voice playback failed. Check your audio output, then resume.'); };
-    this.update({ phase: 'speaking' });
-    try { this.deps.synthesis.speak(speech); this.watchdog = setTimeout(() => { if (token === this.playback) this.fail('Voice playback timed out. Resume to try again.'); }, Math.max(15000, text.length * 150)); }
+    this.update({ phase: segments ? 'thinking' : 'speaking' });
+    try { this.deps.synthesis.speak(speech); this.watchdog = setTimeout(() => { if (token === this.playback) this.fail('Voice playback timed out. Resume to try again.'); }, segments ? 150000 : Math.max(15000, text.length * 150)); }
     catch { this.fail('Voice playback is unavailable in this browser.'); }
   }
 }

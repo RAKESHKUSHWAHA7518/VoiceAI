@@ -20,7 +20,7 @@ import { platformAccess } from '../src/middleware/platformAccess';
 import { errorHandler } from '../src/middleware/errorHandler';
 import { accountForToken } from '../src/services/accounts';
 import conversations from '../src/routes/conversations';
-import { findConversation } from '../src/services/conversations';
+import { findConversation, conversationTurn } from '../src/services/conversations';
 import { speechSegments } from '../../shared/speechSegments';
 import speechRoutes from '../src/routes/speech';
 import publicRoutes from '../src/routes/public';
@@ -419,4 +419,32 @@ test('history pagination is bounded, searches all pages and keeps totals workspa
  const larger = (await request(app).get('/api/conversations/history?page_size=25').set('Cookie', owner.cookie)).body; expect(larger.conversations).toHaveLength(23);
  const empty = (await request(app).get('/api/conversations/history?q=hidden').set('Cookie', other.cookie)).body; expect(empty.conversations).toEqual([]); expect(empty.pagination.total).toBe(0); expect(empty.stats.conversation_count).toBe(1);
  for (const query of ['page=0','page=-1','page=1.5','page_size=51','page_size=0','page=oops']) await request(app).get('/api/conversations/history?' + query).set('Cookie', owner.cookie).expect(400);
+});
+
+test('registered streaming speech is available before turn completion and rejects stale or foreign segments', async () => {
+ const owner = await register('stream-speech-owner@example.test'); const other = await register('stream-speech-other@example.test');
+ const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+ const config = require('../src/config').default; const old = {mode: process.env.VOICEAI_SPEECH_MODE, cartesia: config.apiKeys.cartesia};
+ process.env.VOICEAI_SPEECH_MODE = 'cloud'; config.apiKeys.cartesia = 'test-cartesia';
+ const post = jest.spyOn(axios, 'post').mockResolvedValue({data: Buffer.from('RIFF-stream-test')});
+ let iterator: ReturnType<typeof conversationTurn> | undefined; const abort = new AbortController();
+ try {
+  const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({agent_id: agent.id}).expect(201)).body;
+  const session = findConversation(owner.user.workspace_id, opened.session_id)!;
+  // Locate using the persisted account, matching other workspace tests.
+  expect(session).toBeDefined();
+  iterator = conversationTurn(session, 'Hello', abort);
+  let segment: any;
+  for (let i = 0; i < 100; i++) { const event = await iterator.next(); if (event.value?.type === 'speech') { segment = event.value; break; } }
+  expect(segment).toBeDefined(); expect(session.history).toHaveLength(0);
+  const url = '/api/conversations/' + opened.session_id + '/speak';
+  const body = {turn_id: segment.turn_id, segment_index: segment.segment_index};
+  await request(app).post(url).set('Cookie', owner.cookie).send({...body, turn_id: 'foreign'}).expect(400);
+  await request(app).post(url).set('Cookie', other.cookie).send(body).expect(404);
+  await request(app).post(url).set('Cookie', owner.cookie).send(body).expect(200);
+  expect(post.mock.calls[0][1]).toMatchObject({transcript: segment.text});
+  abort.abort(); await iterator.return(undefined as never);
+  await request(app).post(url).set('Cookie', owner.cookie).send(body).expect(400);
+  await request(app).delete('/api/conversations/' + opened.session_id).set('Cookie', owner.cookie).expect(200);
+ } finally { abort.abort(); await iterator?.return(undefined as never); post.mockRestore(); process.env.VOICEAI_SPEECH_MODE = old.mode; config.apiKeys.cartesia = old.cartesia; }
 });

@@ -207,3 +207,13 @@ History request recovery: failed list requests clear stale rows and selected det
 ## Free hosting preparation — 24 October 2026
 
 Added a Render free-service Blueprint, same-origin studio hosting with SPA deep-link fallback, a combined frontend/backend Docker build and a MongoDB-required startup option for temporary hosting filesystems. Backend build and 5 hosting route tests pass. The Docker image was not built locally because Docker Desktop is not running. No remote service was created and no credentials uploaded; Render sign-in, repository connection and hosted acceptance remain pending. See docs/DEPLOY_RENDER.md.
+
+## Render deployment — 24 October 2026
+
+Live URL: https://voiceai-demo-swi9.onrender.com . Render Free Docker service srv-dbedogvb9u1s739cbutg uses the feat/voice-streaming-flow branch. Commits 46b5385, 9b123f2 and f1c332c add hosting, isolate frontend types and preserve approved live/cloud settings. MongoDB and Gemini/Deepgram/Cartesia/Cloudinary credentials were configured privately with explicit user approval. Database readiness and liveness return 200; /history and /agents/new serve the SPA; unauthenticated /api/auth/me returns 401. Hosted guest text demo responded successfully. Seven voice lifecycle tests passed after the clean-build fix, in addition to the 29 deployment regression checks. Runtime live and speech cloud were verified in Render. Real microphone capture, private Gemini inference and recording playback still require hosted account acceptance. Hosted database is voiceai_demo; local workspace data was not migrated. Select Gemini for agents whose default model is OpenAI.
+
+## Voice latency iteration — 24 October 2026
+
+Implemented provider end-of-speech forwarding, shorter fallback endpointing, 100ms microphone packets, server-authorized incremental speech sentences and bounded next-sentence prefetch. Removed the late interrupt-request race and scoped disconnect cancellation to its own turn. Added transient-noise suppression and distinct timeout errors. Private tester shows first-text/first-audio/completion timings from submission. Targeted regression suite: 42 tests passed; frontend/backend builds passed. This is sentence-level playback, not PCM-level streaming; no measured end-to-end latency target is claimed. See docs/VOICE_LATENCY.md.
+
+Additional stream-parser/provider checks passed (47 targeted tests total). Two real Chrome typed-input tests reached audible playback: first-audio timings were 9781ms and 4668ms; no end-to-end latency improvement percentage is claimed. Microphone/noise acceptance remains pending. Model first-text delay was the largest measured component.

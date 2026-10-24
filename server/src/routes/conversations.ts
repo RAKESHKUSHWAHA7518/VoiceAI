@@ -38,18 +38,20 @@ export const turnHandler = asyncHandler(async (req: Request, res: Response) => {
     session.active = undefined;
   }
   res.set({ 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
-  const cancel = () => { if (!res.writableEnded) interruptConversation(workspaceId(req)!, req.params.id); };
+  // A disconnected old request must never abort a newer turn in this session.
+  const turnAbort = new AbortController();
+  const cancel = () => { if (!res.writableEnded) turnAbort.abort(); };
   res.on('close', cancel);
   try {
-    for await (const event of conversationTurn(session, text)) {
+    for await (const event of conversationTurn(session, text, turnAbort)) {
       if (res.destroyed) break;
       const ready = res.write(JSON.stringify(event) + '\n');
       res.flush?.();
       if (!ready) await new Promise<void>(resolve => { const done = () => { res.off('drain', done); res.off('close', done); resolve(); }; res.once('drain', done); res.once('close', done); });
     }
   } catch (error) {
-    const code = error instanceof Error && ['TURN_CANCELLED', 'PROVIDER_NOT_CONFIGURED', 'TURN_LIMIT', 'EMPTY_RESPONSE', 'PROVIDER_RATE_LIMITED', 'PROVIDER_AUTH_FAILED', 'PROVIDER_MODEL_UNAVAILABLE', 'TOOL_CALL_LIMIT', 'HISTORY_SAVE_FAILED'].includes(error.message) ? error.message : 'PROVIDER_ERROR';
-    if (!res.destroyed) res.write(JSON.stringify({ type: 'error', code, message: code === 'HISTORY_SAVE_FAILED' ? 'The reply could not be saved to conversation history. Your previous context is unchanged. Please try again.' : code === 'PROVIDER_NOT_CONFIGURED' ? 'Configure a provider key and select its model, or use demo mode.' : code === 'PROVIDER_RATE_LIMITED' ? 'The model provider quota is exhausted or rate-limited. Check billing or select Google Gemini Flash in Agent settings.' : code === 'PROVIDER_AUTH_FAILED' ? 'The model provider rejected the server credentials. Check server configuration.' : code === 'PROVIDER_MODEL_UNAVAILABLE' ? 'This model is unavailable. Choose a model enabled for your provider account.' : code === 'TOOL_CALL_LIMIT' ? 'The tool-call limit was reached. Start a new conversation or simplify the request.' : code === 'TURN_CANCELLED' ? 'The turn was interrupted or timed out.' : 'The conversation could not complete. Please try again.' }) + '\n');
+    const code = error instanceof Error && ['TURN_CANCELLED', 'TURN_TIMEOUT', 'PROVIDER_NOT_CONFIGURED', 'TURN_LIMIT', 'EMPTY_RESPONSE', 'PROVIDER_RATE_LIMITED', 'PROVIDER_AUTH_FAILED', 'PROVIDER_MODEL_UNAVAILABLE', 'TOOL_CALL_LIMIT', 'HISTORY_SAVE_FAILED'].includes(error.message) ? error.message : 'PROVIDER_ERROR';
+    if (!res.destroyed) res.write(JSON.stringify({ type: 'error', code, message: code === 'HISTORY_SAVE_FAILED' ? 'The reply could not be saved to conversation history. Your previous context is unchanged. Please try again.' : code === 'PROVIDER_NOT_CONFIGURED' ? 'Configure a provider key and select its model, or use demo mode.' : code === 'PROVIDER_RATE_LIMITED' ? 'The model provider quota is exhausted or rate-limited. Check billing or select Google Gemini Flash in Agent settings.' : code === 'PROVIDER_AUTH_FAILED' ? 'The model provider rejected the server credentials. Check server configuration.' : code === 'PROVIDER_MODEL_UNAVAILABLE' ? 'This model is unavailable. Choose a model enabled for your provider account.' : code === 'TOOL_CALL_LIMIT' ? 'The tool-call limit was reached. Start a new conversation or simplify the request.' : code === 'TURN_TIMEOUT' ? 'The model response timed out. Please retry.' : code === 'TURN_CANCELLED' ? 'The caller interrupted this turn.' : 'The conversation could not complete. Please try again.' }) + '\n');
   } finally { res.off('close', cancel); res.end(); }
 });
 router.post('/:id/turn', turnHandler);

@@ -15,7 +15,7 @@ export async function openDemoConversation(signal?: AbortSignal): Promise<Conver
   if (!response.ok) throw await responseError(response);
   return await response.json() as ConversationSession;
 }
-export async function streamTurn(sessionId: string, text: string, onText?: (text: string) => void, signal?: AbortSignal, token?: string, onTool?: (event: ToolEvent) => void): Promise<CompletedTurn> {
+export async function streamTurn(sessionId: string, text: string, onText?: (text: string) => void, signal?: AbortSignal, token?: string, onTool?: (event: ToolEvent) => void, onSpeech?: (event: import('./streamingSpeech').SpeechChunk) => void): Promise<CompletedTurn> {
   const response = await fetch(`/api/${token ? 'public/sessions' : 'conversations'}/${sessionId}/turn`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ text }), signal, credentials: token ? 'omit' : 'same-origin' });
   if (!response.ok) throw await responseError(response);
   if (!response.body) throw new Error('This browser cannot read streaming responses.');
@@ -27,6 +27,7 @@ export async function streamTurn(sessionId: string, text: string, onText?: (text
     if (event.type === 'error') throw new Error(event.message);
     if (event.type === 'tool_result') onTool?.(event);
     if (event.type === 'delta') onText?.(event.text);
+    if (event.type === 'speech') onSpeech?.(event);
     if (event.type === 'complete') complete = event;
   };
   try {

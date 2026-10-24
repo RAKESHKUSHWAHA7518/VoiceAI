@@ -35,8 +35,11 @@ export const speakHandler = asyncHandler(async (req: Request, res: Response) => 
  const workspace = workspaceId(req)!; const session = findConversation(workspace, req.params.id);
  if (!session) return res.status(404).json({ error: { message: 'Conversation not found.' } });
  if (process.env.VOICEAI_SPEECH_MODE !== 'cloud' || !config.apiKeys.cartesia) return res.status(503).json({ error: { message: 'Cartesia speech is not configured.' } });
- const text = req.body.text;
- if (typeof text !== 'string' || !text.trim() || text.length > 10000 || !(text === session.agent.greeting || session.history.some(message => message.role === 'assistant' && message.content === text))) return res.status(400).json({ error: { message: 'Only a saved conversation reply or greeting of at most 10000 characters can be spoken.' } });
+ const streamed = req.body.turn_id !== undefined;
+ const segment = req.body.segment_index;
+ const authorized = streamed && session.speech && !session.speech.cancelled && session.speech.turn_id === req.body.turn_id && Number.isInteger(segment) && segment >= 0 ? session.speech.segments[segment] : undefined;
+ const text = streamed ? authorized : req.body.text;
+ if (typeof text !== 'string' || !text.trim() || text.length > 10000 || (!streamed && !(text === session.agent.greeting || session.history.some(message => message.role === 'assistant' && message.content === text)))) return res.status(400).json({ error: { message: 'Only authorized conversation speech can be spoken.' } });
  const limits = budget(workspace);
  const chunks = speechSegments(text); const index = req.body.chunk_index ?? 0;
  if (!Number.isInteger(index) || index < 0 || index >= chunks.length) return res.status(400).json({ error: { message: 'Invalid speech segment.' } });
@@ -74,7 +77,7 @@ export function handleSpeechUpgrade(req: IncomingMessage, socket: any, head: Buf
   const deadline = setTimeout(() => { send({ type: 'error', message: 'Five-minute speech limit reached. Resume to start a new session.' }); finish(); }, 300000);
   const keepalive = setInterval(() => { if (!findConversation(record.workspace, record.session)) { finish(); return; } if (upstream.readyState === WebSocket.OPEN) upstream.send(JSON.stringify({ type: 'KeepAlive' })); }, 5000);
   upstream.on('open', () => send({ type: 'ready' }));
-  upstream.on('message', data => { try { const message = JSON.parse(data.toString()); if (message.type === 'Results') send({ type: 'transcript', text: message.channel?.alternatives?.[0]?.transcript || '', final: !!message.is_final }); else if (message.type === 'Error') { send({ type: 'error', message: 'Deepgram could not transcribe this audio.' }); finish(); } } catch {} });
+  upstream.on('message', data => { try { const message = JSON.parse(data.toString()); if (message.type === 'Results') send({ type: 'transcript', text: message.channel?.alternatives?.[0]?.transcript || '', final: !!message.is_final, speech_final: !!message.speech_final }); else if (message.type === 'Error') { send({ type: 'error', message: 'Deepgram could not transcribe this audio.' }); finish(); } } catch {} });
   upstream.on('error', () => { send({ type: 'error', message: 'Deepgram connection failed. Check credits, language and microphone format.' }); finish(); });
   upstream.on('close', finish); client.on('close', finish); client.on('error', finish);
   client.on('message', (data, binary) => { if (upstream.readyState !== WebSocket.OPEN) return; if (!binary) { if (data.toString() === 'finalize') upstream.send(JSON.stringify({ type: 'Finalize' })); return; } bytes += Buffer.byteLength(data as Buffer); if (bytes > 12000000 || upstream.bufferedAmount > 1000000) { send({ type: 'error', message: 'Microphone stream exceeded its limit.' }); finish(); return; } upstream.send(data, { binary: true }); });
