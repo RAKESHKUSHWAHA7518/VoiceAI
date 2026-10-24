@@ -2,6 +2,8 @@ import { EventEmitter } from 'events';
 import { ToolDefinition, ToolRegistry, CircuitBreaker, ToolExecutor, ToolResult } from '../types';
 import config from '../config';
 import axios from 'axios';
+import fs from 'fs';
+import { dataPath } from '../config/storage';
 
 export class ToolRegistryImpl implements ToolRegistry {
   private tools: Map<string, ToolDefinition> = new Map();
@@ -331,18 +333,124 @@ export interface CustomToolDef {
   label?: string;
   description: string;
   parameters: any;
-  execution_type?: 'mock' | 'webhook';
+  execution_type?: 'mock' | 'webhook' | 'live_weather';
   mock_response?: string;
   webhook_url?: string;
   handler?: (args: any) => Promise<any>;
   is_custom?: boolean;
 }
 
+const customToolsFile = dataPath('custom_tools.json');
 const customToolsStore: Map<string, CustomToolDef> = new Map();
 
-// Helper to register a custom tool
-export function registerCustomTool(tool: CustomToolDef): void {
-  const handler = async (args: any) => {
+const weatherCodeMap: Record<number, string> = {
+  0: 'Clear sky',
+  1: 'Mainly clear',
+  2: 'Partly cloudy',
+  3: 'Overcast',
+  45: 'Foggy',
+  48: 'Depositing rime fog',
+  51: 'Light drizzle',
+  53: 'Moderate drizzle',
+  55: 'Dense drizzle',
+  56: 'Light freezing drizzle',
+  57: 'Dense freezing drizzle',
+  61: 'Slight rain',
+  63: 'Moderate rain',
+  65: 'Heavy rain',
+  66: 'Light freezing rain',
+  67: 'Heavy freezing rain',
+  71: 'Slight snow fall',
+  73: 'Moderate snow fall',
+  75: 'Heavy snow fall',
+  77: 'Snow grains',
+  80: 'Slight rain showers',
+  81: 'Moderate rain showers',
+  82: 'Violent rain showers',
+  85: 'Slight snow showers',
+  86: 'Heavy snow showers',
+  95: 'Thunderstorm',
+  96: 'Thunderstorm with slight hail',
+  99: 'Thunderstorm with heavy hail',
+};
+
+export async function fetchLiveWeather(location: string): Promise<any> {
+  const query = (location || '').trim();
+  if (!query) {
+    return { error: 'Location required for weather fetch' };
+  }
+  try {
+    const geo = await axios.get('https://geocoding-api.open-meteo.com/v1/search', {
+      params: { name: query, count: 1, language: 'en', format: 'json' },
+      timeout: 5000,
+    });
+    const results = geo.data?.results;
+    if (results && results.length > 0) {
+      const loc = results[0];
+      const weatherRes = await axios.get('https://api.open-meteo.com/v1/forecast', {
+        params: {
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
+        },
+        timeout: 5000,
+      });
+      const cur = weatherRes.data?.current;
+      if (cur) {
+        const code = cur.weather_code ?? 0;
+        const condition = weatherCodeMap[code] || 'Clear sky';
+        const tempC = cur.temperature_2m;
+        const tempF = Math.round((tempC * 9 / 5 + 32) * 10) / 10;
+        const locName = `${loc.name}${loc.country ? ', ' + loc.country : ''}`;
+        return {
+          location: locName,
+          temperature_c: tempC,
+          temperature_f: tempF,
+          condition,
+          humidity: cur.relative_humidity_2m,
+          wind_speed_kmh: cur.wind_speed_10m,
+          source: 'live_open_meteo',
+        };
+      }
+    }
+  } catch (err: any) {
+    // Fall back to graceful simulation if offline
+  }
+  return {
+    location: query,
+    temperature_c: 24,
+    temperature_f: 75.2,
+    condition: 'Partly cloudy',
+    humidity: 48,
+    wind_speed_kmh: 8.5,
+    source: 'simulated_fallback',
+  };
+}
+
+function persistCustomTools(): void {
+  try {
+    const list = Array.from(customToolsStore.values()).map(t => ({
+      name: t.name,
+      label: t.label,
+      description: t.description,
+      parameters: t.parameters,
+      execution_type: t.execution_type,
+      mock_response: t.mock_response,
+      webhook_url: t.webhook_url,
+      is_custom: t.is_custom,
+    }));
+    fs.mkdirSync(dataPath(), { recursive: true });
+    fs.writeFileSync(customToolsFile, JSON.stringify(list, null, 2), 'utf8');
+  } catch {
+    // Ignore persistence errors in test environments
+  }
+}
+
+function createToolHandler(tool: CustomToolDef): (args: any) => Promise<any> {
+  return async (args: any) => {
+    if (tool.execution_type === 'live_weather' || tool.name === 'get_weather') {
+      return await fetchLiveWeather(args?.location || 'New Delhi');
+    }
     if (tool.execution_type === 'webhook' && tool.webhook_url) {
       try {
         const res = await axios.post(tool.webhook_url, args, { timeout: 8000 });
@@ -351,7 +459,6 @@ export function registerCustomTool(tool: CustomToolDef): void {
         return { error: `Webhook failed: ${err.message}` };
       }
     }
-    // Mock response handler
     if (tool.mock_response) {
       try {
         const parsed = JSON.parse(tool.mock_response);
@@ -362,43 +469,92 @@ export function registerCustomTool(tool: CustomToolDef): void {
     }
     return { status: 'success', executed: tool.name, args };
   };
+}
 
+// Helper to register or update a custom tool
+export function registerCustomTool(tool: CustomToolDef): void {
+  const handler = createToolHandler(tool);
   customToolsStore.set(tool.name, {
     ...tool,
     is_custom: true,
     handler,
   });
+  persistCustomTools();
+}
+
+export function updateTool(name: string, updates: Partial<CustomToolDef>): CustomToolDef {
+  const existing = customToolsStore.get(name) || {
+    name,
+    label: name,
+    description: '',
+    parameters: { type: 'object', properties: {} },
+    execution_type: 'mock',
+    is_custom: true,
+  };
+  const updated: CustomToolDef = {
+    ...existing,
+    ...updates,
+    name,
+  };
+  updated.handler = createToolHandler(updated);
+  customToolsStore.set(name, updated);
+  persistCustomTools();
+  return updated;
 }
 
 export function deleteCustomTool(name: string): boolean {
-  return customToolsStore.delete(name);
+  const deleted = customToolsStore.delete(name);
+  if (deleted) persistCustomTools();
+  return deleted;
 }
 
 export function getCustomTools(): CustomToolDef[] {
   return Array.from(customToolsStore.values());
 }
 
-// Pre-register an example custom tool: check_order
-registerCustomTool({
-  name: 'check_order',
-  label: '📦 Order Status Tracker',
-  description: 'Lookup order delivery status, items, and tracking details by order ID',
-  parameters: {
-    type: 'object',
-    properties: {
-      order_id: { type: 'string', description: 'Order ID or number, e.g. ORD-8821' },
+// Load custom tools from disk if available
+try {
+  if (fs.existsSync(customToolsFile)) {
+    const raw = fs.readFileSync(customToolsFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (item.name) {
+          customToolsStore.set(item.name, {
+            ...item,
+            handler: createToolHandler(item),
+          });
+        }
+      }
+    }
+  }
+} catch {
+  // Ignore load error
+}
+
+// Pre-register default check_order tool if not already present
+if (!customToolsStore.has('check_order')) {
+  registerCustomTool({
+    name: 'check_order',
+    label: '📦 Order Status Tracker',
+    description: 'Lookup order delivery status, items, and tracking details by order ID',
+    parameters: {
+      type: 'object',
+      properties: {
+        order_id: { type: 'string', description: 'Order ID or number, e.g. ORD-8821' },
+      },
+      required: ['order_id'],
     },
-    required: ['order_id'],
-  },
-  execution_type: 'mock',
-  mock_response: JSON.stringify({
-    status: 'Out for Delivery',
-    carrier: 'FedEx Express',
-    estimated_delivery: 'Today by 5:00 PM',
-    items_count: 2,
-    destination: 'Los Angeles, CA',
-  }),
-});
+    execution_type: 'mock',
+    mock_response: JSON.stringify({
+      status: 'Out for Delivery',
+      carrier: 'FedEx Express',
+      estimated_delivery: 'Today by 5:00 PM',
+      items_count: 2,
+      destination: 'Los Angeles, CA',
+    }),
+  });
+}
 
 // Demo Tools
 export function createDemoTools(): Map<string, any> {
@@ -407,22 +563,17 @@ export function createDemoTools(): Map<string, any> {
   tools.set('get_weather', {
     name: 'get_weather',
     label: '🌤️ Live Weather',
-    description: 'Get current weather for a location',
+    description: 'Get current real-time weather and temperature for any city or location',
     parameters: {
       type: 'object',
       properties: {
-        location: { type: 'string', description: 'City name or location' },
+        location: { type: 'string', description: 'City name or location (e.g. "Delhi", "London", "New York")' },
       },
       required: ['location'],
     },
+    execution_type: 'live_weather',
     handler: async (args: { location: string }) => {
-      await new Promise(r => setTimeout(r, 800));
-      return {
-        location: args.location,
-        temperature: 72,
-        condition: 'sunny',
-        humidity: 45,
-      };
+      return await fetchLiveWeather(args.location);
     },
   });
 

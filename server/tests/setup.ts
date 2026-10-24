@@ -250,7 +250,11 @@ jest.mock('../src/services/tools', () => {
         };
       },
     });
-    const getAllToolsMap = () => mockToolsMap;
+    const getAllToolsMap = () => {
+      const all = jest.requireActual('../src/services/tools').createDemoTools();
+      mockToolsMap.forEach((v: any, k: string) => all.set(k, v));
+      return all;
+    };
 
     return { ToolRegistryImpl, CircuitBreakerImpl, ToolExecutorImpl, HallucinationChecker, StreamingToolExecutor, getAllToolsMap, createDemoTools: () => jest.requireActual('../src/services/tools').createDemoTools() };
   });

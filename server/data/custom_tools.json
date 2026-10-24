@@ -1,0 +1,22 @@
+[
+  {
+    "name": "check_order",
+    "label": "📦 Order Status Tracker",
+    "description": "Lookup order delivery status, items, and tracking details by order ID",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "description": "Order ID or number, e.g. ORD-8821"
+        }
+      },
+      "required": [
+        "order_id"
+      ]
+    },
+    "execution_type": "mock",
+    "mock_response": "{\"status\":\"Out for Delivery\",\"carrier\":\"FedEx Express\",\"estimated_delivery\":\"Today by 5:00 PM\",\"items_count\":2,\"destination\":\"Los Angeles, CA\"}",
+    "is_custom": true
+  }
+]

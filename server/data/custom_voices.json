@@ -1,5 +1,53 @@
 [
   {
+    "id": "clone_mvm57jx8_tei5",
+    "name": "Alexander (Executive Assistant)",
+    "provider": "custom_clone",
+    "gender": "Male",
+    "accent": "American (Midwest)",
+    "tone": "Warm, reassuring, and confident",
+    "description": "Cloned for high-touch VIP client support",
+    "sample_text": "Hello, this is a live voice preview for Alexander (Executive Assistant). My speech synthesis parameters are calibrated.",
+    "is_cloned": true,
+    "created_at": "2026-10-24T08:34:28.892Z"
+  },
+  {
+    "id": "clone_mvm54zv0_tkuh",
+    "name": "Alexander (Executive Assistant)",
+    "provider": "custom_clone",
+    "gender": "Male",
+    "accent": "American (Midwest)",
+    "tone": "Warm, reassuring, and confident",
+    "description": "Cloned for high-touch VIP client support",
+    "sample_text": "Hello, this is a live voice preview for Alexander (Executive Assistant). My speech synthesis parameters are calibrated.",
+    "is_cloned": true,
+    "created_at": "2026-10-24T08:32:29.580Z"
+  },
+  {
+    "id": "clone_mvm4rhgy_x45k",
+    "name": "Alexander (Executive Assistant)",
+    "provider": "custom_clone",
+    "gender": "Male",
+    "accent": "American (Midwest)",
+    "tone": "Warm, reassuring, and confident",
+    "description": "Cloned for high-touch VIP client support",
+    "sample_text": "Hello, this is a live voice preview for Alexander (Executive Assistant). My speech synthesis parameters are calibrated.",
+    "is_cloned": true,
+    "created_at": "2026-10-24T08:21:59.218Z"
+  },
+  {
+    "id": "clone_mvm4fvdh_hxsm",
+    "name": "Alexander (Executive Assistant)",
+    "provider": "custom_clone",
+    "gender": "Male",
+    "accent": "American (Midwest)",
+    "tone": "Warm, reassuring, and confident",
+    "description": "Cloned for high-touch VIP client support",
+    "sample_text": "Hello, this is a live voice preview for Alexander (Executive Assistant). My speech synthesis parameters are calibrated.",
+    "is_cloned": true,
+    "created_at": "2026-10-24T08:12:57.365Z"
+  },
+  {
     "id": "clone_mvm0rfmh_uqoh",
     "name": "Alexander (Executive Assistant)",
     "provider": "custom_clone",

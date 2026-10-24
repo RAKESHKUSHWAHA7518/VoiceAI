@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { getAllToolsMap, registerCustomTool, deleteCustomTool } from '../services/tools';
+import { getAllToolsMap, registerCustomTool, updateTool, deleteCustomTool, fetchLiveWeather } from '../services/tools';
 
 const router = Router();
 
@@ -14,7 +14,7 @@ router.get(
       label: tool.label || tool.name,
       description: tool.description,
       parameters: tool.parameters,
-      execution_type: tool.execution_type || 'mock',
+      execution_type: tool.execution_type || (tool.name === 'get_weather' ? 'live_weather' : 'mock'),
       mock_response: tool.mock_response,
       webhook_url: tool.webhook_url,
       is_custom: !!tool.is_custom,
@@ -64,7 +64,7 @@ router.post(
       label: t.label || t.name,
       description: t.description,
       parameters: t.parameters,
-      execution_type: t.execution_type || 'mock',
+      execution_type: t.execution_type || (t.name === 'get_weather' ? 'live_weather' : 'mock'),
       mock_response: t.mock_response,
       webhook_url: t.webhook_url,
       is_custom: !!t.is_custom,
@@ -76,6 +76,99 @@ router.post(
       tool: allTools.get(cleanName),
       tools: toolList,
     });
+  })
+);
+
+// PUT update an existing tool (built-in or custom)
+router.put(
+  '/:toolName',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { toolName } = req.params;
+    const { label, description, parameters, execution_type, mock_response, webhook_url } = req.body;
+
+    const allTools = getAllToolsMap();
+    if (!allTools.has(toolName)) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: `Tool "${toolName}" not found` },
+      });
+    }
+
+    const updated = updateTool(toolName, {
+      label,
+      description,
+      parameters,
+      execution_type,
+      mock_response,
+      webhook_url,
+    });
+
+    const refreshedTools = getAllToolsMap();
+    const toolList = Array.from(refreshedTools.values()).map((t: any) => ({
+      name: t.name,
+      label: t.label || t.name,
+      description: t.description,
+      parameters: t.parameters,
+      execution_type: t.execution_type || (t.name === 'get_weather' ? 'live_weather' : 'mock'),
+      mock_response: t.mock_response,
+      webhook_url: t.webhook_url,
+      is_custom: !!t.is_custom,
+    }));
+
+    res.json({
+      success: true,
+      message: `Tool "${toolName}" updated successfully`,
+      tool: updated,
+      tools: toolList,
+    });
+  })
+);
+
+// POST test a specific tool
+router.post(
+  '/:toolName/test',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { toolName } = req.params;
+    const executionArgs = req.body.arguments || req.body.args || {};
+
+    const allTools = getAllToolsMap();
+    const tool = allTools.get(toolName);
+
+    if (!tool) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: `Tool "${toolName}" not found` },
+      });
+    }
+
+    try {
+      let result;
+      if (tool.name === 'get_weather' && (!tool.execution_type || tool.execution_type === 'live_weather')) {
+        result = await fetchLiveWeather(executionArgs.location || 'New Delhi');
+      } else if (typeof tool.handler === 'function') {
+        result = await tool.handler(executionArgs);
+      } else if (tool.mock_response) {
+        try {
+          result = JSON.parse(tool.mock_response);
+        } catch {
+          result = { result: tool.mock_response };
+        }
+      } else {
+        result = { status: 'success', executed: tool.name, args: executionArgs };
+      }
+
+      res.json({
+        success: true,
+        tool_name: toolName,
+        args: executionArgs,
+        result,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: { code: 'EXECUTION_ERROR', message: err.message },
+      });
+    }
   })
 );
 
@@ -133,7 +226,7 @@ router.delete(
       label: t.label || t.name,
       description: t.description,
       parameters: t.parameters,
-      execution_type: t.execution_type || 'mock',
+      execution_type: t.execution_type || (t.name === 'get_weather' ? 'live_weather' : 'mock'),
       mock_response: t.mock_response,
       webhook_url: t.webhook_url,
       is_custom: !!t.is_custom,

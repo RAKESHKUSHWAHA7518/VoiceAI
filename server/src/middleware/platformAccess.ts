@@ -22,7 +22,7 @@ export function platformAccess(req: Request, res: Response, next: NextFunction) 
         if (req.body?.agent_id && !ownsAgent(req, req.body.agent_id)) return res.status(404).json({ success: false, error: 'Agent not found' });
         return next();
       }
-      if (route === '/tools' && req.method === 'GET') return res.json({ success: true, tools: Array.from(createDemoTools().values()).map(tool => ({ name: tool.name, label: tool.name, description: tool.description, parameters: tool.parameters, execution_type: 'mock' })) });
+      if (route.startsWith('/tools')) return next();
       if (route === '/voices' && req.method === 'GET') return res.json({ success: true, voices: voiceLibraryManager.getAllVoices().filter(voice => voice.provider !== 'custom_clone' && !voice.is_cloned) });
       if (route.startsWith('/agents')) return next();
       if (route.startsWith('/conversations')) return next();
