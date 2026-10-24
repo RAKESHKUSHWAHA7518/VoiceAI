@@ -1,12 +1,12 @@
 # Free demo deployment
 
-The repository includes `render.yaml` for one free Docker web service. The Docker image builds both apps; Express serves the studio, API, streaming responses and speech WebSocket at the same HTTPS origin. Deep links such as `/history` work after refresh. MongoDB is required because Render free local storage is temporary. The supplied Blueprint starts in demo/browser-speech mode and leaves paid public inference disabled.
+The repository includes `render.yaml` for one free Docker web service. The Docker image builds both apps; Express serves the studio, API, streaming responses and speech WebSocket at the same HTTPS origin. Deep links such as `/history` work after refresh. MongoDB is required because Render free local storage is temporary. The supplied Blueprint enables the approved private live AI/cloud-speech demo and leaves paid public inference disabled. Provider credentials are entered privately during creation; for a provider-free demo change the runtime to demo and speech mode to browser.
 
 ## Publish
 
 1. Push the reviewed application changes, Dockerfile and render.yaml to your GitHub repository. Do not push `.env`, runtime data or recordings.
 2. Sign in to Render, choose New → Blueprint, and connect the VoiceAI repository and intended branch. Review the service plan: Free.
-3. Provide `MONGODB_URI` privately in Render. Prefer a separate Atlas demo database and a database user restricted to it. The Blueprint uses `MONGODB_DB_NAME=voiceai_demo`; existing local accounts and agents are not copied into this database automatically. Configure Atlas network access for the hosting service's outbound addresses.
+3. Provide `MONGODB_URI` and the requested provider credentials privately in Render. Prefer a separate Atlas demo database and a database user restricted to it. The Blueprint uses `MONGODB_DB_NAME=voiceai_demo`; existing local accounts and agents are not copied into this database automatically. Configure Atlas network access for the hosting service's outbound addresses.
 4. Apply the Blueprint. Wait for `/health/live` to pass. Open the generated HTTPS URL, create a demo account, create an agent and test history after refreshing.
 5. To enable the already implemented live pipeline, privately add `GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `CARTESIA_API_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` in Render. Set `VOICEAI_RUNTIME_MODE=live` and `VOICEAI_SPEECH_MODE=cloud`. Choose Gemini on the saved agent. Keep `VOICEAI_PUBLIC_LIVE=false` until intentionally enabling paid visitor usage. Provider calls use your existing credits.
 6. Verify browser microphone permission, two-way speech, tool execution, knowledge retrieval, private recording playback and history after restarting. This acceptance check requires your microphone and provider credits.

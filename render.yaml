@@ -10,9 +10,9 @@ services:
       - key: REDIS_ENABLED
         value: "false"
       - key: VOICEAI_RUNTIME_MODE
-        value: demo
+        value: live
       - key: VOICEAI_SPEECH_MODE
-        value: browser
+        value: cloud
       - key: VOICEAI_PUBLIC_LIVE
         value: "false"
       - key: VOICEAI_LEGACY_DEMO
@@ -25,3 +25,15 @@ services:
         value: "true"
       - key: MONGODB_DB_NAME
         value: voiceai_demo
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: CARTESIA_API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
