@@ -13,8 +13,9 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   const sessionRef = useRef<ConversationSession | null>(null); const mounted = useRef(false);
   const generation = useRef(0); const request = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDivElement>(null); const submitRef = useRef<(text: string) => void>(() => {});
+  const [speakerMode, setSpeakerMode] = useState(true);
   const interrupt = () => { generation.current++; request.current?.abort(); setPartial(''); setPhase('ready'); };
-  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' });
+  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 1200 });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const stop = () => { voiceRef.current.pause(); interrupt(); };
   const submit = async (text: string) => {
@@ -43,7 +44,7 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   }, [isOpen, agent?.id, demo]);
   if (!isOpen || !agent) return null;
   const micClick = () => { setError(''); if (voice.active) voice.pause(); else voice.start(messages.length <= 1 ? session?.greeting : undefined); };
-  const status = phase === 'ended' ? 'Conversation ended' : voice.phase === 'starting' ? 'Connecting microphone…' : voice.phase === 'listening' ? 'Listening — speak naturally' : voice.phase === 'thinking' ? 'Preparing your answer — you can interrupt' : voice.phase === 'speaking' ? agent.name + (voice.active ? ' is speaking — you can interrupt' : ' is speaking') : voice.phase === 'error' ? 'Conversation needs attention' : 'Start once, then speak naturally';
+  const status = phase === 'ended' ? 'Conversation ended' : voice.phase === 'starting' ? 'Connecting microphone…' : voice.phase === 'listening' ? 'Listening — speak naturally' : voice.phase === 'thinking' ? 'Preparing your answer…' : voice.phase === 'speaking' ? agent.name + (speakerMode ? ' is speaking' : ' is speaking — you can interrupt') : voice.phase === 'error' ? 'Conversation needs attention' : 'Start once, then speak naturally';
   return <div className="modal-overlay workflow-overlay"><div className="voice-test-shell" role="dialog" aria-modal="true" aria-labelledby="voice-test-title" ref={dialog} onKeyDown={event => {
     if (event.key === 'Escape') onClose();
     if (event.key === 'Tab') { const controls = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a[href]') || []); const first = controls[0], last = controls[controls.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); } }
@@ -53,9 +54,16 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
       <div className="voice-agent-orb">{agent.name.slice(0, 1)}</div><h3>{agent.name}</h3><p>{agent.role}</p>
       <button className={`voice-mic-button ${voice.active ? 'is-listening' : ''}`} onClick={micClick} disabled={!session || phase === 'ended'} aria-label={voice.active ? 'Pause conversation microphone' : 'Start conversation microphone'}><IconMic size={34} /></button>
       <strong className="voice-status" role="status">{status}</strong>
-      <button className="btn btn-primary" onClick={micClick} disabled={!session || phase === 'ended'}>{voice.active ? 'Pause conversation' : voice.phase === 'paused' || voice.phase === 'error' ? 'Resume conversation' : 'Start conversation'}</button>
-      <p className="voice-mic-help">Start once. The agent listens after every reply. Speak over a reply to interrupt. Use headphones to reduce playback echo.</p>
-      <small>{session?.speech_output === 'cloud' ? 'Deepgram streaming · Allow microphone access in Chrome. Use headphones for interruption testing.' : 'Browser speech preview · Recognition and interruption depend on browser support.'}</small>{voice.detail && <p className="voice-mic-help" role="status">{voice.detail}</p>}
+      <div style={{ display: 'flex', gap: '6px', margin: '6px 0', justifyContent: 'center' }}>
+        <button type="button" className={`btn btn-sm ${speakerMode ? 'btn-primary' : 'btn-outline'}`} onClick={() => setSpeakerMode(true)} title="Speaker mode stops speaker sound from cutting off the agent">🔊 Speaker (Echo-Safe)</button>
+        <button type="button" className={`btn btn-sm ${!speakerMode ? 'btn-primary' : 'btn-outline'}`} onClick={() => setSpeakerMode(false)} title="Use with headphones for hands-free barge-in">🎧 Headphones (Barge-in)</button>
+      </div>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button className="btn btn-primary" onClick={micClick} disabled={!session || phase === 'ended'}>{voice.active ? 'Pause conversation' : voice.phase === 'paused' || voice.phase === 'error' ? 'Resume conversation' : 'Start conversation'}</button>
+        {voice.phase === 'speaking' && <button className="btn btn-danger" onClick={interrupt}>✋ Interrupt</button>}
+      </div>
+      <p className="voice-mic-help">{speakerMode ? 'Speaker mode: agent speaks smoothly without interruption from laptop speakers. Use the Interrupt button or tap the mic to speak.' : 'Headphones mode: agent can be interrupted by speaking over it. Wear headphones to avoid echo.'}</p>
+      <small>{session?.speech_output === 'cloud' ? 'Deepgram streaming · Allow microphone access in Chrome.' : 'Browser speech preview · Recognition and interruption depend on browser support.'}</small>{voice.detail && <p className="voice-mic-help" role="status">{voice.detail}</p>}
       {voice.error && <p className="workflow-error" role="alert">{voice.error}</p>}
     </section><section className="voice-transcript-panel"><div className="voice-transcript-heading"><h3>Conversation</h3><span>{demo ? 'Guest preview' : 'Saved to history'}</span></div>
       <div className="voice-transcript" role="log" aria-label="Conversation transcript">{messages.map((message, index) => <div className={`voice-message ${message.role}`} key={index}><strong>{message.role === 'user' ? 'You' : agent.name}</strong><p>{message.text}</p></div>)}{(voice.partial || partial) && <div className="voice-message pending"><p>{voice.partial || partial}</p></div>}</div>

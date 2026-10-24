@@ -9,6 +9,7 @@ export interface VoiceDependencies {
   text: (text: string) => void;
   interrupt: () => void;
 }
+export interface VoiceOptions { silenceMs?: number; speakerMode?: boolean }
 export class ContinuousVoice {
   state: VoiceState = { phase: 'idle', active: false, partial: '', error: '' };
   private engine: any; private speech: any; private epoch = 0; private playback = 0;
@@ -17,7 +18,13 @@ export class ContinuousVoice {
   private finals = ''; private latest = ''; private spoken = ''; private restarts = 0;
   private greeting = '';
   private connectedAt = 0; private echoUntil = 0;
-  constructor(private deps: VoiceDependencies, private language: string) {}
+  private silenceMs: number;
+  private speakerMode: boolean;
+  constructor(private deps: VoiceDependencies, private language: string, options: VoiceOptions = {}) {
+    this.silenceMs = options.silenceMs ?? (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' ? 750 : 1200);
+    this.speakerMode = options.speakerMode ?? false;
+  }
+  setSpeakerMode(enabled: boolean) { this.speakerMode = enabled; }
   private update(patch: Partial<VoiceState>) { this.state = { ...this.state, ...patch }; this.deps.changed({ ...this.state }); }
   private clearTimers() { clearTimeout(this.startup); clearTimeout(this.retry); clearTimeout(this.endpoint); clearTimeout(this.watchdog); }
   private silence() { this.playback++; this.speech = null; clearTimeout(this.watchdog); this.deps.synthesis.cancel(); }
@@ -52,15 +59,39 @@ export class ContinuousVoice {
           if (event.results[i].isFinal) final += text + ' '; else interim += text + ' ';
         }
         const incoming = (final + interim).trim(); if (!incoming) return;
-        // Suppress recognizable playback echo. Headphones are still needed for reliable barge-in.
-        const normalize = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
-        if (this.spoken && (this.state.phase === 'speaking' || Date.now() < this.echoUntil) && normalize(this.spoken).includes(normalize(incoming))) return;
+        // Suppress recognizable playback echo with phonetic and word overlap detection
+        const normalize = (text: string) => text.toLowerCase()
+          .replace(/\b(i'm|im)\b/g, 'i am')
+          .replace(/\b(you're|youre)\b/g, 'you are')
+          .replace(/\b(it's|its)\b/g, 'it is')
+          .replace(/\b(don't|dont)\b/g, 'do not')
+          .replace(/\b(can't|cant)\b/g, 'cannot')
+          .replace(/[^\p{L}\p{N}\s]/gu, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const isSpeaking = this.state.phase === 'speaking' || Date.now() < this.echoUntil;
+        if (this.spoken && isSpeaking) {
+          const spokenNorm = normalize(this.spoken);
+          const incomingNorm = normalize(incoming);
+          if (spokenNorm.includes(incomingNorm)) return;
+          const incomingWords = incomingNorm.split(' ').filter(Boolean);
+          if (incomingWords.length > 0) {
+            const spokenWords = new Set(spokenNorm.split(' ').filter(Boolean));
+            const matches = incomingWords.filter(w => spokenWords.has(w)).length;
+            if (matches / incomingWords.length >= 0.5) return;
+          }
+          if (this.speakerMode) return; // In speaker mode, disregard mic leakage while audio plays
+        }
         this.restarts = 0;
-        if (this.state.phase === 'speaking' || this.state.phase === 'thinking') { this.silence(); this.deps.interrupt(); this.update({ phase: 'listening' }); }
+        if (this.state.phase === 'speaking') {
+          this.silence();
+          this.deps.interrupt();
+          this.update({ phase: 'listening' });
+        }
         this.finals += final; this.latest = interim; this.update({ partial: (this.finals + interim).trim() });
         clearTimeout(this.endpoint);
         // Send only finalized words; interim words are not safe to commit.
-        if (!interim && this.finals.trim()) this.endpoint = setTimeout(() => this.flush(), 750);
+        if (!interim && this.finals.trim()) this.endpoint = setTimeout(() => this.flush(), this.silenceMs);
       };
       engine.onerror = (event: any) => {
         if (token !== this.epoch) return;

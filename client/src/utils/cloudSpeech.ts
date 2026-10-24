@@ -60,9 +60,35 @@ export class CartesiaSynthesis {
     const blob = await response.blob(); if (generation !== this.generation) return;
     this.url = URL.createObjectURL(blob); const audio = new Audio(this.url); this.audio = audio;
     audio.onended = () => { if (generation === this.generation) { this.cancel(); speech.onend?.(new Event('end') as SpeechSynthesisEvent); } };
-    audio.onerror = () => { if (generation === this.generation) { this.cancel(); speech.onerror?.(new Event('error') as SpeechSynthesisErrorEvent); } };
+    audio.onerror = () => {
+      if (generation === this.generation) {
+        this.cancel();
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          try {
+            window.speechSynthesis.cancel();
+            speech.onend = () => { if (generation === this.generation) this.cancel(); };
+            window.speechSynthesis.speak(speech);
+            return;
+          } catch {}
+        }
+        speech.onerror?.(new Event('error') as SpeechSynthesisErrorEvent);
+      }
+    };
     await audio.play();
-   } catch { if (generation === this.generation && !request.signal.aborted) { this.cancel(); speech.onerror?.(new Event('error') as SpeechSynthesisErrorEvent); } }
+   } catch {
+     if (generation === this.generation && !request.signal.aborted) {
+       this.cancel();
+       if (typeof window !== 'undefined' && window.speechSynthesis) {
+         try {
+           window.speechSynthesis.cancel();
+           speech.onend = () => { if (generation === this.generation) this.cancel(); };
+           window.speechSynthesis.speak(speech);
+           return;
+         } catch {}
+       }
+       speech.onerror?.(new Event('error') as SpeechSynthesisErrorEvent);
+     }
+   }
   })();
  }
 }
