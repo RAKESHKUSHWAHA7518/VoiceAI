@@ -22,7 +22,10 @@ export const turnHandler = asyncHandler(async (req: Request, res: Response) => {
   const { text } = z.object({ text: z.string().trim().min(1).max(4000) }).parse(req.body);
   const session = findConversation(workspaceId(req)!, req.params.id);
   if (!session) return res.status(404).json({ success: false, error: { message: 'Conversation expired or not found' } });
-  if (session.active) return res.status(409).json({ success: false, error: { message: 'Wait for the current turn or interrupt it first.' } });
+  if (session.active) {
+    session.active.abort();
+    session.active = undefined;
+  }
   res.set({ 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   const cancel = () => { if (!res.writableEnded) interruptConversation(workspaceId(req)!, req.params.id); };
   res.on('close', cancel);

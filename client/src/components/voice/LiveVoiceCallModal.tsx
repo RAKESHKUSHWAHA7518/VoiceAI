@@ -14,7 +14,19 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   const generation = useRef(0); const request = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDivElement>(null); const submitRef = useRef<(text: string) => void>(() => {});
   const [speakerMode, setSpeakerMode] = useState(true);
-  const interrupt = () => { generation.current++; request.current?.abort(); setPartial(''); setPhase('ready'); };
+  const interrupt = () => {
+    generation.current++;
+    request.current?.abort();
+    setPartial('');
+    setPhase('ready');
+    if (sessionRef.current) {
+      const s = sessionRef.current;
+      void fetch(`/api/${s.token ? 'public/sessions' : 'conversations'}/${s.session_id}/interrupt`, {
+        method: 'POST',
+        headers: s.token ? { Authorization: `Bearer ${s.token}` } : {}
+      }).catch(() => {});
+    }
+  };
   const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 1200 });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const stop = () => { voiceRef.current.pause(); interrupt(); };
