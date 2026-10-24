@@ -21,7 +21,8 @@ export class ContinuousVoice {
   private silenceMs: number;
   private speakerMode: boolean;
   constructor(private deps: VoiceDependencies, private language: string, options: VoiceOptions = {}) {
-    this.silenceMs = options.silenceMs ?? (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' ? 750 : 1200);
+    const testRuntime = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV === 'test';
+    this.silenceMs = options.silenceMs ?? (testRuntime ? 750 : 1200);
     this.speakerMode = options.speakerMode ?? false;
   }
   setSpeakerMode(enabled: boolean) { this.speakerMode = enabled; }

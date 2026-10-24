@@ -53,7 +53,7 @@ export function useWebSocket({
   const [connected, setConnected] = useState(false);
   const [sequence, setSequence] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // Store latest callbacks in ref to prevent effect recreation on every render
