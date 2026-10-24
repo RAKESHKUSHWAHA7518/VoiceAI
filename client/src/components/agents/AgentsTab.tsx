@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { KnowledgeTab } from '../knowledge/KnowledgeTab';
+import { LiveVoiceCallModal } from '../voice/LiveVoiceCallModal';
+import { StudioIcon } from '../common/StudioIcon';
 import { AgentRoster } from './AgentRoster';
 import { DeploymentPanel } from './DeploymentPanel';
 import { VoiceLibraryModal } from '../voice/VoiceLibraryModal';
@@ -6,16 +10,21 @@ import type { Agent } from '../../types';
 interface Props {
   agents: Agent[]; loading?: boolean; error?: string; onRetry?: () => void;
   activeAgent: Agent | null; onSelectAgent: (agent: Agent) => void;
-  onSaveAgent: (agent: Partial<Agent>) => Promise<void>; onDeleteAgent: (id: string) => Promise<void>;
+  onSaveAgent: (agent: Partial<Agent>) => Promise<Agent | undefined>; onDeleteAgent: (id: string) => Promise<void>;
   onTestAgent: (agent: Agent) => void; onStartVoiceCall?: (agent: Agent) => void;
   onOpenKnowledge?: (id: string) => void; isCreatingNew?: boolean; setIsCreatingNew?: (value: boolean) => void;
 }
 const languages = [{ code: 'en', name: 'English' }, { code: 'hi', name: 'Hindi' }, { code: 'es', name: 'Spanish' }, { code: 'fr', name: 'French' }, { code: 'de', name: 'German' }, { code: 'ja', name: 'Japanese' }, { code: 'pt', name: 'Portuguese' }, { code: 'zh', name: 'Chinese' }];
 const defaults: Partial<Agent> = { name: '', role: '', avatar: '🎧', voice_id: 'a0e99841-438c-4a64-b679-ae501e7d6091', llm_model: 'gemini/gemini-3.5-flash-lite', llm_temperature: .3, system_prompt: 'You are a helpful voice assistant. Speak naturally in short, conversational sentences.', greeting: 'Hello! How can I help you today?', assigned_tools: [], languages_supported: ['en'], default_language: 'en', auto_switch_language: false };
-export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent, onSelectAgent, onSaveAgent, onDeleteAgent, onTestAgent, onStartVoiceCall, onOpenKnowledge, isCreatingNew, setIsCreatingNew }: Props) {
+export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent, onSelectAgent, onSaveAgent, onDeleteAgent, onStartVoiceCall, isCreatingNew, setIsCreatingNew }: Props) {
+  const { agentId } = useParams(); const navigate = useNavigate(); const [search, setSearch] = useSearchParams();
+  const initialized = useRef<string | null>(null);
+  const routeRef = useRef(agentId); routeRef.current = agentId;
+  const [notice, setNotice] = useState('');
+  const [baseline, setBaseline] = useState('');
   const [editor, setEditor] = useState(false); const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<Agent>>({ ...defaults });
-  const [step, setStep] = useState<'basics' | 'instructions' | 'voice' | 'tools'>('basics');
+  const [step, setStep] = useState<'basics' | 'instructions' | 'voice' | 'tools' | 'knowledge' | 'publish'>('basics');
   interface ToolItem {
     id: string;
     name: string;
@@ -48,15 +57,23 @@ export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent
   const [quickTestResult, setQuickTestResult] = useState<string | null>(null);
   const [quickTestTool, setQuickTestTool] = useState<string>('');
   const [saving, setSaving] = useState(false); const [saveError, setSaveError] = useState('');
-  const [revision, setRevision] = useState(0);
-  const [deployAgent, setDeployAgent] = useState<Agent | null>(null);
+
+
   const [library, setLibrary] = useState(false); const [voices, setVoices] = useState<Array<{ id: string; name: string }>>([]);
   const dialog = useRef<HTMLDivElement>(null);
   const update = <K extends keyof Agent>(key: K, value: Agent[K]) => setDraft(previous => ({ ...previous, [key]: value }));
-  const open = (agent?: Agent) => { setEditingId(agent?.id || null); setDraft(structuredClone(agent || defaults)); setStep('basics'); setSaveError(''); setEditor(true); };
-  const close = () => { if (saving) return; setEditor(false); setIsCreatingNew?.(false); };
+  const open = (agent?: Agent) => navigate('/agents/' + (agent ? encodeURIComponent(agent.id) : 'new'));
+  useEffect(() => {
+    if (!agentId) { initialized.current = null; setEditor(false); setToolEditorOpen(false); setSaving(false); return; }
+    if (initialized.current === agentId) return;
+    const agent = agents.find(value => value.id === agentId);
+    if (agentId !== 'new' && !agent) return;
+    initialized.current = agentId; setToolEditorOpen(false); setSaving(false); setEditingId(agent?.id || null); const value = structuredClone(agent || defaults); setDraft(value); setBaseline(JSON.stringify(value)); const section = search.get('section'); setStep(['basics', 'instructions', 'voice', 'tools', 'knowledge', 'publish'].includes(section || '') ? section as typeof step : 'basics'); setSaveError(''); setNotice(''); setEditor(true);
+  }, [agentId, agents, search]);
+  useEffect(() => { const agent = agents.find(value => value.id === agentId); if (agent && activeAgent?.id !== agent.id) onSelectAgent(agent); }, [agentId, agents, activeAgent?.id, onSelectAgent]);
+  const close = () => { if (saving) return; navigate('/agents'); setIsCreatingNew?.(false); };
   useEffect(() => { fetch('/api/voices').then(response => response.json()).then(data => { if (Array.isArray(data.voices)) setVoices(data.voices); }).catch(() => {}); }, []);
-  useEffect(() => { if (isCreatingNew) open(); }, [isCreatingNew]);
+  useEffect(() => { if (isCreatingNew) { navigate('/agents/new'); setIsCreatingNew?.(false); } }, [isCreatingNew, navigate, setIsCreatingNew]);
 
   useEffect(() => {
     if (!editor) return;
@@ -94,6 +111,9 @@ export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent
     return () => controller.abort();
   }, [editor, toolsRetry]);
 
+  useEffect(() => { const section = search.get('section'); if (section === 'basics' || section === 'knowledge' || section === 'publish' || section === 'tools' || section === 'voice' || section === 'instructions') setStep(section); }, [agentId, search]);
+  useEffect(() => { if (toolEditorOpen) { const panel = document.querySelector<HTMLElement>('.agent-tool-inline'); panel?.scrollIntoView({ behavior: 'smooth', block: 'start' }); panel?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true }); } }, [toolEditorOpen]);
+  useEffect(() => { if (agentId) document.title = (agentId === 'new' ? 'Create agent' : draft.name || 'Agent workspace') + ' | VoiceAI'; }, [agentId, draft.name]);
   const toggleTool = (id: string) => setDraft(previous => ({ ...previous, assigned_tools: (previous.assigned_tools || []).includes(id) ? (previous.assigned_tools || []).filter(value => value !== id) : [...(previous.assigned_tools || []), id] }));
 
   const openNewToolModal = () => {
@@ -180,6 +200,7 @@ export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent
   };
 
   const saveToolConfig = async () => {
+    const requestedRoute = agentId;
     if (!toolDraft.name.trim()) {
       setToolModalError('Tool identifier name is required');
       return;
@@ -217,6 +238,7 @@ export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || 'Failed to save tool');
+      if (routeRef.current !== requestedRoute) return;
 
       setDraft(prev => ({
         ...prev,
@@ -230,30 +252,32 @@ export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent
       setToolSaving(false);
     }
   };
-  useEffect(() => {
-    if (!editor) return;
-    const previous = document.activeElement as HTMLElement | null; const overflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    dialog.current?.querySelector<HTMLInputElement>('#agent-name')?.focus();
-    return () => { document.body.style.overflow = overflow; previous?.focus(); };
-  }, [editor]);
   const save = async (event: FormEvent) => {
-    event.preventDefault(); setSaveError('');
+    event.preventDefault(); const requestedRoute = agentId; setSaveError('');
     if (!draft.name?.trim()) { setStep('basics'); setSaveError('Give your agent a name before saving.'); return; }
     if (!draft.system_prompt?.trim()) { setStep('instructions'); setSaveError('Add instructions so your agent knows how to respond.'); return; }
     setSaving(true);
-    try { await onSaveAgent({ ...draft, id: editingId || undefined, name: draft.name.trim(), role: draft.role?.trim() || 'Voice assistant' }); setEditor(false); setIsCreatingNew?.(false); }
-    catch (err) { setSaveError(err instanceof Error ? err.message : 'Could not save your agent.'); }
-    finally { setSaving(false); }
+    try { const saved = await onSaveAgent({ ...draft, id: editingId || undefined, name: draft.name.trim(), role: draft.role?.trim() || 'Voice assistant' }); if (routeRef.current !== requestedRoute) return; if (saved) { setDraft(structuredClone(saved)); setBaseline(JSON.stringify(saved)); setEditingId(saved.id); initialized.current = saved.id; setSaving(false); if (agentId === 'new') navigate('/agents/' + encodeURIComponent(saved.id), { replace: true }); } setNotice('Agent saved. Use New test to try the latest saved settings.'); setIsCreatingNew?.(false); }
+    catch (err) { if (routeRef.current === requestedRoute) setSaveError(err instanceof Error ? err.message : 'Could not save your agent.'); }
+    finally { if (routeRef.current === requestedRoute) setSaving(false); }
   };
+  const savedAgent = agents.find(value => value.id === editingId);
+  const dirty = JSON.stringify(draft) !== baseline;
+  const sections = [{ id: 'basics', title: 'Overview' }, { id: 'instructions', title: 'Instructions' }, { id: 'voice', title: 'Voice & model' }, { id: 'tools', title: 'Tools' }, { id: 'knowledge', title: 'Knowledge' }, { id: 'publish', title: 'Publish' }] as const;
+  if (agentId && (loading || (agentId !== 'new' && !agents.some(value => value.id === agentId)))) return <section className="agent-route-state"><Link to="/agents">← All agents</Link>{loading ? <p role="status">Loading your agent…</p> : <><h2>{error ? 'Could not load your agent' : 'Agent not found'}</h2><p>{error || 'This agent may have been deleted or belongs to another workspace.'}</p>{error && <button className="btn btn-secondary" onClick={onRetry}>Try again</button>}</>}</section>;
   return <div className="agents-page">
-    <AgentRoster agents={agents} activeAgent={activeAgent} voices={voices} loading={loading} error={error} onRetry={onRetry} onCreate={() => open()} onEdit={open} onSelect={onSelectAgent} onTest={onTestAgent} onCall={onStartVoiceCall} onDelete={onDeleteAgent} onVoiceLibrary={() => setLibrary(true)} onDeploy={setDeployAgent} onKnowledge={onOpenKnowledge} revision={revision} />
-    {deployAgent && <DeploymentPanel agent={deployAgent} onClose={() => { setDeployAgent(null); setRevision(value => value + 1); }} />}
-    {editor && <div className="modal-overlay workflow-overlay"><div className="agent-editor" role="dialog" aria-modal="true" aria-labelledby="agent-editor-title" ref={dialog} onKeyDown={event => {
-      if (event.key === 'Escape') close();
-      if (event.key === 'Tab') { const controls = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input,select,textarea') || []).filter(element => element.offsetParent !== null); const first = controls[0], last = controls[controls.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); } }
-    }}>
-      <header className="workflow-header"><div><span className="workflow-eyebrow">AGENT BUILDER</span><h2 id="agent-editor-title">{editingId ? 'Edit your agent' : 'Create a voice agent'}</h2><p>{editingId ? 'Update your saved draft. Published versions keep their existing instructions.' : 'Give it a purpose, a voice and a first thing to say.'}</p></div><button className="workflow-close" aria-label="Close agent editor" disabled={saving} onClick={close}>×</button></header>
-      <form onSubmit={save} className="agent-editor-form"><div className="agent-editor-body">
+    {!agentId && <AgentRoster agents={agents} activeAgent={activeAgent} voices={voices} loading={loading} error={error} onRetry={onRetry} onCreate={() => open()} onEdit={open} onSelect={agent => { onSelectAgent(agent); open(agent); }} onTest={agent => open(agent)} onCall={onStartVoiceCall} onDelete={onDeleteAgent} onVoiceLibrary={() => setLibrary(true)} onDeploy={agent => navigate('/agents/' + encodeURIComponent(agent.id) + '?section=publish')} onKnowledge={id => navigate('/agents/' + encodeURIComponent(id) + '?section=knowledge')} />}
+
+    {agentId && editor && <section className="agent-detail-page">
+      <Link className="agent-back-link" to="/agents">← All agents</Link>
+      <header className="agent-detail-heading"><div><span className="workflow-eyebrow">AGENT WORKSPACE</span><h2>{draft.name || 'Create your agent'}</h2><p>{draft.role || 'Configure your assistant and test a conversation in one place.'}</p>{editingId && <small>Agent ID: {editingId}</small>}</div><div className="agent-detail-heading-actions"><span className="agent-detail-state">{dirty ? 'Unsaved changes' : editingId ? 'Saved draft' : 'New agent'}</span><button type="submit" form="agent-settings-form" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : editingId ? 'Save agent' : 'Create agent'}</button></div></header>
+      <nav className="agent-detail-tabs" aria-label="Agent workspace sections">{sections.map(item => <button key={item.id} type="button" aria-current={step === item.id ? 'page' : undefined} className={step === item.id ? 'active' : ''} disabled={!editingId && (item.id === 'knowledge' || item.id === 'publish')} onClick={() => { setStep(item.id); const next = new URLSearchParams(search); next.set('section', item.id); setSearch(next, { replace: true }); }}>{item.title}</button>)}</nav>
+      {notice && <p className="agent-save-notice" role="status">{notice}</p>}
+      <div className="agent-detail-layout"><section className="agent-detail-settings">
+      {step === 'knowledge' && savedAgent && <KnowledgeTab key={savedAgent.id} agents={[savedAgent]} activeAgent={savedAgent} playVoice={() => {}} onTestAgent={() => { const panel = document.querySelector<HTMLElement>('.agent-detail-test'); panel?.scrollIntoView({ behavior: 'smooth', block: 'start' }); panel?.querySelector<HTMLButtonElement>('.voice-mic-button')?.focus(); }} />}
+      {step === 'publish' && savedAgent && <>{dirty && <p className="workflow-error">Save your changes in Overview before publishing. Publishing uses your saved agent.</p>}<DeploymentPanel inline agent={savedAgent} onClose={() => setStep('basics')} /></>}
+      <div className="agent-editor agent-editor-page" hidden={step === 'knowledge' || step === 'publish'} ref={dialog}>
+      <form id="agent-settings-form" onSubmit={save} className="agent-editor-form"><div className="agent-editor-body">
         <nav className="agent-editor-steps" aria-label="Agent setup steps">{([{ id: 'basics', title: 'Identity', hint: 'Name and purpose' }, { id: 'instructions', title: 'Conversation', hint: 'Greeting and instructions' }, { id: 'voice', title: 'Voice & language', hint: 'Speech and model' }, { id: 'tools', title: 'Tools', hint: 'Add agent tools' }] as const).map((item, index) => <button key={item.id} type="button" className={step === item.id ? 'is-current' : ''} onClick={() => setStep(item.id)} aria-current={step === item.id ? 'step' : undefined}><span>{index + 1}</span><div><strong>{item.title}</strong><small>{item.hint}</small></div></button>)}<div className="editor-tip"><strong>Ready to test?</strong><p>Save your agent, then choose Talk to agent. Allow the microphone and say hello.</p></div></nav>
         <div className="agent-editor-fields">{saveError && <p className="workflow-error" role="alert">{saveError}</p>}
           {step === 'basics' && <><h3>Who is your agent?</h3><p className="field-intro">A clear name and purpose make it easier to find and test your assistant.</p><label htmlFor="agent-name">Agent name <span>Required</span></label><input id="agent-name" maxLength={120} className="form-input" value={draft.name || ''} onChange={event => update('name', event.target.value)} placeholder="e.g. Maya" /><label htmlFor="agent-role">Purpose</label><input id="agent-role" className="form-input" maxLength={200} value={draft.role || ''} onChange={event => update('role', event.target.value)} placeholder="e.g. Customer support for a travel agency" /><div className="editor-agent-preview"><div>{draft.name?.slice(0, 1) || 'A'}</div><section><strong>{draft.name || 'Your agent'}</strong><p>{draft.role || 'Add a purpose above'}</p></section><span>Draft</span></div></>}
@@ -372,11 +396,11 @@ export function AgentsTab({ agents, loading = false, error, onRetry, activeAgent
         </div></div>
         <footer className="workflow-footer"><p>Save a draft first. Publish it when you are happy with the test.</p><div><button className="btn btn-secondary" type="button" disabled={saving} onClick={close}>Cancel</button><button className="btn btn-primary" disabled={saving} type="submit">{saving ? 'Saving…' : editingId ? 'Save changes' : 'Create agent'}</button></div></footer>
       </form>
-    </div></div>}
+    </div></section><aside className="agent-detail-test" aria-label="Test agent conversation"><div className="agent-test-intro"><StudioIcon name="voice" size={19} /><div><strong>Try a real conversation</strong><p>{dirty ? 'Save your changes, then choose New test.' : 'New test starts with your latest saved settings.'}</p></div></div>{savedAgent ? <LiveVoiceCallModal key={savedAgent.id} embedded isOpen agent={savedAgent} onClose={() => {}} onViewAnalytics={() => navigate('/history')} /> : <div className="agent-test-placeholder"><div className="agent-test-orb"><StudioIcon name="voice" size={40} /></div><h3>Your agent is almost ready</h3><p>Create your agent to start a voice conversation here.</p></div>}</aside></div></section>}
 
     {toolEditorOpen && (
-      <div className="modal-overlay workflow-overlay" style={{ zIndex: 1200 }}>
-        <div className="agent-editor" role="dialog" aria-modal="true" style={{ maxWidth: 580, maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="agent-tool-inline" style={{ marginTop: 24 }}>
+        <div className="agent-editor" style={{ maxWidth: '100%', maxHeight: 'none' }}>
           <header className="workflow-header">
             <div>
               <span className="workflow-eyebrow">TOOL BUILDER</span>

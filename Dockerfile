@@ -17,6 +17,15 @@ COPY shared ./shared
 # Build TypeScript
 RUN npm run build
 
+# Build the browser app without any server credentials in the build context.
+FROM node:20-bookworm-slim AS client-builder
+WORKDIR /app/client
+COPY client/package*.json ./
+RUN npm ci
+COPY client ./
+COPY shared /app/shared
+RUN npm run build
+
 # Production stage
 FROM node:20-bookworm-slim AS production
 
@@ -31,6 +40,7 @@ RUN groupadd -g 1001 voiceai && useradd -u 1001 -g voiceai -m voiceai
 # Copy built files
 COPY --from=builder --chown=voiceai:voiceai /app/dist ./dist
 COPY --from=builder --chown=voiceai:voiceai /app/package*.json ./
+COPY --from=client-builder --chown=voiceai:voiceai /app/client/dist ./client/dist
 COPY --chown=voiceai:voiceai scripts/start-production.cjs ./scripts/start-production.cjs
 
 # Install production dependencies only
@@ -38,7 +48,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 # Create necessary directories
 RUN mkdir -p logs data && chown -R voiceai:voiceai logs data
-ENV NODE_ENV=production VOICEAI_DATA_DIR=/app/data VOICEAI_RUNTIME_MODE=demo
+ENV NODE_ENV=production VOICEAI_DATA_DIR=/app/data VOICEAI_RUNTIME_MODE=demo VOICEAI_SERVE_CLIENT=true
 
 USER voiceai
 
@@ -46,4 +56,4 @@ EXPOSE 8000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/server/src/app.js"]
+CMD ["node", "scripts/start-production.cjs"]

@@ -51,3 +51,5 @@ __pycache__/
 /PLAN.md
 
 server/data/workspace_tools.json
+
+server/data/recordings.json

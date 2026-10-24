@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: voiceai-demo
+    runtime: docker
+    plan: free
+    healthCheckPath: /health/live
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REDIS_ENABLED
+        value: "false"
+      - key: VOICEAI_RUNTIME_MODE
+        value: demo
+      - key: VOICEAI_SPEECH_MODE
+        value: browser
+      - key: VOICEAI_PUBLIC_LIVE
+        value: "false"
+      - key: VOICEAI_LEGACY_DEMO
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: VOICEAI_REQUIRE_MONGODB
+        value: "true"
+      - key: MONGODB_DB_NAME
+        value: voiceai_demo

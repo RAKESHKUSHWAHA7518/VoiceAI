@@ -13,7 +13,7 @@ import { CalendarWidget } from './components/calendar/CalendarWidget';
 import { FeatureRegister } from './components/layout/FeatureRegister';
 import { PlaygroundTab } from './components/playground/PlaygroundTab';
 
-import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
+
 import { ConversationHistory } from './components/analytics/ConversationHistory';
 import { TelephonyTab } from './components/telephony/TelephonyTab';
 import { KnowledgeTab } from './components/knowledge/KnowledgeTab';
@@ -39,7 +39,7 @@ function StudioApp() {
   const closeNavigation = useCallback(() => setNavigationOpen(false), []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const activeTab = PAGE_NAMES.find(page => matchPath({ path: PAGE_ROUTES[page].path, end: true }, pathname)) ?? null;
+  const activeTab = pathname.startsWith('/agents/') ? 'agents' : PAGE_NAMES.find(page => matchPath({ path: PAGE_ROUTES[page].path, end: true }, pathname)) ?? null;
   const navigateToPage = useCallback((page: TabName) => {
     const path = PAGE_ROUTES[page].path;
     if (pathname !== path) navigate(path);
@@ -55,8 +55,8 @@ function StudioApp() {
   const [agentsError, setAgentsError] = useState('');
   const [activeAgent, setActiveAgent] = useState<Agent | null>(null);
   const [isCreatingNewAgent, setIsCreatingNewAgent] = useState<boolean>(false);
-  const [isCallModalOpen, setIsCallModalOpen] = useState<boolean>(false);
-  const [callAgent, setCallAgent] = useState<Agent | null>(null);
+
+
   const playgroundRequest = useRef<AbortController | null>(null);
   const [playgroundMode, setPlaygroundMode] = useState<string>('');
   const playgroundSession = useRef<{ key: string; id: string } | null>(null);
@@ -247,6 +247,7 @@ function StudioApp() {
           handleSelectAgent(data.agent);
         }
       }
+      return data.agent as Agent | undefined;
     } catch (err) {
       console.error('Failed to save agent:', err);
       throw err;
@@ -269,7 +270,7 @@ function StudioApp() {
       console.error('Failed to delete agent:', err);
       throw err;
     }
-  }, [activeAgent, handleSelectAgent]);
+  }, [activeAgent, handleSelectAgent, navigate]);
 
   const handleTestAgent = useCallback((agent: Agent) => {
     handleSelectAgent(agent);
@@ -279,11 +280,10 @@ function StudioApp() {
   const handleStartVoiceCall = useCallback((agentToCall?: Agent | null) => {
     const target = agentToCall || activeAgent;
     if (target) {
-      setCallAgent(target);
       handleSelectAgent(target);
-      setIsCallModalOpen(true);
+      navigate('/agents/' + encodeURIComponent(target.id));
     }
-  }, [activeAgent, handleSelectAgent]);
+  }, [activeAgent, handleSelectAgent, navigate]);
 
   const loadAgents = useCallback(async () => {
     setAgentsLoading(true);
@@ -482,10 +482,9 @@ function StudioApp() {
         onClose={closeNavigation}
         agents={agents}
         activeAgent={activeAgent}
-        onSelectAgent={handleSelectAgent}
+        onSelectAgent={agent => { handleSelectAgent(agent); navigate('/agents/' + encodeURIComponent(agent.id)); }}
         onCreateAgent={() => {
-          navigateToPage('agents');
-          setIsCreatingNewAgent(true);
+          navigate('/agents/new');
         }}
         connected={connected}
         dashboardState={dashboardState}
@@ -496,7 +495,7 @@ function StudioApp() {
           onToggleNavigation={() => setNavigationOpen(open => !open)}
           activeTab={activeTab}
           activeAgent={activeAgent}
-          onOpenAgentsTab={() => navigateToPage('agents')}
+          onOpenAgentsTab={() => navigate(activeAgent ? '/agents/' + encodeURIComponent(activeAgent.id) : '/agents')}
           onStartVoiceCall={() => handleStartVoiceCall(activeAgent)}
           connected={connected}
         />
@@ -506,6 +505,7 @@ function StudioApp() {
             {PAGE_NAMES.map(page => (
               <Route key={page} path={PAGE_ROUTES[page].path} element={<>{['campaigns','evals','hitl','telephony'].includes(page) && <div className="feature-notice" role="note"><strong>Local workspace simulation</strong><p>Campaign dialing, evaluation scores, supervisor audio actions and telephone calls on these showcase screens are simulations. They make no carrier call or provider request. Campaign, evaluation and handoff demo state resets after server restart. Your saved agents, phone registry and appointments remain private.</p><Link to="/features">See every feature and its status →</Link></div>}{renderTabContent(page)}</>} />
             ))}
+            <Route path="/agents/:agentId" element={renderTabContent('agents')} />
             <Route path="*" element={
               <section>
                 <h2>Page not found</h2>
@@ -517,16 +517,7 @@ function StudioApp() {
         </main>
       </div>
 
-      <LiveVoiceCallModal
-        isOpen={isCallModalOpen}
-        onClose={() => setIsCallModalOpen(false)}
-        agent={callAgent || activeAgent}
-        onRunTest={runPlaygroundTestWithInput}
-        onViewAnalytics={() => {
-          setIsCallModalOpen(false);
-          navigateToPage('analytics');
-        }}
-      />
+
     </div>
   );
 }

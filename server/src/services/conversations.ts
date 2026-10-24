@@ -5,6 +5,7 @@ import { AgentRecord, AgentRecordModel } from '../models/agent.model';
 import { OpenAILLM } from './llm';
 import { ragEngine } from './rag';
 import config from '../config';
+import { cloudinaryReady } from './cloudinary_media';
 import { saveConversationRecord, ConversationRecord } from './conversation_history';
 import logger from '../utils/logger';
 
@@ -17,16 +18,18 @@ interface Conversation {
 }
 const sessions = new Map<string, Conversation>();
 const MAX_AGE = 30 * 60 * 1000;
-function prune() { for (const [id, session] of sessions) if (session.expires_at < Date.now()) { session.active?.abort(); sessions.delete(id); } }
+function prune() { for (const [id, session] of sessions) if (session.expires_at < Date.now()) { session.active?.abort(); sessions.delete(id); if (session.archive) void saveConversationRecord({ ...session.archive, status: 'ended', updated_at: Date.now() }).catch(() => logger.error('Could not finalize expired history', { session_id: id })); } }
 const cleanup = setInterval(prune, 60000); cleanup.unref();
-export function createConversation(workspace: string, agent: AgentRecord, options?: { mode?: 'demo' | 'live'; saveHistory?: boolean; enableTools?: boolean }) {
+export function createConversation(workspace: string, agent: AgentRecord, options?: { mode?: 'demo' | 'live'; saveHistory?: boolean; enableTools?: boolean; browserSpeech?: boolean; deployment_id?: string; version_id?: string; origin?: string }) {
   prune();
   if (sessions.size >= 500 || [...sessions.values()].filter(value => value.workspace_id === workspace).length >= 5) throw new Error('SESSION_LIMIT');
   const session: Conversation = { id: crypto.randomUUID(), workspace_id: workspace, agent: AgentRecordModel.parse(structuredClone(agent)), history: [], expires_at: Date.now() + MAX_AGE, turns: 0, attempts: 0, tools_enabled: options?.enableTools === true, mode: options?.mode || runtimeMode() };
-  if (options?.saveHistory) session.archive = { id: session.id, workspace_id: workspace, agent_id: agent.id, agent_name: agent.name, started_at: Date.now(), updated_at: Date.now(), status: 'active', configuration: structuredClone(agent), runtime_mode: session.mode, processing_ms: null, messages: agent.greeting ? [{ role: 'assistant', text: agent.greeting, timestamp: Date.now() }] : [] };
+  if (options?.saveHistory) session.archive = { id: session.id, workspace_id: workspace, agent_id: agent.id, agent_name: agent.name, started_at: Date.now(), updated_at: Date.now(), status: 'active', configuration: structuredClone(agent), runtime_mode: session.mode, channel: options.deployment_id ? 'widget' : 'playground', deployment_id: options.deployment_id, version_id: options.version_id, origin: options.origin, processing_ms: null, messages: agent.greeting ? [{ role: 'assistant', text: agent.greeting, timestamp: Date.now() }] : [] };
   sessions.set(session.id, session);
-  return { session_id: session.id, agent_id: agent.id, greeting: agent.greeting, runtime_mode: session.mode, transport: 'text-stream', speech_output: options?.saveHistory && process.env.VOICEAI_SPEECH_MODE === 'cloud' && config.apiKeys.deepgram && config.apiKeys.cartesia ? 'cloud' : 'browser', tools_enabled: session.tools_enabled && conversationTools(workspace, agent).length > 0 };
+  const cloudSpeech = options?.saveHistory && !options.browserSpeech && process.env.VOICEAI_SPEECH_MODE === 'cloud' && config.apiKeys.cartesia && (options.deployment_id || config.apiKeys.deepgram);
+  return { session_id: session.id, agent_id: agent.id, greeting: agent.greeting, runtime_mode: session.mode, transport: 'text-stream', speech_output: cloudSpeech ? 'cloud' : 'browser', recording_enabled: !!cloudSpeech && cloudinaryReady(), tools_enabled: session.tools_enabled && conversationTools(workspace, agent).length > 0 };
 }
+export async function persistConversationStart(workspace: string, id: string) { const session = findConversation(workspace, id); if (session?.archive) await saveConversationRecord(session.archive); }
 export function findConversation(workspace: string, id: string) {
   prune(); const session = sessions.get(id);
   return session?.workspace_id === workspace ? session : undefined;
@@ -38,7 +41,7 @@ export function workspaceSessions(workspace: string) {
 export function closeConversation(workspace: string, id: string) {
   const session = findConversation(workspace, id); if (!session) return false;
   session.active?.abort(); sessions.delete(id);
-  if (session.archive && (session.archive.messages.some(message => message.role === 'user') || session.archive.turn_outcomes?.length)) void saveConversationRecord({ ...session.archive, status: 'ended', updated_at: Date.now() }).catch(() => logger.error('Could not finalize conversation history', { session_id: id }));
+  if (session.archive) void saveConversationRecord({ ...session.archive, status: 'ended', updated_at: Date.now() }).catch(() => logger.error('Could not finalize conversation history', { session_id: id }));
   return true;
 }
 export function interruptConversation(workspace: string, id: string) { const session = findConversation(workspace, id); session?.active?.abort(); return !!session; }

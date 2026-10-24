@@ -3,19 +3,30 @@ import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorHandler';
 import { workspaceId } from '../middleware/workspace';
 import { getAgentById, ownsAgent } from './agents';
-import { createConversation, findConversation, closeConversation, interruptConversation, conversationTurn } from '../services/conversations';
-import { historyForWorkspace, historyRecord } from '../services/conversation_history';
+import { createConversation, persistConversationStart, findConversation, closeConversation, interruptConversation, conversationTurn } from '../services/conversations';
+import { pagedHistory, historyRecord } from '../services/conversation_history';
 
+import { startRecording, uploadRecording, recordingBody, playRecording, deleteRecording } from './recordings';
+import { recordingSummary } from '../services/recordings';
+import { requireWorkspace, sameOrigin } from '../middleware/workspace';
 const router = Router();
-router.get('/history', (req, res) => res.json({ success: true, conversations: historyForWorkspace(workspaceId(req)!) }));
+router.post('/:id/recording/start', requireWorkspace, sameOrigin, startRecording);
+router.post('/:id/recording', requireWorkspace, sameOrigin, recordingBody, uploadRecording);
+router.get('/history/:id/recording', requireWorkspace, playRecording);
+router.delete('/history/:id/recording', requireWorkspace, sameOrigin, deleteRecording);
+router.get('/history', (req, res) => {
+  const query = z.object({ page: z.coerce.number().int().min(1).max(1000000).default(1), page_size: z.coerce.number().int().min(1).max(50).default(10), q: z.string().trim().max(200).default('') }).safeParse(req.query);
+  if (!query.success) return res.status(400).json({ success: false, error: { message: 'Use a positive page number, 1–50 conversations per page, and a search of at most 200 characters.' } });
+  return res.json({ success: true, ...pagedHistory(workspaceId(req)!, query.data.page, query.data.page_size, query.data.q) });
+});
 router.get('/history/:id', (req, res) => {
   const record = historyRecord(workspaceId(req)!, req.params.id);
-  return record ? res.json({ success: true, conversation: record }) : res.status(404).json({ success: false, error: { message: 'Conversation not found' } });
+  return record ? res.json({ success: true, conversation: { ...record, recording: recordingSummary(workspaceId(req)!, record.id) } }) : res.status(404).json({ success: false, error: { message: 'Conversation not found' } });
 });
 router.post('/', asyncHandler(async (req: Request, res: Response) => {
   const { agent_id } = z.object({ agent_id: z.string().min(1) }).parse(req.body);
   if (!workspaceId(req) || !ownsAgent(req, agent_id)) return res.status(404).json({ success: false, error: { message: 'Agent not found' } });
-  try { res.status(201).json({ success: true, ...createConversation(workspaceId(req)!, getAgentById(agent_id)!, { saveHistory: true, enableTools: true }) }); }
+  try { const opened = createConversation(workspaceId(req)!, getAgentById(agent_id)!, { saveHistory: true, enableTools: true }); await persistConversationStart(workspaceId(req)!, opened.session_id); res.status(201).json({ success: true, ...opened }); }
   catch { res.status(429).json({ success: false, error: { message: 'End an existing conversation before starting another.' } }); }
 }));
 export const turnHandler = asyncHandler(async (req: Request, res: Response) => {

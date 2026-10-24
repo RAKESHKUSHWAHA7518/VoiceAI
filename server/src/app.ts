@@ -52,6 +52,7 @@ import { initializeDatabase, closeDatabase } from './services/database';
 
 import fs from 'fs';
 import path from 'path';
+import { mountStudio } from './routes/studio';
 
 const app = express();
 const server = createServer(app);
@@ -128,6 +129,7 @@ app.get('/api/state', (req, res) => {
 });
 
 // Return storage failures through the shared API error handler.
+if (process.env.VOICEAI_SERVE_CLIENT === 'true') mountStudio(app, path.resolve('client/dist'));
 app.use(notFoundHandler);
 app.use(errorHandler);
 

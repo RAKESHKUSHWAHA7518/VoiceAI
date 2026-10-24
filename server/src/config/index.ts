@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 interface Config {
+  cloudinary: { cloudName: string; apiKey: string; apiSecret: string };
   mongodb: { uri: string; database: string };
   env: string;
   port: number;
@@ -109,6 +110,11 @@ interface Config {
 }
 
 const config: Config = {
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  },
   mongodb: {
     uri: process.env.NODE_ENV === 'test' ? '' : (process.env.MONGODB_URI || ''),
     database: process.env.MONGODB_DB_NAME || '',

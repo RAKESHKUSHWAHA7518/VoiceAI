@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Agent } from '../../types';
 interface Deployment { runtime_mode?: 'demo' | 'live'; id: string; version_id: string; active: boolean; allowed_origins: string[] }
-export function DeploymentPanel({ agent, onClose }: { agent: Agent; onClose: () => void }) {
+export function DeploymentPanel({ agent, onClose, inline = false }: { agent: Agent; onClose: () => void; inline?: boolean }) {
   const [publicLive, setPublicLive] = useState(false); const [mode, setMode] = useState<'demo' | 'live'>('demo');
   const [deployments, setDeployments] = useState<Deployment[]>([]); const [origins, setOrigins] = useState('');
   const [includePreview, setIncludePreview] = useState(true); const [error, setError] = useState('');
   const [busy, setBusy] = useState(false); const [published, setPublished] = useState(false); const [copyStatus, setCopyStatus] = useState('');
   const dialog = useRef<HTMLDivElement>(null);
   const load = async () => { const response = await fetch(`/api/agents/${agent.id}/deployments`); const result = await response.json(); if (!response.ok) throw new Error(result.error?.message || 'Could not load publishing settings.'); setDeployments(result.deployments); setPublicLive(result.public_live_enabled === true); };
-  useEffect(() => { const previous = document.activeElement as HTMLElement | null; dialog.current?.querySelector<HTMLButtonElement>('button')?.focus(); void load().catch(err => setError(err.message)); return () => previous?.focus(); }, [agent.id]);
+  useEffect(() => { const previous = document.activeElement as HTMLElement | null; if (!inline) dialog.current?.querySelector<HTMLButtonElement>('button')?.focus(); void load().catch(err => setError(err.message)); return () => previous?.focus(); }, [agent.id]);
   const publish = async () => {
     setBusy(true); setError('');
     try {
@@ -20,7 +20,8 @@ export function DeploymentPanel({ agent, onClose }: { agent: Agent; onClose: () 
     } catch (err) { setError(err instanceof Error ? err.message : 'Publishing failed.'); }
     finally { setBusy(false); }
   };
-  return <div className="modal-overlay workflow-overlay"><div className="publish-shell" role="dialog" aria-modal="true" aria-labelledby="deploy-title" ref={dialog} onKeyDown={event => {
+  return <div className={inline ? 'agent-publish-inline' : 'modal-overlay workflow-overlay'}><div className="publish-shell" role={inline ? undefined : 'dialog'} aria-modal={inline ? undefined : true} aria-labelledby="deploy-title" ref={dialog} onKeyDown={event => {
+    if (inline) return;
     if (event.key === 'Escape' && !busy) onClose();
     if (event.key === 'Tab') { const controls = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),textarea,input,a[href]') || []); const first = controls[0], last = controls[controls.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); } }
   }}>

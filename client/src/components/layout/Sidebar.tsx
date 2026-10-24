@@ -77,7 +77,7 @@ export function Sidebar({ agents, activeAgent, onSelectAgent, onCreateAgent, con
           {navigation.filter(group => group.items.some(item => WORKSPACE_PAGES.has(item.id))).map(group => <div className="sidebar-section" key={group.label}>
             <div className="sidebar-section-title">{group.label}</div>
             <nav className="sidebar-nav" aria-label={group.label.toLowerCase()}>
-              {group.items.filter(item => WORKSPACE_PAGES.has(item.id)).map(({ id, label, icon: Icon }) => <NavLink key={id} to={PAGE_ROUTES[id as TabName].path} end onClick={onClose} className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}><span className="nav-icon"><Icon size={17} /></span><span className="nav-label">{label}</span>{id === 'agents' && <span className="nav-badge">{agents.length}</span>}</NavLink>)}
+              {group.items.filter(item => WORKSPACE_PAGES.has(item.id)).map(({ id, label, icon: Icon }) => <NavLink key={id} to={PAGE_ROUTES[id as TabName].path} end={id !== 'agents'} onClick={onClose} className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}><span className="nav-icon"><Icon size={17} /></span><span className="nav-label">{label}</span>{id === 'agents' && <span className="nav-badge">{agents.length}</span>}</NavLink>)}
             </nav>
           </div>)}
           <div className="sidebar-section sidebar-agents-section">

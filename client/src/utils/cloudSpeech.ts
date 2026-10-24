@@ -51,7 +51,7 @@ export class DeepgramRecognition {
 export class CartesiaSynthesis {
  private request?: AbortController; private audio?: HTMLAudioElement; private url?: string; private generation = 0;
  private releasePlayback?: () => void;
- constructor(private sessionId: () => string) {}
+ constructor(private sessionId: () => string, private token: () => string | undefined = () => undefined, private onPlayback: (audio: HTMLAudioElement) => void = () => {}) {}
  cancel() { this.generation++; this.request?.abort(); this.audio?.pause(); this.audio = undefined; this.releasePlayback?.(); this.releasePlayback = undefined; if (this.url) URL.revokeObjectURL(this.url); this.url = undefined; }
  speak(speech: SpeechSynthesisUtterance) {
   this.cancel(); const generation = this.generation; const request = new AbortController(); this.request = request;
@@ -60,10 +60,10 @@ export class CartesiaSynthesis {
     const chunks = speechSegments(speech.text);
     for (let index = 0; index < chunks.length; index++) {
      if (generation !== this.generation) return;
-     const response = await fetch('/api/conversations/' + this.sessionId() + '/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: speech.text, chunk_index: index }), signal: request.signal });
+     const response = await fetch('/api/' + (this.token() ? 'public/sessions/' : 'conversations/') + this.sessionId() + '/speak', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.token() ? { Authorization: 'Bearer ' + this.token() } : {}) }, credentials: this.token() ? 'omit' : 'same-origin', body: JSON.stringify({ text: speech.text, chunk_index: index }), signal: request.signal });
      if (!response.ok) { const error = await response.json(); throw new Error(error.error?.message || 'Cartesia voice failed.'); }
      const blob = await response.blob(); if (generation !== this.generation) return;
-     this.url = URL.createObjectURL(blob); const audio = new Audio(this.url); this.audio = audio;
+     this.url = URL.createObjectURL(blob); const audio = new Audio(this.url); this.audio = audio; this.onPlayback(audio);
      await new Promise<void>((resolve, reject) => {
       this.releasePlayback = resolve; audio.onended = () => resolve(); audio.onerror = () => reject(new Error('Audio playback failed. Check the browser sound setting.'));
       audio.play().catch(reject);

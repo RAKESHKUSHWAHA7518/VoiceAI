@@ -31,7 +31,7 @@ router.post('/:id/speech-ticket', asyncHandler(async (req: Request, res: Respons
  tickets.set(ticket, { workspace, session: session.id, expires: Date.now() + 30000 });
  res.json({ ticket, expires_in: 30 });
 }));
-router.post('/:id/speak', asyncHandler(async (req: Request, res: Response) => {
+export const speakHandler = asyncHandler(async (req: Request, res: Response) => {
  const workspace = workspaceId(req)!; const session = findConversation(workspace, req.params.id);
  if (!session) return res.status(404).json({ error: { message: 'Conversation not found.' } });
  if (process.env.VOICEAI_SPEECH_MODE !== 'cloud' || !config.apiKeys.cartesia) return res.status(503).json({ error: { message: 'Cartesia speech is not configured.' } });
@@ -49,7 +49,8 @@ router.post('/:id/speak', asyncHandler(async (req: Request, res: Response) => {
   res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }).send(Buffer.from(result.data));
  } catch { if (!res.destroyed) res.status(502).json({ error: { message: 'Cartesia could not generate this voice. Check the selected Cartesia voice, credits and connection.' } }); }
  finally { limits.speaking = false; res.off('close', cancel); }
-}));
+});
+router.post('/:id/speak', speakHandler);
 export default router;
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 256000 });
 export function handleSpeechUpgrade(req: IncomingMessage, socket: any, head: Buffer): boolean {

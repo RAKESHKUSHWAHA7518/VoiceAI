@@ -5,7 +5,7 @@ import request from 'supertest';
 const mockFiles = new Map<string, string>();
 jest.mock('fs', () => {
   const actual = jest.requireActual('fs');
-  const privateFile = (file: unknown) => /[\\/]data[\\/](accounts|agents|agent_versions|deployments|conversation_history|workspace_tools)\.json$/.test(String(file));
+  const privateFile = (file: unknown) => /[\\/]data[\\/](accounts|agents|agent_versions|deployments|conversation_history|workspace_tools|recordings)\.json$/.test(String(file));
   return { ...actual,
     existsSync: (file: unknown) => privateFile(file) ? mockFiles.has(String(file)) : actual.existsSync(file),
     readFileSync: (file: unknown, ...args: unknown[]) => privateFile(file) ? mockFiles.get(String(file)) : actual.readFileSync(file, ...args),
@@ -305,4 +305,118 @@ test('saved replies above 2000 characters can be spoken in authorized bounded se
   await request(app).post('/api/conversations/' + opened.session_id + '/speak').set('Cookie', owner.cookie).send({ text, chunk_index: 999 }).expect(400);
   await request(app).delete('/api/conversations/' + opened.session_id).set('Cookie', owner.cookie).expect(200);
  } finally { post.mockRestore(); process.env.VOICEAI_SPEECH_MODE = before.mode || 'browser'; config.apiKeys.cartesia = before.cartesia; }
+});
+
+test('widget transcripts belong to the owner and expose conversation and deployment identifiers', async () => {
+ const owner = await register('history-widget-owner@example.test'); const other = await register('history-widget-other@example.test');
+ const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+ const version = (await request(app).post('/api/agents/' + agent.id + '/publish').set('Cookie', owner.cookie)).body.version;
+ const deployment = (await request(app).post('/api/agents/' + agent.id + '/deployments').set('Cookie', owner.cookie).send({version_id: version.id, allowed_origins: ['https://history-widget.example']})).body.deployment;
+ const opened = (await request(app).post('/api/public/deployments/' + deployment.id + '/sessions').set('Origin', 'https://history-widget.example').expect(201)).body;
+ expect(opened.speech_output).toBe('browser');
+ const base = '/api/conversations/history/' + opened.session_id;
+ const initial = (await request(app).get(base).set('Cookie', owner.cookie).expect(200)).body.conversation;
+ expect(initial).toMatchObject({id: opened.session_id, agent_id: agent.id, deployment_id: deployment.id, version_id: version.id, channel: 'widget', origin: 'https://history-widget.example'});
+ await request(app).get(base).set('Cookie', other.cookie).expect(404);
+ await request(app).get(base).set('Authorization', 'Bearer ' + opened.token).expect(401);
+ await request(app).post('/api/public/sessions/' + opened.session_id + '/turn').set('Authorization', 'Bearer ' + opened.token).send({text: 'Saved widget question'}).expect(200);
+ const detail = (await request(app).get(base).set('Cookie', owner.cookie)).body.conversation;
+ expect(detail.messages.some((value: any) => value.text === 'Saved widget question')).toBe(true);
+ await request(app).delete('/api/public/sessions/' + opened.session_id).set('Authorization', 'Bearer ' + opened.token).expect(200);
+});
+
+test('recordings require notice and ownership, reject invalid files, keep playback private and delete audio', async () => {
+ const media = require('../src/services/cloudinary_media');
+ const ready = jest.spyOn(media, 'cloudinaryReady').mockReturnValue(true);
+ const upload = jest.spyOn(media, 'uploadMedia').mockResolvedValue({public_id: 'private-test-asset', format: 'webm', bytes: 100, duration: 2, resource_type: 'video'});
+ const download = jest.spyOn(media, 'mediaDownload').mockReturnValue('https://example.test/private-test');
+ const destroy = jest.spyOn(media, 'deleteMedia').mockResolvedValue(undefined);
+ const get = jest.spyOn(axios, 'get').mockResolvedValue({data: Buffer.from('private-audio'), headers: {'content-type': 'audio/webm'}});
+ try {
+  const owner = await register('recording-owner@example.test'); const other = await register('recording-other@example.test');
+  const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+  const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({agent_id: agent.id}).expect(201)).body;
+  const url = '/api/conversations/' + opened.session_id + '/recording'; const history = '/api/conversations/history/' + opened.session_id;
+  await request(app).post(url + '/start').send({notice_version: 'recording-v1'}).expect(401);
+  await request(app).post(url + '/start').set('Cookie', other.cookie).send({notice_version: 'recording-v1'}).expect(404);
+  await request(app).post(url + '/start').set('Cookie', owner.cookie).send({}).expect(400);
+  await request(app).post(url + '/start').set('Cookie', owner.cookie).send({notice_version: 'recording-v1'}).expect(201);
+  await request(app).post(url + '/start').set('Cookie', owner.cookie).send({notice_version: 'recording-v1'}).expect(409);
+  await request(app).post(url).set('Cookie', owner.cookie).set('Content-Type', 'audio/webm').send(Buffer.from('invalid-audio')).expect(400);
+  expect(upload).not.toHaveBeenCalled();
+  const bytes = Buffer.alloc(100); Buffer.from([0x1a,0x45,0xdf,0xa3]).copy(bytes);
+  await request(app).post(url).set('Cookie', other.cookie).set('Content-Type', 'audio/webm').send(bytes).expect(404);
+  upload.mockRejectedValueOnce(new Error('Provider unavailable'));
+  await request(app).post(url).set('Cookie', owner.cookie).set('Content-Type', 'audio/webm').send(bytes).expect(502);
+  expect((await request(app).get(history).set('Cookie', owner.cookie)).body.conversation.recording.status).toBe('failed');
+  expect(destroy).toHaveBeenCalled(); destroy.mockClear();
+  await request(app).post(url).set('Cookie', owner.cookie).set('Content-Type', 'audio/webm').send(bytes).expect(201);
+  const detail = (await request(app).get(history).set('Cookie', owner.cookie)).body.conversation;
+  expect(detail.recording).toMatchObject({status: 'ready', duration: 2}); expect(JSON.stringify(detail)).not.toContain('private-test-asset');
+  await request(app).get(history + '/recording').set('Cookie', other.cookie).expect(404);
+  await request(app).get(history + '/recording').expect(401);
+  await request(app).get(history + '/recording').set('Cookie', owner.cookie).expect(200).expect('Cache-Control', 'private, no-store');
+  await request(app).delete(history + '/recording').set('Cookie', other.cookie).expect(200);
+  expect(destroy).not.toHaveBeenCalled();
+  await request(app).delete(history + '/recording').set('Cookie', owner.cookie).expect(200);
+  expect(destroy).toHaveBeenCalledWith('private-test-asset');
+  await request(app).get(history + '/recording').set('Cookie', owner.cookie).expect(404);
+  await request(app).get(history).set('Cookie', owner.cookie).expect(200);
+  await request(app).delete('/api/conversations/' + opened.session_id).set('Cookie', owner.cookie).expect(200);
+ } finally { ready.mockRestore(); upload.mockRestore(); download.mockRestore(); destroy.mockRestore(); get.mockRestore(); }
+});
+
+test('metadata-save and deletion failures retain the asset for durable cleanup and retry', async () => {
+ const media = require('../src/services/cloudinary_media'); const metadata = require('../src/services/recordings');
+ const ready = jest.spyOn(media, 'cloudinaryReady').mockReturnValue(true);
+ const upload = jest.spyOn(media, 'uploadMedia').mockResolvedValue({public_id: 'needs-cleanup-asset', format: 'webm', bytes: 100, duration: 2, resource_type: 'video'});
+ const destroy = jest.spyOn(media, 'deleteMedia').mockRejectedValue(new Error('Cloudinary unavailable'));
+ const originalSave = metadata.saveRecording;
+ let failed = false;
+ const save = jest.spyOn(metadata, 'saveRecording').mockImplementation(async (value: any) => { if (value.status === 'ready' && !failed) { failed = true; throw new Error('Metadata disk unavailable'); } return originalSave(value); });
+ try {
+  const owner = await register('cleanup-recording-owner@example.test');
+  const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+  const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({agent_id: agent.id}).expect(201)).body;
+  const workspace = findConversation((await request(app).get('/api/platform').set('Cookie', owner.cookie)).body.workspace_id, opened.session_id)!.workspace_id;
+  const url = '/api/conversations/' + opened.session_id + '/recording';
+  await request(app).post(url + '/start').set('Cookie', owner.cookie).send({notice_version: 'recording-v1'}).expect(201);
+  const bytes = Buffer.alloc(100); Buffer.from([0x1a,0x45,0xdf,0xa3]).copy(bytes);
+  await request(app).post(url).set('Cookie', owner.cookie).set('Content-Type', 'audio/webm').send(bytes).expect(502);
+  expect(metadata.recordingFor(workspace, opened.session_id)).toMatchObject({status: 'cleanup_pending', public_id: 'needs-cleanup-asset', bytes: 100});
+  expect(metadata.recordingUsage(workspace)).toBe(100);
+  expect([...mockFiles.entries()].find(([path]) => path.endsWith('recordings.json'))?.[1]).toContain('needs-cleanup-asset');
+  await request(app).get('/api/conversations/history/' + opened.session_id + '/recording').set('Cookie', owner.cookie).expect(404);
+  // Upload retries cannot overwrite an asset whose deletion is still pending.
+  await request(app).post(url).set('Cookie', owner.cookie).set('Content-Type', 'audio/webm').send(bytes).expect(502);
+  expect(upload).toHaveBeenCalledTimes(1);
+  destroy.mockResolvedValue(undefined); await metadata.cleanupRecordings();
+  expect(destroy).toHaveBeenLastCalledWith('needs-cleanup-asset');
+  expect(metadata.recordingFor(workspace, opened.session_id)).toMatchObject({status: 'failed'});
+  expect(metadata.recordingFor(workspace, opened.session_id).public_id).toBeUndefined(); expect(metadata.recordingUsage(workspace)).toBe(0);
+  await request(app).post(url).set('Cookie', owner.cookie).set('Content-Type', 'audio/webm').send(bytes).expect(201);
+  await request(app).delete('/api/conversations/history/' + opened.session_id + '/recording').set('Cookie', owner.cookie).expect(200);
+  await request(app).delete('/api/conversations/' + opened.session_id).set('Cookie', owner.cookie).expect(200);
+ } finally { ready.mockRestore(); upload.mockRestore(); destroy.mockRestore(); save.mockRestore(); }
+});
+
+test('history pagination is bounded, searches all pages and keeps totals workspace-private', async () => {
+ const owner = await register('pagination-owner@example.test'); const other = await register('pagination-other@example.test');
+ const workspace = (await request(app).get('/api/platform').set('Cookie', owner.cookie)).body.workspace_id;
+ const otherWorkspace = (await request(app).get('/api/platform').set('Cookie', other.cookie)).body.workspace_id;
+ const {saveConversationRecord} = require('../src/services/conversation_history');
+ for(let index = 0; index < 23; index++) await saveConversationRecord({id: 'pagination-' + String(index).padStart(2, '0'), workspace_id: workspace, agent_id: 'pagination-agent', agent_name: 'Page Agent', started_at: index, updated_at: index, status: 'ended', runtime_mode: 'demo', processing_ms: null, messages: [{role: 'user', text: 'Question ' + index, timestamp: index}, {role: 'assistant', text: index === 5 ? 'Hidden assistant search needle' : 'Answer', timestamp: index}]});
+ await saveConversationRecord({id: 'other-pagination', workspace_id: otherWorkspace, agent_id: 'other-agent', agent_name: 'Other', started_at: 100, updated_at: 100, status: 'ended', runtime_mode: 'demo', processing_ms: null, messages: []});
+ const first = (await request(app).get('/api/conversations/history').set('Cookie', owner.cookie).expect(200)).body;
+ expect(first.conversations).toHaveLength(10); expect(first.pagination).toEqual({page: 1, page_size: 10, total: 23, total_pages: 3}); expect(first.stats).toEqual({conversation_count: 23, message_count: 46});
+ expect(first.conversations[0].id).toBe('pagination-22'); expect(first.conversations[0].messages).toBeUndefined();
+ const second = (await request(app).get('/api/conversations/history?page=2').set('Cookie', owner.cookie).expect(200)).body;
+ expect(second.conversations).toHaveLength(10); expect(second.conversations.some((value: any) => first.conversations.some((item: any) => item.id === value.id))).toBe(false);
+ const last = (await request(app).get('/api/conversations/history?page=999').set('Cookie', owner.cookie).expect(200)).body;
+ expect(last.pagination.page).toBe(3); expect(last.conversations).toHaveLength(3);
+ const found = (await request(app).get('/api/conversations/history?q=hidden%20assistant%20search%20needle&page=3').set('Cookie', owner.cookie).expect(200)).body;
+ expect(found.pagination).toMatchObject({page: 1, total: 1, total_pages: 1}); expect(found.conversations[0].id).toBe('pagination-05'); expect(found.stats.conversation_count).toBe(23);
+ const larger = (await request(app).get('/api/conversations/history?page_size=25').set('Cookie', owner.cookie)).body; expect(larger.conversations).toHaveLength(23);
+ const empty = (await request(app).get('/api/conversations/history?q=hidden').set('Cookie', other.cookie)).body; expect(empty.conversations).toEqual([]); expect(empty.pagination.total).toBe(0); expect(empty.stats.conversation_count).toBe(1);
+ for (const query of ['page=0','page=-1','page=1.5','page_size=51','page_size=0','page=oops']) await request(app).get('/api/conversations/history?' + query).set('Cookie', owner.cookie).expect(400);
 });

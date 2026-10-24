@@ -12,7 +12,8 @@ module.exports = {
   verbose: true,
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
+      // Jest runs in CommonJS; application builds keep their own module settings.
+      tsconfig: { ...require('./tsconfig.json').compilerOptions, module: 'CommonJS', moduleResolution: 'Node', lib: ['ES2022', 'DOM'] },
       diagnostics: {
         ignoreCodes: [151002],
       },

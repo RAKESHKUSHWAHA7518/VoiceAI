@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 const paths = {
   search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></>,
+  copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V4H4v12h4" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
   arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
   edit: <><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z" /></>,

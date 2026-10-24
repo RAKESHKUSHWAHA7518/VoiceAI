@@ -167,3 +167,43 @@ Removed the generic legacy handler path from private conversation tools and rest
 ## History, segmented speech and publish modes — 24 October 2026
 
 Completed turns are committed only after history persistence succeeds. Save failure returns HISTORY_SAVE_FAILED without advancing conversation context. Cartesia playback splits saved replies into authorized segments of at most 1500 characters, with sequential playback, cancellation and visible provider errors; the existing per-workspace credit limit remains enforced. Public deployments now store an explicit demo/live runtime mode. Demo is the default, including older deployments without a stored mode; these widgets work independently of private live mode. Live publishing and guest turns remain gated by VOICEAI_PUBLIC_LIVE, with the publishing UI displaying server availability. No paid model access was enabled. All 152 tests passed in 15 suites; backend typecheck and frontend build pass. New tests cover save-failure recovery, long speech authorization, demo publishing in private live mode and live-session revocation. Browser inspection confirmed the new publishing choices and credit disclosure.
+
+## Cloudinary recordings and centralized widget history — 24 October 2026
+
+Demo recording workflow implemented. See RECORDING_PLAN.md for exact scope, limits and incomplete crash recovery. Cloudinary keys verified without disclosure using disposable audio/image uploads; private playback and unsigned-access denial passed and both assets were deleted. Voice sessions with Cartesia playback mix both sides and upload on normal end; native browser voice remains transcript-only. Owner-only History supports audio playback/download/deletion and unique IDs. Published widget transcripts now persist with deployment metadata. Public cloud TTS stays behind explicit live publishing; no public live flag was enabled automatically. Physical spoken recording acceptance remains manual.
+
+Verification: all 154 tests in 15 suites passed; backend typecheck, frontend production build and diff whitespace checks passed. Chrome inspection confirmed the updated History IDs/detail view and the cloud voice recording disclosure. No microphone was opened during UI inspection; a real spoken two-sided recording is not yet acceptance-tested. Cloudinary adapter verification used a synthetic tone and one-pixel image only, and deleted both.
+
+## Recording review fixes — 24 October 2026
+
+Fixed all three review findings. Recording startup now owns an abortable attempt, stops pending/late microphone tracks and returns cancellation to both Playground and widget callers; closing cannot resume the voice flow through a late successful response. Tab-close protection now tracks confirmed upload success rather than the existence of a promise, so it remains active during upload and after failure. Cloudinary asset IDs are persisted before upload; failed compensation retains cleanup_pending metadata and counted bytes. Hourly/startup cleanup retries these assets and recovers uploading records older than ten minutes. Upload retries first clear prior assets and do not overwrite unresolved cleanup. Existing transcripts and owner permissions are preserved.
+
+Regression tests cover late microphone permission, late authorization after cancellation, warning through pending/failed/retried uploads, metadata-save failure followed by Cloudinary deletion failure, durable asset tracking and subsequent cleanup/upload recovery. Jest now explicitly compiles tests to CommonJS so browser hook logic can run with controlled browser adapters. Backend typecheck and frontend production build pass. No real provider requests or credits were used for these fixes.
+
+Final verification for review fixes: 158 tests passed in 16 suites; backend typecheck, frontend build and whitespace checks passed. CI installs frontend dependencies before the new browser-hook tests. The isolated preview on port 8011 has been restarted with the fixes.
+
+## Dedicated agent pages — 24 October 2026
+
+Agent cards, edit actions and sidebar selection now open /agents/:agentId; creation opens /agents/new. The full-page workspace retains identity, instructions, voice/model settings, tool selection and custom tool configuration, connected knowledge and publishing. Sections have refreshable query URLs, saving stays on the page, and stale saves cannot replace another agent's draft after navigation. Custom tool editing is inline; the shared voice library remains available from the roster.
+
+A circular microphone control and the existing voice/text conversation engine are embedded alongside settings. Viewing settings does not create a conversation: Connect test prepares a session, Start conversation starts speech, and New test loads the latest saved configuration. Existing recording disclosure, capture, upload retry, history and provider limits are reused. Published versions remain separate from edits. Missing-agent and loading states are handled.
+
+Verification: frontend production build and backend typecheck pass; 10 continuous-voice/recording lifecycle regression tests pass. Chrome checks covered agent-card navigation, unchanged save, tools, agent-scoped knowledge, inline publishing, create-page entry, direct URL refresh retaining Instructions, connect-to-cloud session readiness, and ending the idle test. No microphone was opened and no model/TTS request was made in this UI verification. Physical conversation acceptance remains the existing manual test.
+
+## Conversation History pagination — 24 October 2026
+
+History now requests a bounded page from the server (10 by default; UI choices 10, 25, 50). Previous/Next, page count and visible-result range are displayed. Search is debounced, searches conversation/agent IDs, names and transcript text across the workspace before pagination, and resets to page one. Workspace totals remain independent of page size and search. Invalid query limits return 400, oversized page numbers clamp to the last available page, and sorting uses an ID tie-breaker. Existing internal history consumers keep their prior interface. In-flight list/detail requests are cancelled to prevent stale results after page/search changes.
+
+Verification: all 21 workspace integration tests pass, including page boundaries, full-text search outside page one, private totals, empty matches and invalid parameters. Backend typecheck and frontend build pass. Chrome checks verified Next, page-size selection and search reset across 33 existing conversations. No provider calls were made. The isolated 8011 preview was refreshed with the new API.
+
+## History design refinement — 24 October 2026
+
+Implemented compact conversation rows, clearer text contrast, pagination beside the search area, abbreviated IDs with full-ID copy controls, expandable metadata, and independently scrolling conversation and transcript panes. Existing audio playback/download/delete controls and tool/source details remain available. Browser checks confirmed next/previous paging, selection, recording controls and copy feedback; typecheck and client build pass. Spoken audio playback was not exercised in this design check.
+
+History readability follow-up: compact heading and inline statistics reclaim vertical space; desktop panels have a 520px minimum height with page scrolling on short screens. Pagination stays below the fixed app header, and each panel retains its own scroll area. Browser verified the full audio player and multiple messages visible together; client production build passed.
+
+History request recovery: failed list requests clear stale rows and selected details, show an explicit error/retry state, and disable paging until retry or a new query succeeds. A controlled component check verified page-2 failure and same-page retry recovery; client build passed.
+
+## Free hosting preparation — 24 October 2026
+
+Added a Render free-service Blueprint, same-origin studio hosting with SPA deep-link fallback, a combined frontend/backend Docker build and a MongoDB-required startup option for temporary hosting filesystems. Backend build and 5 hosting route tests pass. The Docker image was not built locally because Docker Desktop is not running. No remote service was created and no credentials uploaded; Render sign-in, repository connection and hosted acceptance remain pending. See docs/DEPLOY_RENDER.md.
