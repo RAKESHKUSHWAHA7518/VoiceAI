@@ -334,11 +334,11 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
               <IconHeadphones size={24} color="var(--studio-accent)" />
             </div>
             <h1 className="header-title">
-              Live Call Takeover & Supervision (HITL)
+              Handoff & Supervisor Demo
             </h1>
           </div>
           <p style={{ margin: 0, color: 'var(--text-secondary, var(--studio-secondary))', fontSize: '0.95rem' }}>
-            Enterprise human-in-the-loop console: silently listen in (Whisper), instantly take over angry callers with mic bridging (AI Muted), and execute warm telephony transfers.
+            Practice whisper, takeover, handback and transfer state changes using sample conversations. This demonstration does not bridge microphones or transfer real calls.
           </p>
         </div>
 
@@ -400,7 +400,7 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
             Active Mode
           </div>
           <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--studio-success)', marginTop: '0.35rem' }}>
-            {selectedCall?.status === 'supervisor_takeover' ? '🎙️ Mic Bridged' : selectedCall?.status === 'whisper_listening' ? '🎧 Silent Whisper' : '🤖 AI Autonomous'}
+            {selectedCall?.status === 'supervisor_takeover' ? 'Simulated takeover' : selectedCall?.status === 'whisper_listening' ? '🎧 Silent Whisper' : '🤖 AI Autonomous'}
           </div>
         </div>
       </div>
@@ -573,7 +573,7 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
                         style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem' }}
                       >
                         <IconHeadphones size={15} color="var(--studio-accent)" />
-                        <span>{selectedCall.status === 'whisper_listening' ? 'Listening in Whisper' : 'Whisper Listen'}</span>
+                        <span>{selectedCall.status === 'whisper_listening' ? 'Listening in Whisper' : 'Simulate whisper'}</span>
                       </button>
 
                       <button
@@ -590,7 +590,7 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
                         }}
                       >
                         <IconMic size={15} />
-                        <span>🎙️ Take Over Call</span>
+                        <span>Simulate takeover</span>
                       </button>
                     </>
                   )}
@@ -601,7 +601,7 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
                     style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.84rem' }}
                   >
                     <IconPhone size={15} color="var(--studio-warning)" />
-                    <span>Warm Transfer</span>
+                    <span>Simulate transfer</span>
                   </button>
                 </div>
               </div>
@@ -627,7 +627,7 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
                       animation: 'pulse 1s infinite'
                     }} />
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--studio-text)' }}>
-                      SUPERVISOR MICROPHONE BRIDGED TO CALLER • AI AGENT MUTED
+                      SIMULATED TAKEOVER • NO HUMAN AUDIO BRIDGE
                     </span>
                   </div>
 
@@ -655,7 +655,7 @@ export function HITLTab({ agents: _agents, playVoice }: HITLTabProps) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Real-Time Dialogue Stream</h3>
                 <span style={{ fontSize: '0.78rem', color: 'var(--studio-secondary)' }}>
-                  Live Sentiment: <strong style={{ color: selectedCall.current_sentiment === 'Positive' ? 'var(--studio-success)' : selectedCall.current_sentiment === 'Frustrated' ? 'var(--studio-danger)' : 'var(--studio-warning)' }}>{selectedCall.current_sentiment} ({selectedCall.sentiment_score}%)</strong>
+                  Sample sentiment: <strong style={{ color: selectedCall.current_sentiment === 'Positive' ? 'var(--studio-success)' : selectedCall.current_sentiment === 'Frustrated' ? 'var(--studio-danger)' : 'var(--studio-warning)' }}>{selectedCall.current_sentiment} ({selectedCall.sentiment_score}%)</strong>
                 </span>
               </div>
 

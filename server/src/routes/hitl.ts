@@ -1,3 +1,4 @@
+import { workspaceHandoff } from '../services/workspace_demos';
 // ============================================================================
 // VoiceAI - Human-in-the-Loop (HITL) Routes
 // ============================================================================
@@ -12,7 +13,7 @@ const router = Router();
 router.get(
   '/active-calls',
   asyncHandler(async (req: Request, res: Response) => {
-    const calls = hitlEngine.listActiveCalls();
+    const calls = workspaceHandoff(req).listActiveCalls();
     res.json({
       success: true,
       count: calls.length,
@@ -25,7 +26,7 @@ router.get(
 router.get(
   '/calls/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const call = hitlEngine.getCall(req.params.id);
+    const call = workspaceHandoff(req).getCall(req.params.id);
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found or ended' });
     }
@@ -41,7 +42,7 @@ router.post(
     if (!agent_name) {
       return res.status(400).json({ success: false, error: 'agent_name is required' });
     }
-    const call = hitlEngine.registerCall({
+    const call = workspaceHandoff(req).registerCall({
       id,
       session_id,
       agent_id: agent_id || 'agent_support',
@@ -63,7 +64,7 @@ router.post(
     if (!role || !text) {
       return res.status(400).json({ success: false, error: 'role and text are required' });
     }
-    const call = hitlEngine.recordMessage(req.params.id, role, text);
+    const call = workspaceHandoff(req).recordMessage(req.params.id, role, text);
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -76,7 +77,7 @@ router.post(
   '/calls/:id/escalate',
   asyncHandler(async (req: Request, res: Response) => {
     const { reason } = req.body;
-    const call = hitlEngine.escalateCall(req.params.id, reason || 'Manual supervisor escalation requested');
+    const call = workspaceHandoff(req).escalateCall(req.params.id, reason || 'Manual supervisor escalation requested');
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -89,7 +90,7 @@ router.post(
   '/calls/:id/whisper',
   asyncHandler(async (req: Request, res: Response) => {
     const { supervisor_name } = req.body;
-    const call = hitlEngine.setWhisperMode(req.params.id, supervisor_name || 'Supervisor Sarah');
+    const call = workspaceHandoff(req).setWhisperMode(req.params.id, supervisor_name || 'Supervisor Sarah');
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -102,7 +103,7 @@ router.post(
   '/calls/:id/takeover',
   asyncHandler(async (req: Request, res: Response) => {
     const { supervisor_name } = req.body;
-    const call = hitlEngine.takeoverCall(req.params.id, supervisor_name || 'Supervisor Sarah');
+    const call = workspaceHandoff(req).takeoverCall(req.params.id, supervisor_name || 'Supervisor Sarah');
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -114,7 +115,7 @@ router.post(
 router.post(
   '/calls/:id/handback',
   asyncHandler(async (req: Request, res: Response) => {
-    const call = hitlEngine.handbackToAI(req.params.id);
+    const call = workspaceHandoff(req).handbackToAI(req.params.id);
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -130,7 +131,7 @@ router.post(
     if (!target_phone) {
       return res.status(400).json({ success: false, error: 'target_phone is required' });
     }
-    const call = hitlEngine.transferCall(req.params.id, target_phone, department);
+    const call = workspaceHandoff(req).transferCall(req.params.id, target_phone, department);
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -142,7 +143,7 @@ router.post(
 router.post(
   '/calls/:id/end',
   asyncHandler(async (req: Request, res: Response) => {
-    const call = hitlEngine.endCall(req.params.id);
+    const call = workspaceHandoff(req).endCall(req.params.id);
     if (!call) {
       return res.status(404).json({ success: false, error: 'Call not found' });
     }
@@ -155,7 +156,7 @@ router.post(
   '/calls/:id/copilot-suggest',
   asyncHandler(async (req: Request, res: Response) => {
     const { latest_query } = req.body;
-    const suggestions = hitlEngine.generateCopilotSuggestions(req.params.id, latest_query);
+    const suggestions = workspaceHandoff(req).generateCopilotSuggestions(req.params.id, latest_query);
     res.json({ success: true, suggestions });
   })
 );

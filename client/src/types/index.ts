@@ -39,6 +39,9 @@ export interface PlaygroundConfig {
 }
 
 export interface PlaygroundTest {
+  sources?: Array<{ doc_id: string; title: string }>;
+  runtime_mode?: string;
+  tool_events?: Array<{ name: string; status: string; result: string }>;
   test_id: string;
   timestamp: number;
   input: string;
@@ -436,7 +439,7 @@ export interface SoftphoneSession {
   media_stream_url: string;
 }
 
-export type TabName = 'agents' | 'campaigns' | 'evals' | 'hitl' | 'knowledge' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector';
+export type TabName = 'agents' | 'campaigns' | 'evals' | 'hitl' | 'knowledge' | 'playground' | 'telephony' | 'analytics' | 'monitor' | 'inspector' | 'reports' | 'calendar' | 'features';
 
 export const FRAME_TYPES = {
   AUDIO: 0x01,

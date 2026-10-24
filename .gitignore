@@ -12,6 +12,11 @@ client/vite.config.js
 
 # Environment and secrets
 .env
+server/data/accounts.json
+server/data/agents.json
+server/data/agent_versions.json
+server/data/deployments.json
+server/data/conversation_history.json
 .env.local
 .env.*.local
 *.pem
@@ -26,6 +31,7 @@ yarn-error.log*
 # Testing & Coverage
 coverage/
 .jest-cache/
+.qa/
 
 # OS / Editor
 .DS_Store
@@ -43,3 +49,5 @@ __pycache__/
 # Plans / Scratch
 /DEMO_SCRIPT.md
 /PLAN.md
+
+server/data/workspace_tools.json

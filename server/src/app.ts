@@ -1,3 +1,6 @@
+import speechRoutes, { handleSpeechUpgrade } from './routes/speech';
+import workspaceToolsRoutes, { privatePhoneRouter, privateCalendarRouter } from './routes/workspace_tools';
+import { dataPath } from './config/storage';
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
@@ -33,6 +36,11 @@ import campaignRoutes from './routes/campaigns';
 import providerRoutes from './routes/providers';
 import calendarRoutes from './routes/calendar';
 import voiceRoutes from './routes/voices';
+import authRoutes from './routes/auth';
+import conversationRoutes from './routes/conversations';
+import publicRoutes from './routes/public';
+import { platformAccess } from './middleware/platformAccess';
+import { legacyDemo } from './middleware/workspace';
 
 // WebSocket
 import { WebSocketHandler } from './websocket/handler';
@@ -49,7 +57,7 @@ const app = express();
 const server = createServer(app);
 
 // Recordings directory
-const recordingsDir = path.join(__dirname, '../data/recordings');
+const recordingsDir = dataPath('recordings');
 if (!fs.existsSync(recordingsDir)) {
   fs.mkdirSync(recordingsDir, { recursive: true });
 }
@@ -69,16 +77,26 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
-app.use('/recordings', express.static(recordingsDir));
+app.use('/recordings', (req, res, next) => legacyDemo() ? next() : res.sendStatus(404), express.static(recordingsDir));
 app.use(morgan('combined', { stream: morganStream }));
 
 // Rate limiting
 app.use('/api/', apiRateLimiter);
-app.post('/api/auth/*', authRateLimiter);
+app.use('/api/', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+// Credential throttling must never prevent an authenticated user signing out.
+app.post(['/api/auth/signup', '/api/auth/login'], authRateLimiter);
 app.post('/api/playground/test', rateLimiter({ prefix: 'playground', windowMs: 60000, maxRequests: 120 }));
 
 // Routes
 app.use('/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api', platformAccess);
+app.use('/api/workspace-tools', workspaceToolsRoutes);
+app.use('/api/telephony', (req, res, next) => legacyDemo() ? next() : privatePhoneRouter(req, res, next));
+app.use('/api/calendar', (req, res, next) => legacyDemo() ? next() : privateCalendarRouter(req, res, next));
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/conversations', speechRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/transcripts', transcriptRoutes);
 app.use('/api/tools', toolRoutes);
@@ -114,11 +132,19 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // WebSocket for Web Clients (/ws)
-const wsHandler = new WebSocketHandler(server);
+const wsHandler = new WebSocketHandler(server, true);
 const wss = wsHandler.getWss();
 
 // WebSocket for Twilio Media Streams (/media-stream)
-const twilioWss = new WebSocketServer({ server, path: '/media-stream' });
+const twilioWss = new WebSocketServer({ noServer: true, verifyClient: () => legacyDemo() });
+server.on('upgrade', (req, socket, head) => {
+  if (handleSpeechUpgrade(req, socket, head)) return;
+  const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+  const target = pathname === '/ws' ? wss : pathname === '/media-stream' ? twilioWss : null;
+  if (!target) { socket.destroy(); return; }
+  target.handleUpgrade(req, socket, head, ws => target.emit('connection', ws, req));
+});
+
 twilioWss.on('connection', (ws, req) => TwilioMediaStreamHandler.handleConnection(ws, req));
 
 // Initialize on startup

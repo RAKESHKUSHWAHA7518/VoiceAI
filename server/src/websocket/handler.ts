@@ -8,6 +8,7 @@ import { getLangfuseClient, LatencyContext } from '../telemetry/latency_spans';
 import { float32_to_pcm16, pcm16_to_float32, resample_audio } from '../audio/utils';
 import config from '../config';
 import logger from '../utils/logger';
+import { legacyDemo } from '../middleware/workspace';
 
 interface SessionData {
   sessionId: string;
@@ -25,8 +26,8 @@ export class WebSocketHandler {
   private orchestrator: any;
   private wss: WebSocketServer;
 
-  constructor(server: any) {
-    this.wss = new WebSocketServer({ server, path: '/ws' });
+  constructor(server: any, noServer = false) {
+    this.wss = new WebSocketServer(noServer ? { noServer: true, verifyClient: () => legacyDemo() } : { server, path: '/ws', verifyClient: () => legacyDemo() });
     this.initialize();
   }
 

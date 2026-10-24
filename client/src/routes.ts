@@ -8,9 +8,12 @@ export const PAGE_ROUTES: Record<TabName, { path: string; title: string }> = {
   hitl: { path: '/hitl', title: 'Human handoff' },
   playground: { path: '/playground', title: 'Playground' },
   telephony: { path: '/telephony', title: 'Phone numbers' },
-  analytics: { path: '/analytics', title: 'Call history' },
+  analytics: { path: '/history', title: 'Conversation history' },
   monitor: { path: '/monitor', title: 'Live monitor' },
   inspector: { path: '/inspector', title: 'Inspector' },
+  reports: { path: '/analytics', title: 'Analytics' },
+  calendar: { path: '/calendar', title: 'Appointments' },
+  features: { path: '/features', title: 'All features' },
 };
 
 export const PAGE_NAMES = Object.keys(PAGE_ROUTES) as TabName[];

@@ -2,17 +2,19 @@
 // Main App Component
 // ============================================================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, Navigate, Route, Routes, matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { PAGE_NAMES, PAGE_ROUTES } from './routes';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { AgentsTab } from './components/agents/AgentsTab';
-import { MonitorTab } from './components/monitor/MonitorTab';
+import { WorkspaceObserve } from './components/monitor/WorkspaceObserve';
+import { CalendarWidget } from './components/calendar/CalendarWidget';
+import { FeatureRegister } from './components/layout/FeatureRegister';
 import { PlaygroundTab } from './components/playground/PlaygroundTab';
-import { InspectorTab } from './components/inspector/InspectorTab';
+
 import { LiveVoiceCallModal } from './components/voice/LiveVoiceCallModal';
-import { AnalyticsTab } from './components/analytics/AnalyticsTab';
+import { ConversationHistory } from './components/analytics/ConversationHistory';
 import { TelephonyTab } from './components/telephony/TelephonyTab';
 import { KnowledgeTab } from './components/knowledge/KnowledgeTab';
 import { CampaignsTab } from './components/campaigns/CampaignsTab';
@@ -22,11 +24,17 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useAudioLevels } from './hooks/useAudioLevels';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useDashboardState } from './hooks/useDashboardState';
-import type { TabName, Agent } from './types';
+import type { TabName, Agent, PlaygroundTest } from './types';
 import './index.css';
 import './studio.css';
+import './workflows.css';
+import './showcase.css';
+import { AuthGate, WORKSPACE_PAGES } from './components/auth/AuthGate';
+import { openConversation, streamTurn, endConversation } from './utils/conversation';
+import { PublicWidget } from './components/voice/PublicWidget';
+import { WidgetPreview } from './components/voice/WidgetPreview';
 
-function App() {
+function StudioApp() {
   const [navigationOpen, setNavigationOpen] = useState(false);
   const closeNavigation = useCallback(() => setNavigationOpen(false), []);
   const { pathname } = useLocation();
@@ -39,6 +47,8 @@ function App() {
   useEffect(() => {
     document.title = `${activeTab ? PAGE_ROUTES[activeTab].title : 'Page not found'} | VoiceAI`;
     setNavigationOpen(false);
+    window.scrollTo(0, 0);
+    document.getElementById('main-content')?.focus({ preventScroll: true });
   }, [activeTab]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(true);
@@ -47,6 +57,10 @@ function App() {
   const [isCreatingNewAgent, setIsCreatingNewAgent] = useState<boolean>(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState<boolean>(false);
   const [callAgent, setCallAgent] = useState<Agent | null>(null);
+  const playgroundRequest = useRef<AbortController | null>(null);
+  const [playgroundMode, setPlaygroundMode] = useState<string>('');
+  const playgroundSession = useRef<{ key: string; id: string } | null>(null);
+  useEffect(() => () => { playgroundRequest.current?.abort(); if (playgroundSession.current) void endConversation(playgroundSession.current.id).catch(() => {}); }, []);
 
   const { 
     userLevel, 
@@ -166,9 +180,7 @@ function App() {
     pushAgent(0);
   }, [stopAndFlush, pushAgent]);
 
-  const wsUrl = typeof window !== 'undefined'
-    ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname || 'localhost'}:8000/ws`
-    : 'ws://localhost:8000/ws';
+  const wsUrl = ''; // Private streaming sessions arrive with the runtime phase.
 
   const {
     connected,
@@ -248,8 +260,9 @@ function App() {
       const data = await res.json();
       if (data.agents) {
         setAgents(data.agents);
-        if (activeAgent?.id === agentId && data.agents.length > 0) {
-          handleSelectAgent(data.agents[0]);
+        if (activeAgent?.id === agentId) {
+          if (data.agents.length > 0) handleSelectAgent(data.agents[0]);
+          else setActiveAgent(null);
         }
       }
     } catch (err) {
@@ -292,132 +305,57 @@ function App() {
 
   useEffect(() => { void loadAgents(); }, [loadAgents]);
 
-  // Fetch initial data
-  useEffect(() => {
-
-    fetch('/api/playground/config')
-      .then(r => r.json())
-      .then(config => setPlaygroundConfig(config))
-      .catch(console.error);
-
-    fetch('/api/playground/history?limit=50')
-      .then(r => r.json())
-      .then(data => {
-        const tests = Array.isArray(data) ? data : (data?.tests || []);
-        setPlaygroundTests(tests);
-      })
-      .catch(console.error);
-
-    // Immediate and recurring polling for metrics and state
-    const loadMetricsAndState = () => {
-      fetch('/api/metrics/percentiles?window=1000')
-        .then(r => r.json())
-        .then(data => {
-          const m = data.percentiles || data;
-          if (m) {
-            updateMetrics({
-              ...m,
-              tts_first_chunk_p50: m.tts_first_chunk_p50 ?? m.tts_p50,
-              tts_first_chunk_p95: m.tts_first_chunk_p95 ?? m.tts_p95,
-            });
-          }
-        })
-        .catch(console.error);
-
-      fetch('/api/state')
-        .then(r => r.json())
-        .then(state => setDashboardState(state))
-        .catch(console.error);
-    };
-
-    loadMetricsAndState();
-    const interval = setInterval(loadMetricsAndState, 5000);
-
-    return () => clearInterval(interval);
-  }, [setPlaygroundConfig, setPlaygroundTests, updateMetrics, setDashboardState]);
-
+  const stopPlayground = useCallback(() => {
+    playgroundRequest.current?.abort(); playgroundRequest.current = null;
+    const previous = playgroundSession.current; playgroundSession.current = null;
+    if (previous) void endConversation(previous.id).catch(() => {});
+    setPlaygroundTestActive(false);
+    stopAndFlush(); window.speechSynthesis?.cancel();
+    setPlaygroundTests(previousTests => previousTests.map(test => test.status === 'running' ? { ...test, status: 'error', error: 'Stopped. The next message starts a fresh conversation.' } : test));
+  }, [setPlaygroundTestActive, setPlaygroundTests, stopAndFlush]);
+  const newPlayground = useCallback(() => {
+    stopPlayground(); setPlaygroundMode('');
+    setPlaygroundTests(previous => previous.filter(test => test.agent_id !== activeAgent?.id));
+  }, [stopPlayground, activeAgent?.id, setPlaygroundTests]);
+  useEffect(() => { stopPlayground(); setPlaygroundMode(''); }, [activeAgent, pathname, stopPlayground]);
   const runPlaygroundTestWithInput = useCallback(async (input: string) => {
-    if (!input.trim()) return;
-
-    setPlaygroundTestActive(true);
+    if (!input.trim() || !activeAgent || playgroundRequest.current) return;
+    const controller = new AbortController(); playgroundRequest.current = controller;
+    const testId = crypto.randomUUID();
+    const pending: PlaygroundTest = { test_id: testId, timestamp: Date.now(), input, output: '', agent_id: activeAgent.id, agent_name: activeAgent.name, config_snapshot: { ...structuredClone(activeAgent) }, status: 'running', tool_events: [] };
+    setPlaygroundTests(previous => [pending, ...previous]); setPlaygroundTestActive(true);
+    const patch = (changes: Partial<PlaygroundTest>) => { if (playgroundRequest.current === controller) setPlaygroundTests(previous => previous.map(test => test.test_id === testId ? { ...test, ...changes } : test)); };
     try {
-      const res = await fetch('/api/playground/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          text: input,
-          agent_id: activeAgent?.id,
-          agent_name: activeAgent?.name,
-          voice_id: playgroundConfig.voice_id,
-          system_prompt: playgroundConfig.system_prompt,
-          llm_model: playgroundConfig.llm_model,
-          llm_temperature: playgroundConfig.llm_temperature,
-          assigned_tools: activeAgent?.assigned_tools,
-        }),
-      });
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        const errorMsg = data.error?.message || `Request failed (${res.status})`;
-        const errorTest = {
-          test_id: 'err_' + Date.now().toString(36),
-          timestamp: Date.now(),
-          input: input,
-          config_snapshot: {},
-          output: `⚠️ ${errorMsg}`,
-          status: 'error' as const,
-          latency_ms: 0,
-        };
-        setPlaygroundTests(prev => [errorTest, ...(Array.isArray(prev) ? prev : [])]);
-        return errorTest;
+      const key = JSON.stringify(activeAgent);
+      if (playgroundSession.current?.key !== key) {
+        const previous = playgroundSession.current; playgroundSession.current = null;
+        if (previous) await endConversation(previous.id);
+        const opened = await openConversation(activeAgent.id, controller.signal);
+        if (controller.signal.aborted) { void endConversation(opened.session_id); return; }
+        playgroundSession.current = { key, id: opened.session_id }; setPlaygroundMode(opened.runtime_mode);
       }
-
-      if (data.test) {
-        setPlaygroundTests(prev => [data.test, ...(Array.isArray(prev) ? prev : [])]);
-        addTranscript({
-          role: 'user',
-          text: data.test.input,
-          is_final: true,
-          timestamp: data.test.timestamp || Date.now(),
-        });
-        if (data.test.output) {
-          addTranscript({
-            role: 'assistant',
-            text: data.test.output,
-            is_final: true,
-            timestamp: (data.test.timestamp || Date.now()) + 0.1,
-          });
-          playVoice(data.test.output, data.test.audio_url);
-        }
-
-        if (Array.isArray(data.test.tool_calls)) {
-          data.test.tool_calls.forEach((tc: any) => addToolCall(tc));
-        }
-      }
-
-      if (data.metrics) {
-        updateMetrics(data.metrics);
-      }
-      return data.test;
-    } catch (e) {
-      console.error('Test failed:', e);
-      const fallbackErr = {
-        test_id: 'err_' + Date.now().toString(36),
-        timestamp: Date.now(),
-        input: input,
-        config_snapshot: {},
-        output: '⚠️ Network or server error occurred',
-        status: 'error' as const,
-        latency_ms: 0,
-      };
-      setPlaygroundTests(prev => [fallbackErr, ...(Array.isArray(prev) ? prev : [])]);
-      return fallbackErr;
+      let output = ''; const toolEvents: NonNullable<PlaygroundTest['tool_events']> = [];
+      const turn = await streamTurn(playgroundSession.current!.id, input, delta => { output += delta; patch({ output }); }, controller.signal, undefined, event => { toolEvents.push(event); patch({ tool_events: [...toolEvents] }); });
+      if (controller.signal.aborted || playgroundRequest.current !== controller) return;
+      const result: PlaygroundTest = { ...pending, test_id: testId, output: turn.output, status: 'completed', latency_ms: Math.round(turn.metrics.processing_ms), tool_events: turn.tool_events, sources: turn.sources, runtime_mode: turn.runtime_mode };
+      patch(result);
+      addTranscript({ role: 'user', text: input, is_final: true, timestamp: Date.now() });
+      addTranscript({ role: 'assistant', text: turn.output, is_final: true, timestamp: Date.now() });
+      return result;
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      const message = error instanceof Error ? error.message : 'The conversation failed. Please retry.';
+      patch({ status: 'error', error: message });
+      const previous = playgroundSession.current; playgroundSession.current = null;
+      if (previous) void endConversation(previous.id).catch(() => {});
+      return { ...pending, status: 'error' as const, error: message };
     } finally {
-      setPlaygroundTestActive(false);
+      if (playgroundRequest.current === controller) { playgroundRequest.current = null; setPlaygroundTestActive(false); }
     }
-  }, [setPlaygroundTests, setPlaygroundTestActive, addTranscript, addToolCall, updateMetrics, playVoice, activeAgent, playgroundConfig]);
+  }, [activeAgent, setPlaygroundTests, setPlaygroundTestActive, addTranscript]);
 
   const renderTabContent = useCallback((page: TabName) => {
+    if (!WORKSPACE_PAGES.has(page)) return <section className="phase-notice"><h2>This feature is being prepared</h2><p>Your private workspace supports agents, knowledge and playground testing. More features will appear as their implementation phases are completed.</p><Link to="/agents">Back to your agents</Link></section>;
     switch (page) {
       case 'agents':
         return (
@@ -430,6 +368,7 @@ function App() {
             onSelectAgent={handleSelectAgent}
             onSaveAgent={handleSaveAgent}
             onDeleteAgent={handleDeleteAgent}
+            onOpenKnowledge={id => { const agent = agents.find(value => value.id === id); if (agent) handleSelectAgent(agent); navigate('/knowledge?agent=' + encodeURIComponent(id)); }}
             onTestAgent={handleTestAgent}
             onStartVoiceCall={handleStartVoiceCall}
             isCreatingNew={isCreatingNewAgent}
@@ -447,6 +386,9 @@ function App() {
             onStopAudio={stopAndFlush}
             onRunTest={runPlaygroundTestWithInput}
             onPlayVoice={playVoice}
+            onStopTest={stopPlayground}
+            onNewConversation={newPlayground}
+            runtimeMode={playgroundMode}
             testActive={playgroundTestActive}
             activeAgent={activeAgent}
             agents={agents}
@@ -467,6 +409,8 @@ function App() {
             agents={agents}
             activeAgent={activeAgent}
             playVoice={playVoice}
+            onSelectAgent={handleSelectAgent}
+            onTestAgent={handleTestAgent}
           />
         );
       case 'evals':
@@ -489,33 +433,13 @@ function App() {
             onStartVoiceCall={handleStartVoiceCall}
           />
         );
-      case 'monitor':
-        return (
-          <MonitorTab
-            metrics={metrics}
-            transcripts={transcripts}
-            bargeInEvents={bargeInEvents}
-            toolCalls={toolCalls}
-            audioLevelUser={userLevel}
-            audioLevelAgent={agentLevel}
-          />
-        );
-      case 'inspector':
-        return (
-          <InspectorTab
-            transcripts={transcripts}
-            bargeInEvents={bargeInEvents}
-            toolCalls={toolCalls}
-            onRewind={handleRewind}
-          />
-        );
+      case 'monitor': return <WorkspaceObserve mode="monitor" agents={agents} />;
+      case 'inspector': return <WorkspaceObserve mode="inspector" agents={agents} />;
+      case 'reports': return <WorkspaceObserve mode="reports" agents={agents} />;
+      case 'calendar': return <div className="conversation-history-page"><h2>Appointments</h2><p>Manual workspace calendar. Booking through agent tools remains a separate integration.</p><CalendarWidget /></div>;
+      case 'features': return <FeatureRegister />;
       case 'analytics':
-        return (
-          <AnalyticsTab
-            agents={agents}
-            onStartVoiceCall={handleStartVoiceCall}
-          />
-        );
+        return <ConversationHistory />;
       default:
         return null;
     }
@@ -542,6 +466,7 @@ function App() {
     userLevel,
     agentLevel,
     runPlaygroundTestWithInput,
+    stopPlayground, newPlayground, playgroundMode,
     playVoice,
     sendControl,
     sendAudioChunk,
@@ -579,7 +504,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to={PAGE_ROUTES.agents.path} replace />} />
             {PAGE_NAMES.map(page => (
-              <Route key={page} path={PAGE_ROUTES[page].path} element={renderTabContent(page)} />
+              <Route key={page} path={PAGE_ROUTES[page].path} element={<>{['campaigns','evals','hitl','telephony'].includes(page) && <div className="feature-notice" role="note"><strong>Local workspace simulation</strong><p>Campaign dialing, evaluation scores, supervisor audio actions and telephone calls on these showcase screens are simulations. They make no carrier call or provider request. Campaign, evaluation and handoff demo state resets after server restart. Your saved agents, phone registry and appointments remain private.</p><Link to="/features">See every feature and its status →</Link></div>}{renderTabContent(page)}</>} />
             ))}
             <Route path="*" element={
               <section>
@@ -606,4 +531,4 @@ function App() {
   );
 }
 
-export default App;
+export default function App() { return window.location.pathname.startsWith('/widget/') ? <PublicWidget /> : window.location.pathname.startsWith('/preview/') ? <WidgetPreview /> : <AuthGate><StudioApp /></AuthGate>; }

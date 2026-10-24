@@ -235,11 +235,11 @@ export function VirtualSoftphone() {
                   ? `LIVE CALL • ${formatTimer(callDuration)}`
                   : callState === 'dialing'
                   ? 'RINGING CARRIER...'
-                  : 'CARRIER READY'}
+                  : 'SIMULATION READY'}
               </span>
             </div>
             <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--studio-secondary)' }}>
-              Dual-Tone Multi-Frequency (DTMF) dialer connecting directly to Twilio PSTN TwiML Media Streams.
+              Local dialpad demonstration. Digits can play on this device; no carrier call is made.
             </p>
           </div>
         </div>
@@ -253,7 +253,7 @@ export function VirtualSoftphone() {
             Codec: <strong style={{ color: 'var(--studio-text)' }}>G.711 $\mu$-law</strong>
           </div>
           <div>
-            Jitter: <strong style={{ color: 'var(--studio-success)' }}>3.8ms</strong>
+            Jitter: <strong style={{ color: 'var(--studio-success)' }}>Not measured</strong>
           </div>
         </div>
       </div>
@@ -283,7 +283,7 @@ export function VirtualSoftphone() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--studio-muted)', marginBottom: '0.25rem' }}>
-              <span>LINE 1 • PSTN ACTIVE</span>
+              <span>LINE 1 • LOCAL SIMULATION</span>
               <span style={{ color: callState === 'connected' ? 'var(--studio-success)' : 'var(--studio-muted)', fontWeight: 700 }}>
                 {callState === 'connected' ? formatTimer(callDuration) : 'READY'}
               </span>
@@ -537,7 +537,7 @@ export function VirtualSoftphone() {
 
             {dtmfLogs.length === 0 ? (
               <div style={{ color: 'var(--studio-muted)', fontSize: '0.78rem' }}>
-                Press dialpad digits during an active call to transmit live DTMF in-band telephony tones.
+                Press dialpad digits during a simulated call to preview local tones.
               </div>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>

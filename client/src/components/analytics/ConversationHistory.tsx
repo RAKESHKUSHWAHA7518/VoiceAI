@@ -1,0 +1,28 @@
+import { useCallback, useEffect, useState } from 'react';
+interface Summary { id: string; agent_id: string; agent_name: string; started_at: number; updated_at: number; status: string; runtime_mode: string; message_count: number; preview: string; processing_ms: number | null }
+interface Detail extends Summary { configuration?: Record<string, unknown>; sources?: Array<{ doc_id: string; title: string }>; turn_outcomes?: Array<{ id: string; input: string; output: string; status: string }>;  tool_events?: Array<{ name: string; status: string; result: string }>; messages: Array<{ role: string; text: string; timestamp: number }> }
+export function ConversationHistory() {
+  const [records, setRecords] = useState<Summary[]>([]); const [selected, setSelected] = useState<Detail | null>(null);
+  const [loading, setLoading] = useState(true); const [detailLoading, setDetailLoading] = useState(false); const [error, setError] = useState(''); const [filter, setFilter] = useState('');
+  const refresh = useCallback(async () => {
+    setLoading(true); setError('');
+    try { const response = await fetch('/api/conversations/history'); if (!response.ok) throw new Error('Could not load conversation history.'); const data = await response.json(); setRecords(data.conversations); }
+    catch (err) { setError(err instanceof Error ? err.message : 'History is unavailable.'); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
+  const open = async (id: string) => {
+    setDetailLoading(true); setError('');
+    try { const response = await fetch(`/api/conversations/history/${id}`); if (!response.ok) throw new Error('Could not open this transcript.'); setSelected((await response.json()).conversation); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not load transcript.'); }
+    finally { setDetailLoading(false); }
+  };
+  const visible = records.filter(record => `${record.agent_name} ${record.preview}`.toLowerCase().includes(filter.toLowerCase()));
+  return <section className="conversation-history-page"><div className="workflow-page-heading"><div><span className="workflow-eyebrow">YOUR CONVERSATIONS</span><h2>Conversation history</h2><p>Review your browser voice and text tests. Transcripts are private to your workspace.</p></div><button className="btn btn-secondary" onClick={() => void refresh()}>Refresh history</button></div>
+    <div className="history-stats"><div><strong>{records.length}</strong><span>Saved conversations</span></div><div><strong>{records.reduce((total, record) => total + record.message_count, 0)}</strong><span>Messages</span></div><div><strong>Private</strong><span>Workspace access only</span></div></div>
+    {error && <p role="alert" className="workflow-error">{error}</p>}
+    <label className="history-search">Search conversations<input className="form-input" value={filter} onChange={event => setFilter(event.target.value)} placeholder="Search by agent or message" /></label>
+    <div className="history-layout"><section className="history-list" aria-label="Saved conversations">{loading ? <p role="status">Loading history…</p> : !visible.length ? <div className="history-empty"><h3>{filter ? 'No matching conversations' : 'Your first conversation starts here'}</h3><p>Use Talk to agent or send a message in the playground. Completed replies appear here automatically.</p><a href="/playground" className="btn btn-primary">Open playground</a></div> : visible.map(record => <button key={record.id} className={`history-row ${selected?.id === record.id ? 'is-selected' : ''}`} onClick={() => void open(record.id)}><div><strong>{record.agent_name}</strong><span className="history-mode">{record.runtime_mode === 'demo' ? 'Demo' : 'Live'}</span></div><p>{record.preview}</p><footer><span>{new Date(record.started_at).toLocaleString()}</span><span>{record.message_count} messages</span></footer></button>)}</section>
+      <section className="history-detail" aria-label="Saved transcript">{detailLoading ? <p role="status">Opening transcript…</p> : !selected ? <div className="history-empty"><h3>Select a conversation</h3><p>Read the complete saved transcript and see its agent and test mode.</p></div> : <><header><span className="workflow-eyebrow">TRANSCRIPT</span><h3>{selected.agent_name}</h3><p>{new Date(selected.started_at).toLocaleString()} · {selected.runtime_mode === 'demo' ? 'Demo preview' : 'Live model'}</p></header><div className="history-messages">{selected.configuration && <details><summary>Agent configuration used for this conversation</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{JSON.stringify(selected.configuration, null, 2)}</pre></details>}{selected.turn_outcomes?.filter(turn => turn.status !== 'completed').map(turn => <div className="workflow-error" key={turn.id}><strong>{turn.status === 'interrupted' ? 'Interrupted turn' : 'Failed turn'}</strong><p>{turn.input}</p><p>{turn.output || 'No completed answer.'}</p></div>)}{selected.sources && selected.sources.length > 0 && <p>Last retrieved references: {selected.sources.map(source => source.title).join(', ')}</p>}{selected.messages.map((message, index) => <div className={`voice-message ${message.role}`} key={index}><strong>{message.role === 'user' ? 'You' : selected.agent_name}</strong><p>{message.text}</p></div>)}</div>{selected.tool_events?.map((event, index) => <details key={index}><summary>Tool: {event.name} · {event.status}</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{event.result}</pre></details>)}<small>Text transcript only. This app does not store microphone recordings.</small></>}</section></div>
+  </section>;
+}

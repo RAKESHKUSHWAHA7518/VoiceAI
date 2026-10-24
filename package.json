@@ -14,7 +14,7 @@
     "lint": "eslint server/src/",
     "lint:fix": "eslint server/src/ --fix",
     "build": "tsc",
-    "start:prod": "NODE_ENV=production node dist/server/src/app.js",
+    "start:prod": "node scripts/start-production.cjs",
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
     "tunnel": "node scripts/start-carrier-tunnel.js",
@@ -52,7 +52,8 @@
     "uuid": "^9.0.1",
     "winston": "^3.13.0",
     "ws": "^8.17.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "onnxruntime-node": "^1.30.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -70,7 +71,6 @@
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "nodemon": "^3.1.0",
-    "onnxruntime-node": "^1.30.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",

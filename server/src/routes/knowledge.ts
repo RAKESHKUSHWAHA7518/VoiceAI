@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import fs from 'fs';
@@ -7,11 +8,24 @@ import { asyncHandler } from '../middleware/errorHandler';
 import config from '../config';
 import logger from '../utils/logger';
 import { OpenAILLM } from '../services/llm';
+import { ownsAgent } from './agents';
+import { workspaceId } from '../middleware/workspace';
 
 const router = Router();
+router.use((req, res, next) => {
+  if (!workspaceId(req)) return next();
+  const selected = req.query.agent_id || req.body.agent_id;
+  if (selected && (typeof selected !== 'string' || !ownsAgent(req, selected))) return res.status(404).json({ success: false, error: { message: 'Agent not found' } });
+  if (req.method === 'POST' && req.path !== '/documents/upload' && (typeof selected !== 'string' || !ownsAgent(req, selected))) return res.status(400).json({ success: false, error: { message: 'Select one of your agents first' } });
+  next();
+});
+router.param('docId', (req, res, next, id) => {
+  if (workspaceId(req) && !ragEngine.listDocuments().some(doc => doc.id === id && ownsAgent(req, doc.agent_id))) return res.status(404).json({ success: false, error: { message: 'Document not found' } });
+  next();
+});
 
 // Configure multer for file uploads
-const UPLOAD_DIR = path.join(__dirname, '../../data/knowledge/uploads');
+const UPLOAD_DIR = dataPath('knowledge/uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
@@ -48,7 +62,7 @@ router.get(
   '/documents',
   asyncHandler(async (req: Request, res: Response) => {
     const agentId = (req.query.agent_id as string) || 'all';
-    const docs = ragEngine.listDocuments(agentId);
+    const docs = ragEngine.listDocuments(agentId).filter(doc => !workspaceId(req) || ownsAgent(req, doc.agent_id));
     res.json({
       success: true,
       count: docs.length,
@@ -90,6 +104,10 @@ router.post(
       });
     }
 
+    if (workspaceId(req) && (typeof req.body.agent_id !== 'string' || !ownsAgent(req, req.body.agent_id))) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ success: false, error: { message: 'Agent not found' } });
+    }
     const agentId = req.body.agent_id || 'global';
     const customTitle = req.body.title || req.file.originalname;
 
@@ -118,6 +136,10 @@ router.post(
         success: false,
         error: { message: err.message || 'Failed to process document' },
       });
+    } finally {
+      if (req.file && fs.existsSync(req.file.path)) {
+        try { fs.unlinkSync(req.file.path); } catch { logger.warn('Could not remove temporary knowledge upload'); }
+      }
     }
   })
 );
@@ -203,7 +225,7 @@ router.post(
     const threshold = typeof min_score === 'number' ? min_score : 0.15;
 
     const startTime = Date.now();
-    const results = ragEngine.search(targetAgent, query, k, threshold);
+    const results = ragEngine.search(targetAgent, query, Math.min(10, Math.max(1, k)), threshold, !workspaceId(req));
     const retrievalLatency = Date.now() - startTime;
 
     let synthesizedAnswer = '';

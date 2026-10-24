@@ -1,24 +1,25 @@
 # Multi-stage build for React Vite Frontend
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/client
 
 # Copy dependency manifests
-COPY package*.json ./
+COPY client/package*.json ./
 RUN npm ci
 
 # Copy source and build bundle
-COPY . ./
+COPY client/ ./
+COPY shared/ /app/shared/
 RUN npm run build
 
 # Stage 2: High-performance Nginx web server
 FROM nginx:alpine AS production
 
 # Copy compiled SPA assets
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/client/dist /usr/share/nginx/html
 
 # Copy custom Nginx configuration with reverse proxy & gzip
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY client/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

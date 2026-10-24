@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 import { VoiceModel } from '../models/voice.model';
 import type { VoiceProfile } from '../models/voice.model';
 export type { VoiceProfile } from '../models/voice.model';
@@ -13,7 +14,7 @@ import logger from '../utils/logger';
 import { PersistentStore, isMongoEnabled } from './database';
 
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = dataPath();
 const VOICES_FILE = path.join(DATA_DIR, 'custom_voices.json');
 
 // Curated Enterprise Presets

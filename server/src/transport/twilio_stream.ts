@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 // ============================================================================
 // Twilio Media Streams WebSocket Adapter
 // Bi-directional 8000Hz G.711 μ-law audio bridge for live PSTN telephone calls
@@ -15,7 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { addCallRecord, CallAnalyticsRecord } from '../routes/calls';
 
-const RECORDINGS_DIR = path.join(__dirname, '../../data/recordings');
+const RECORDINGS_DIR = dataPath('recordings');
 
 interface TwilioSession {
   callSid: string;
@@ -66,7 +67,7 @@ export class TwilioMediaStreamHandler {
             let greeting = "Hello! I'm Maya, your voice support specialist. How can I help you today?";
 
             try {
-              const agentsFile = path.join(__dirname, '../../data/agents.json');
+              const agentsFile = dataPath('agents.json');
               if (fs.existsSync(agentsFile)) {
                 const agentsList = JSON.parse(fs.readFileSync(agentsFile, 'utf-8'));
                 const matched = agentsList.find((a: any) => a.id === agentId || a.name === agentId);

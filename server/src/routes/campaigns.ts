@@ -1,3 +1,4 @@
+import { workspaceCampaigns } from '../services/workspace_demos';
 // ============================================================================
 // Phase 9: Outbound Campaign Auto-Dialer & Lead Batch Calling Routes
 // ============================================================================
@@ -11,7 +12,7 @@ const router = Router();
 // List all campaigns with progress metrics
 router.get('/', (req: Request, res: Response) => {
   try {
-    const campaigns = campaignManager.listCampaigns();
+    const campaigns = workspaceCampaigns(req).listCampaigns();
     res.json({
       success: true,
       count: campaigns.length,
@@ -34,11 +35,11 @@ router.post('/', (req: Request, res: Response) => {
 
     let parsedContacts = contacts || [];
     if (csv && typeof csv === 'string') {
-      const csvLeads = campaignManager.parseCsvContacts(csv);
+      const csvLeads = workspaceCampaigns(req).parseCsvContacts(csv);
       parsedContacts = [...parsedContacts, ...csvLeads];
     }
 
-    const campaign = campaignManager.createCampaign({
+    const campaign = workspaceCampaigns(req).createCampaign({
       name,
       description,
       agent_id,
@@ -61,7 +62,7 @@ router.post('/', (req: Request, res: Response) => {
 // Get campaign details and contacts
 router.get('/:id', (req: Request, res: Response) => {
   try {
-    const campaign = campaignManager.getCampaign(req.params.id);
+    const campaign = workspaceCampaigns(req).getCampaign(req.params.id);
     if (!campaign) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -83,7 +84,7 @@ router.post('/:id/import', (req: Request, res: Response) => {
     let leadsToImport = contacts || [];
 
     if (csv && typeof csv === 'string') {
-      const csvParsed = campaignManager.parseCsvContacts(csv);
+      const csvParsed = workspaceCampaigns(req).parseCsvContacts(csv);
       leadsToImport = [...leadsToImport, ...csvParsed];
     }
 
@@ -91,7 +92,7 @@ router.post('/:id/import', (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'No valid leads provided in contacts or csv field' });
     }
 
-    const updated = campaignManager.importContacts(req.params.id, leadsToImport);
+    const updated = workspaceCampaigns(req).importContacts(req.params.id, leadsToImport);
     if (!updated) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -111,7 +112,7 @@ router.post('/:id/import', (req: Request, res: Response) => {
 // Start / Resume campaign auto-dialing
 router.post('/:id/start', (req: Request, res: Response) => {
   try {
-    const started = campaignManager.startCampaign(req.params.id);
+    const started = workspaceCampaigns(req).startCampaign(req.params.id);
     if (!started) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -130,7 +131,7 @@ router.post('/:id/start', (req: Request, res: Response) => {
 // Pause campaign auto-dialing
 router.post('/:id/pause', (req: Request, res: Response) => {
   try {
-    const paused = campaignManager.pauseCampaign(req.params.id);
+    const paused = workspaceCampaigns(req).pauseCampaign(req.params.id);
     if (!paused) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -149,7 +150,7 @@ router.post('/:id/pause', (req: Request, res: Response) => {
 // Reset campaign back to draft
 router.post('/:id/reset', (req: Request, res: Response) => {
   try {
-    const reset = campaignManager.resetCampaign(req.params.id);
+    const reset = workspaceCampaigns(req).resetCampaign(req.params.id);
     if (!reset) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }
@@ -172,7 +173,7 @@ router.post('/:id/contacts/:contactId/disposition', (req: Request, res: Response
       return res.status(400).json({ success: false, error: 'Disposition is required' });
     }
 
-    const updated = campaignManager.updateContactDisposition(
+    const updated = workspaceCampaigns(req).updateContactDisposition(
       req.params.id,
       req.params.contactId,
       disposition as CallDisposition,
@@ -196,7 +197,7 @@ router.post('/:id/contacts/:contactId/disposition', (req: Request, res: Response
 // Delete campaign
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    const deleted = campaignManager.deleteCampaign(req.params.id);
+    const deleted = workspaceCampaigns(req).deleteCampaign(req.params.id);
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Campaign not found' });
     }

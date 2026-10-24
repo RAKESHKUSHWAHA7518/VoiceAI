@@ -128,11 +128,11 @@ export function EvalsTab({ agents }: EvalsTabProps) {
               <IconFlask size={24} color="var(--studio-success)" />
             </div>
             <h1 className="header-title">
-              Automated Testing & Batch Evals
+              Evaluation Suite Demo
             </h1>
           </div>
           <p style={{ margin: 0, color: 'var(--text-secondary, var(--studio-secondary))', fontSize: '0.95rem' }}>
-            Run simulated multi-turn conversations against voice agents. Validate compliance, hallucination defense, prompt injection resistance, and tool accuracy before deploying to production.
+            Explore the original evaluation suites, simulated dialogue and scorecards. These fixtures do not measure your configured model, compliance or actual voice latency.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export function EvalsTab({ agents }: EvalsTabProps) {
         <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
           <div style={{ fontSize: '0.82rem', color: 'var(--studio-success)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
             <IconCheck size={14} color="var(--studio-success)" />
-            Historical Pass Rate
+            Simulated Pass Rate
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--studio-success)' }}>
             {avgPassRate}%
@@ -188,7 +188,7 @@ export function EvalsTab({ agents }: EvalsTabProps) {
         <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--bg-surface, var(--studio-surface))' }}>
           <div style={{ fontSize: '0.82rem', color: 'var(--studio-warning)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
             <IconClock size={14} color="var(--studio-warning)" />
-            Avg Voice Turnaround
+            Example Response Time
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--studio-warning)' }}>
             {selectedRun?.metrics?.avg_turn_latency_ms || 312}ms
@@ -494,7 +494,7 @@ export function EvalsTab({ agents }: EvalsTabProps) {
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, marginBottom: '0.2rem', color: 'var(--studio-accent)' }}>
                             <IconSparkles size={14} />
-                            <span>AI Judge Verdict & Rationale:</span>
+                            <span>Example Verdict & Rationale:</span>
                           </div>
                           <div>{r.judge_feedback}</div>
                         </div>

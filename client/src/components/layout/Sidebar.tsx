@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { PAGE_ROUTES } from '../../routes';
 import type { TabName, Agent, DashboardState } from '../../types';
-import { IconBot, IconFlask, IconBook, IconPhone, IconHistory, IconActivity, IconInspector, IconHeadphones, IconTarget, PersonaAvatar } from '../common/Icons';
+import { IconBot, IconFlask, IconBook, IconHistory, IconTarget, PersonaAvatar } from '../common/Icons';
 import { StudioIcon } from '../common/StudioIcon';
+import { WORKSPACE_PAGES } from '../auth/AuthGate';
 
 interface SidebarProps {
   agents: Agent[];
@@ -17,22 +18,29 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { label: 'BUILD', items: [
-    { id: 'agents', label: 'Voice agents', icon: IconBot },
-    { id: 'knowledge', label: 'Knowledge base', icon: IconBook },
-    { id: 'playground', label: 'Playground', icon: IconFlask },
-    { id: 'evals', label: 'Evaluations', icon: IconTarget },
-  ] },
-  { label: 'OPERATE', items: [
-    { id: 'campaigns', label: 'Campaigns', icon: IconTarget },
-    { id: 'telephony', label: 'Phone numbers', icon: IconPhone },
-    { id: 'hitl', label: 'Human handoff', icon: IconHeadphones },
-  ] },
-  { label: 'OBSERVE', items: [
-    { id: 'analytics', label: 'Call history', icon: IconHistory },
-    { id: 'monitor', label: 'Live monitor', icon: IconActivity },
-    { id: 'inspector', label: 'Inspector', icon: IconInspector },
-  ] },
+  {
+    label: 'BUILD', items: [
+      { id: 'agents', label: 'Voice agents', icon: IconBot },
+      { id: 'knowledge', label: 'Knowledge base', icon: IconBook },
+      { id: 'playground', label: 'Playground', icon: IconFlask },
+      { id: 'evals', label: 'Evaluations', icon: IconTarget },
+    ]
+  },
+  // { label: 'OPERATE', items: [
+  //   { id: 'campaigns', label: 'Campaigns', icon: IconTarget },
+  //   { id: 'telephony', label: 'Phone numbers', icon: IconPhone },
+  //   { id: 'hitl', label: 'Human handoff', icon: IconHeadphones },
+  //   { id: 'calendar', label: 'Appointments', icon: IconHistory },
+  // ] },
+  {
+    label: 'OBSERVE', items: [
+      { id: 'analytics', label: 'Conversation history', icon: IconHistory },
+      // { id: 'reports', label: 'Analytics', icon: IconActivity },
+      // { id: 'monitor', label: 'Live monitor', icon: IconActivity },
+      // { id: 'inspector', label: 'Inspector', icon: IconInspector },
+      { id: 'features', label: 'All features', icon: IconBot },
+    ]
+  },
 ];
 
 export function Sidebar({ agents, activeAgent, onSelectAgent, onCreateAgent, connected, dashboardState, open, onClose }: SidebarProps) {
@@ -66,10 +74,10 @@ export function Sidebar({ agents, activeAgent, onSelectAgent, onCreateAgent, con
         </div>
         <div className="workspace-card"><span className="workspace-avatar">W</span><div><strong>My workspace</strong><small>Voice agent platform</small></div></div>
         <div className="sidebar-scroll">
-          {navigation.map(group => <div className="sidebar-section" key={group.label}>
+          {navigation.filter(group => group.items.some(item => WORKSPACE_PAGES.has(item.id))).map(group => <div className="sidebar-section" key={group.label}>
             <div className="sidebar-section-title">{group.label}</div>
             <nav className="sidebar-nav" aria-label={group.label.toLowerCase()}>
-              {group.items.map(({ id, label, icon: Icon }) => <NavLink key={id} to={PAGE_ROUTES[id as TabName].path} end onClick={onClose} className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}><span className="nav-icon"><Icon size={17} /></span><span className="nav-label">{label}</span>{id === 'agents' && <span className="nav-badge">{agents.length}</span>}</NavLink>)}
+              {group.items.filter(item => WORKSPACE_PAGES.has(item.id)).map(({ id, label, icon: Icon }) => <NavLink key={id} to={PAGE_ROUTES[id as TabName].path} end onClick={onClose} className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}><span className="nav-icon"><Icon size={17} /></span><span className="nav-label">{label}</span>{id === 'agents' && <span className="nav-badge">{agents.length}</span>}</NavLink>)}
             </nav>
           </div>)}
           <div className="sidebar-section sidebar-agents-section">
@@ -77,7 +85,7 @@ export function Sidebar({ agents, activeAgent, onSelectAgent, onCreateAgent, con
             <div className="sidebar-agents-list">{agents.map(agent => <button key={agent.id} className={`sidebar-agent-item ${activeAgent?.id === agent.id ? 'active' : ''}`} aria-pressed={activeAgent?.id === agent.id} onClick={() => { onSelectAgent(agent); onClose(); }}><PersonaAvatar name={agent.name} role={agent.role} size={25} /><span className="agent-meta"><span className="agent-name">{agent.name}</span></span>{activeAgent?.id === agent.id && <span className="agent-active-dot" aria-label="Selected">●</span>}</button>)}</div>
           </div>
         </div>
-        <div className="sidebar-footer"><div className="connection-status"><span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`} /><div className="status-details"><span className="status-label">{connected ? 'Live connection ready' : 'Live connection offline'}</span><span className="status-sub">{dashboardState.session_id ? 'Session in progress' : 'Your next conversation starts here'}</span></div></div></div>
+        <div className="sidebar-footer"><div className="connection-status"><span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`} /><div className="status-details"><span className="status-label">{connected ? 'Live connection ready' : 'Browser preview'}</span><span className="status-sub">{dashboardState.session_id ? 'Session in progress' : 'Streaming text and device voice'}</span></div></div></div>
       </aside>
     </>
   );

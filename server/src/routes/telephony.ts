@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 import { PhoneNumberModel } from '../models/phone-number.model';
 import type { PhoneNumberRecord } from '../models/phone-number.model';
 export type { PhoneNumberRecord } from '../models/phone-number.model';
@@ -16,7 +17,7 @@ import axios from 'axios';
 import { PersistentStore } from '../services/database';
 
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = dataPath();
 const PHONE_NUMBERS_FILE = path.join(DATA_DIR, 'phone_numbers.json');
 
 const initialSeedNumbers: PhoneNumberRecord[] = [

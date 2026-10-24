@@ -99,7 +99,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
 
     try {
       setDialingState('dialing');
-      setDialerMessage('Connecting to carrier gateway...');
+      setDialerMessage('Starting local dialer simulation...');
 
       const res = await fetch('/api/telephony/outbound', {
         method: 'POST',
@@ -126,7 +126,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
       // Simulate carrier connection after 2.5s
       setTimeout(() => {
         setDialingState('connected');
-        setDialerMessage(`Call live with ${assignedAgent.name} over PSTN / μ-law bridge.`);
+        setDialerMessage(`Simulated call with ${assignedAgent.name}; no carrier connection.`);
       }, 2500);
     } catch (err) {
       console.error('Outbound call failed:', err);
@@ -257,7 +257,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           </div>
           <h1 className="header-title">Telephony & Phone Numbers</h1>
           <p className="header-subtitle">
-            Assign direct telephone numbers to your VoiceAI agents, receive live inbound phone calls over bi-directional 8kHz μ-law streaming, and launch outbound calls.
+            Keep a private number registry, assign agents and explore local call simulations. Adding a number does not verify ownership or provision it with a carrier.
           </p>
         </div>
 
@@ -281,7 +281,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           <div className="kpi-content">
             <span className="kpi-label">Active Phone Lines</span>
             <span className="kpi-value">{numbers.length}</span>
-            <span className="kpi-subtext">Provisioned & routed</span>
+            <span className="kpi-subtext">Local registry only</span>
           </div>
         </div>
 
@@ -292,7 +292,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           <div className="kpi-content">
             <span className="kpi-label">Inbound Phone Calls</span>
             <span className="kpi-value">{totalInboundCalls}</span>
-            <span className="kpi-subtext">Handled via Twilio bridge</span>
+            <span className="kpi-subtext">Simulated calls</span>
           </div>
         </div>
 
@@ -313,7 +313,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           </div>
           <div className="kpi-content">
             <span className="kpi-label">Stream Latency</span>
-            <span className="kpi-value">&lt; 180ms</span>
+            <span className="kpi-value">Not measured</span>
             <span className="kpi-subtext">WebSocket frame buffer</span>
           </div>
         </div>
@@ -325,9 +325,9 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
           <div className="kpi-content">
             <span className="kpi-label">Carrier Status</span>
             <span className="kpi-value" style={{ fontSize: '1.15rem', whiteSpace: 'nowrap', color: isTwilioConfigured ? 'var(--studio-success)' : 'var(--studio-accent)' }}>
-              {isTwilioConfigured ? 'Twilio Live' : 'PSTN Bridge Ready'}
+              {isTwilioConfigured ? 'Twilio Live' : 'Simulation only'}
             </span>
-            <span className="kpi-subtext">TwiML & MediaStream enabled</span>
+            <span className="kpi-subtext">No carrier connection</span>
           </div>
         </div>
       </div>
@@ -586,7 +586,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
             </div>
 
             <p style={{ fontSize: '0.85rem', color: 'var(--studio-secondary)', lineHeight: 1.5, margin: '0 0 1rem 0' }}>
-              To connect your real Twilio phone numbers to VoiceAI, configure the incoming voice webhook on your Twilio Console phone number configuration to point to:
+              Legacy integration reference only. Carrier ingress is not enabled for private workspaces. Do not configure a real number against this local demo address:
             </p>
 
             <div style={{ background: 'rgba(var(--studio-inset-rgb), 0.85)', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--studio-accent)', marginBottom: '1rem', wordBreak: 'break-all' }}>
@@ -596,7 +596,7 @@ export function TelephonyTab({ agents }: TelephonyTabProps) {
             <div style={{ fontSize: '0.8rem', color: 'var(--studio-muted)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <div>• <strong>Protocol:</strong> Bi-directional 8000Hz G.711 μ-law streaming via <code>wss://.../media-stream</code></div>
               <div>• <strong>Interruption Handling:</strong> Automated <code>clear</code> buffer event silencing upon user speech</div>
-              <div>• <strong>Post-Call Recording:</strong> Automatically processed into QA scorecards in Call History</div>
+              <div>• <strong>Post-Call Recording:</strong> Not enabled in private workspaces; browser transcripts are available in history</div>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 import { KnowledgeChunkModel } from '../models/knowledge-chunk.model';
 import type { DocumentChunk } from '../models/knowledge-chunk.model';
 export type { DocumentChunk } from '../models/knowledge-chunk.model';
@@ -23,7 +24,7 @@ export interface RetrievalResult {
   latency_ms: number;
 }
 
-const DATA_DIR = path.join(__dirname, '../../data/knowledge');
+const DATA_DIR = dataPath('knowledge');
 const DOCS_FILE = path.join(DATA_DIR, 'documents.json');
 const CHUNKS_FILE = path.join(DATA_DIR, 'chunks.json');
 
@@ -168,14 +169,19 @@ export class RAGEngine {
     const ext = fileType.toLowerCase().replace('.', '');
     
     if (ext === 'pdf') {
+      let parser: { getText(options: { pageJoiner: string }): Promise<{ text: string }>; destroy(): Promise<void> } | undefined;
       try {
-        const pdfParse = require('pdf-parse');
+        const { PDFParse } = require('pdf-parse');
         const dataBuffer = fs.readFileSync(filePath);
-        const pdfData = await pdfParse(dataBuffer);
-        return pdfData.text || '';
+        parser = new PDFParse({ data: dataBuffer });
+        const pdfData = await parser!.getText({ pageJoiner: '' });
+        if (!pdfData.text?.trim()) throw new Error('No readable text');
+        return pdfData.text;
       } catch (e) {
-        logger.warn('[RAG] pdf-parse failed, falling back to text read:', e);
-        return fs.readFileSync(filePath, 'utf-8');
+        logger.warn('[RAG] PDF text extraction failed');
+        throw new Error('Could not read this PDF. Use a text-based PDF or paste its text. Scanned PDFs need OCR before uploading.');
+      } finally {
+        await parser?.destroy();
       }
     } else if (ext === 'json') {
       const content = fs.readFileSync(filePath, 'utf-8');
@@ -239,6 +245,7 @@ export class RAGEngine {
     text: string,
     existingDocId?: string
   ): Promise<DocumentRecord> {
+    if (!text.trim()) throw new Error('This source has no readable text. Add text before connecting it to an agent.');
     const docId = existingDocId || `doc_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`;
     const textChunks = this.chunkText(text);
 
@@ -327,7 +334,8 @@ export class RAGEngine {
     agentId: string,
     query: string,
     topK = 2,
-    minScore = 0.15
+    minScore = 0.15,
+    includeGlobal = true
   ): RetrievalResult[] {
     const start = Date.now();
     const queryTokens = this.tokenize(query);
@@ -337,7 +345,7 @@ export class RAGEngine {
 
     // Filter candidate chunks by agent or global
     const candidates = this.chunks.filter(
-      (c) => c.agent_id === agentId || c.agent_id === 'global' || agentId === 'all'
+      (c) => c.agent_id === agentId || (includeGlobal && (c.agent_id === 'global' || agentId === 'all'))
     );
 
     const scored: Array<{ chunk: DocumentChunk; score: number }> = [];

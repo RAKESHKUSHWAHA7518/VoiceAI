@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 import { CallModel } from '../models/call.model';
 import type { CallQAscore, CallAnalyticsRecord } from '../models/call.model';
 export type { CallQAscore, CallAnalyticsRecord } from '../models/call.model';
@@ -12,7 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { PersistentStore } from '../services/database';
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = dataPath();
 const CALLS_FILE = path.join(DATA_DIR, 'calls.json');
 const RECORDINGS_DIR = path.join(DATA_DIR, 'recordings');
 

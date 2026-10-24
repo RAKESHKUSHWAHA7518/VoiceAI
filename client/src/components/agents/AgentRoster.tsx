@@ -1,65 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Agent } from '../../types';
 import { StudioIcon } from '../common/StudioIcon';
-import { IconPhone, PersonaAvatar } from '../common/Icons';
+import { IconMic, PersonaAvatar } from '../common/Icons';
 
+interface Readiness { agent_id: string; configured: boolean; documents: number; indexed_documents: number; chunks: number; tested: boolean; published: boolean; active_widgets: number; draft_changed: boolean }
 interface Props {
-  agents: Agent[];
-  activeAgent: Agent | null;
-  voices: { id: string; name: string }[];
-  loading: boolean;
-  error?: string;
-  onRetry?: () => void;
-  onCreate: () => void;
-  onEdit: (agent: Agent) => void;
-  onSelect: (agent: Agent) => void;
-  onTest: (agent: Agent) => void;
-  onCall?: (agent: Agent) => void;
-  onDelete: (id: string) => Promise<void>;
-  onVoiceLibrary: () => void;
+  agents: Agent[]; activeAgent: Agent | null; voices: { id: string; name: string }[]; loading: boolean; error?: string; onRetry?: () => void;
+  onCreate: () => void; onEdit: (agent: Agent) => void; onSelect: (agent: Agent) => void; onTest: (agent: Agent) => void; onCall?: (agent: Agent) => void;
+  onDelete: (id: string) => Promise<void>; onVoiceLibrary: () => void; onDeploy?: (agent: Agent) => void; onKnowledge?: (id: string) => void; revision?: number;
 }
-
-export function AgentRoster({ agents, activeAgent, voices, loading, error, onRetry, onCreate, onEdit, onSelect, onTest, onCall, onDelete, onVoiceLibrary }: Props) {
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState('default');
-  const [actionError, setActionError] = useState('');
-  const search = query.trim().toLowerCase();
-  const visibleAgents = agents.filter(agent => [agent.name, agent.role, agent.llm_model].some(value => value.toLowerCase().includes(search)));
-  if (sort === 'name') visibleAgents.sort((a, b) => a.name.localeCompare(b.name));
-  if (sort === 'selected') visibleAgents.sort((a, b) => Number(b.id === activeAgent?.id) - Number(a.id === activeAgent?.id));
-  const languages = new Set(agents.flatMap(agent => agent.languages_supported || ['en']));
-  const tools = new Set(agents.flatMap(agent => agent.assigned_tools || []));
-
+export function AgentRoster({ agents, activeAgent, voices, loading, error, onRetry, onCreate, onEdit, onSelect, onTest, onCall, onDelete, onVoiceLibrary, onDeploy, onKnowledge, revision }: Props) {
+  const [query, setQuery] = useState(''); const [sort, setSort] = useState('default'); const [actionError, setActionError] = useState('');
+  const [readiness, setReadiness] = useState<Readiness[]>([]); const [mode, setMode] = useState('demo'); const [statusError, setStatusError] = useState('');
+  useEffect(() => { const controller = new AbortController(); fetch('/api/agents/readiness', { signal: controller.signal }).then(async response => { if (!response.ok) throw new Error(); const data = await response.json(); setReadiness(data.readiness); setMode(data.runtime_mode); setStatusError(''); }).catch(() => { if (!controller.signal.aborted) setStatusError('Setup status could not be loaded. Your agents are still available.'); }); return () => controller.abort(); }, [agents, revision]);
+  const visible = agents.filter(agent => [agent.name, agent.role, agent.llm_model].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
+  if (sort === 'name') visible.sort((a, b) => a.name.localeCompare(b.name));
+  if (sort === 'selected') visible.sort((a, b) => Number(b.id === activeAgent?.id) - Number(a.id === activeAgent?.id));
+  const focus = activeAgent || agents[0]; const setup = readiness.find(value => value.agent_id === focus?.id);
+  const steps = [{ label: 'Shape your agent', hint: 'Identity & instructions', done: setup?.configured, action: () => focus ? onEdit(focus) : onCreate() }, { label: 'Connect knowledge', hint: 'Your documents & FAQs', done: !!setup?.indexed_documents, action: () => focus && onKnowledge?.(focus.id) }, { label: 'Try a conversation', hint: 'Test your answers', done: setup?.tested, action: () => focus && onTest(focus) }, { label: 'Share your agent', hint: 'Publish a website widget', done: setup?.published, action: () => focus && onDeploy?.(focus) }];
   return <>
-    <div className="studio-page-heading">
-      <div><div className="studio-eyebrow"><span /> YOUR VOICE WORKSPACE</div><h2>Great conversations.<br /><span>Start with your agents.</span></h2><p>Build your team, fine-tune their voices, and bring every conversation to life.</p></div>
-      <div className="studio-heading-actions"><button className="btn btn-secondary" onClick={onVoiceLibrary}><StudioIcon name="voice" />Voice library</button><button className="btn btn-primary" onClick={onCreate}><StudioIcon name="plus" />Create agent</button></div>
-    </div>
-    <div className="studio-overview" aria-label="Workspace overview">
-      <div className="studio-stat"><span>Voice agents</span><strong>{loading ? '—' : agents.length.toString().padStart(2, '0')}</strong><small>Your conversation team</small></div>
-      <div className="studio-stat"><span>Languages</span><strong>{loading ? '—' : languages.size.toString().padStart(2, '0')}</strong><small>Across your agents</small></div>
-      <div className="studio-stat"><span>Connected tools</span><strong>{loading ? '—' : tools.size.toString().padStart(2, '0')}</strong><small>Unique capabilities</small></div>
-      <div className="studio-try-call"><div className="studio-wave" aria-hidden="true">{[12,24,38,20,45,32,16,29,40,22,12].map((height,index) => <i key={index} style={{height}} />)}</div><div><strong>Hear the difference</strong><span>Try a conversation with your agent.</span></div><button className="studio-icon-button" aria-label="Test selected agent in Playground" disabled={!activeAgent} onClick={() => activeAgent && onTest(activeAgent)}><StudioIcon name="arrow" /></button></div>
-    </div>
-    <div className="studio-library-header"><div><h3>Your agents <span>{agents.length}</span></h3><p>A voice for every kind of conversation.</p></div><div className="studio-library-controls"><label className="studio-search"><StudioIcon name="search" /><span className="sr-only">Search agents</span><input placeholder="Search agents…" value={query} onChange={event => setQuery(event.target.value)} />{query && <button className="studio-icon-button" aria-label="Clear search" onClick={() => setQuery('')}><StudioIcon name="close" size={14} /></button>}</label><label className="studio-sort"><StudioIcon name="sliders" /><span className="sr-only">Sort agents</span><select value={sort} onChange={event => setSort(event.target.value)}><option value="default">Default order</option><option value="name">Name A–Z</option><option value="selected">Selected first</option></select></label></div></div>
-    {error && <div className="studio-feedback" role="alert"><span>{error}</span><button className="btn btn-secondary" onClick={onRetry}>Try again</button></div>}
-    {actionError && <div className="studio-feedback" role="alert">{actionError}</div>}
-    {loading ? <div className="studio-agent-grid" aria-label="Loading agents" aria-busy="true">{[0,1,2].map(index => <div key={index} className="studio-skeleton"><span /><span /><span /></div>)}</div> : <div className="studio-agent-grid">
-      {visibleAgents.map((agent, index) => {
-        const selected = activeAgent?.id === agent.id;
-        const voice = voices.find(voice => voice.id === agent.voice_id);
-        return <article key={agent.id} className={`studio-agent-card ${selected ? 'is-selected' : ''}`}>
-          <div className="studio-agent-top"><div className={`studio-persona persona-${index % 4}`}><PersonaAvatar name={agent.name} role={agent.role} size={46} /></div><span className={selected ? 'studio-selection selected' : 'studio-selection'}>{selected ? <><span />Selected agent</> : 'Voice agent'}</span><button className="studio-icon-button" aria-label={`Edit ${agent.name}`} title="Edit agent" onClick={() => onEdit(agent)}><StudioIcon name="edit" size={16} /></button></div>
-          <div className="studio-agent-name"><h3>{agent.name}</h3><p>{agent.role}</p></div>
-          <p className="studio-agent-description">{agent.system_prompt}</p>
-          <div className="studio-agent-config"><span><StudioIcon name="voice" size={14} />{voice?.name || agent.voice_name || 'Custom voice'}</span><span>{agent.llm_model}</span></div>
-          <div className="studio-agent-capabilities"><span><StudioIcon name="globe" size={14} />{(agent.languages_supported || ['en']).length} languages</span><span><StudioIcon name="sliders" size={14} />{(agent.assigned_tools || []).length} tools</span></div>
-          <details className="studio-agent-details"><summary>Agent details</summary><p>{agent.system_prompt}</p>{agent.greeting && <p><strong>Greeting</strong> {agent.greeting}</p>}<p><strong>Languages</strong> {(agent.languages_supported || ['en']).join(', ').toUpperCase()}</p><p><strong>Tools</strong> {(agent.assigned_tools || []).join(', ') || 'No tools assigned'}</p><p><strong>Temperature</strong> {agent.llm_temperature}</p>{!agent.is_default && <button className="btn btn-danger btn-sm" onClick={async () => { if (confirm(`Delete agent "${agent.name}"?`)) { try { await onDelete(agent.id); } catch { setActionError('Could not delete agent. Please try again.'); } } }}><StudioIcon name="trash" size={14} />Delete agent</button>}</details>
-          <div className="studio-agent-actions"><button className="btn btn-secondary" onClick={() => onTest(agent)}>Open playground<StudioIcon name="arrow" size={15} /></button><button className="studio-icon-button call-icon" aria-label={`Call ${agent.name}`} title="Start voice call" onClick={() => onCall ? onCall(agent) : onTest(agent)}><IconPhone size={17} /></button><button className="studio-icon-button" aria-label={selected ? `${agent.name} selected` : `Select ${agent.name}`} aria-pressed={selected} onClick={() => onSelect(agent)} title={selected ? 'Selected agent' : 'Select agent'}><StudioIcon name={selected ? 'check' : 'plus'} size={17} /></button></div>
-        </article>;
-      })}
-    </div>}
-    {!loading && !error && !visibleAgents.length && <div className="studio-empty"><StudioIcon name={query ? 'search' : 'voice'} size={32} /><h3>{query ? 'No agents found' : 'Meet your first voice agent'}</h3><p>{query ? 'Try a different name, role, or model.' : 'Give your agent a voice and a purpose to get started.'}</p><button className="btn btn-primary" onClick={query ? () => setQuery('') : onCreate}>{query ? 'Clear search' : 'Create your first agent'}</button></div>}
-    <div className="studio-page-note"><StudioIcon name="voice" size={14} />Built for conversations that feel human.<span>Configure. Test. Connect.</span></div>
+    <div className="studio-page-heading"><div><div className="studio-eyebrow"><span /> AGENT STUDIO</div><h2>A voice for your business.</h2><p>Create an assistant, connect what it knows, and bring the conversation to life.</p></div><div className="studio-heading-actions"><button className="btn btn-secondary" onClick={onVoiceLibrary}><StudioIcon name="voice" />Voice library</button><button className="btn btn-primary" onClick={onCreate}><StudioIcon name="plus" />Create agent</button></div></div>
+    <section className="showcase-hero"><div className="hero-copy"><span className="hero-label">FROM FIRST HELLO TO HELPFUL ANSWERS</span><h3>Your knowledge.<br />A natural conversation.</h3><p>Build one great agent, then make it yours. Start with instructions, add your sources, and test every answer before you share.</p><div className="hero-actions"><button className="btn btn-primary" disabled={!focus} onClick={() => focus && (onCall ? onCall(focus) : onTest(focus))}><IconMic size={17} />Talk to {focus?.name || 'your agent'}</button><span className="runtime-pill"><i />{mode === 'live' ? 'Live model mode' : 'Free demo mode'}</span></div></div><div className="hero-conversation" aria-label="Example conversation"><div className="hero-orbit"><StudioIcon name="voice" size={34} /><span>Made for real conversations</span></div><div className="hero-bubble user">Can I change my booking?</div><div className="hero-bubble assistant"><span className="example-label">EXAMPLE ANSWER</span>Of course. Let me check your booking policy.</div><div className="hero-signal">{[12,22,35,18,43,29,16,38,23,13,30,20].map((height, index) => <i key={index} style={{height}} />)}<span>Your voice, connected to your knowledge</span></div></div></section>
+    <section className="setup-journey" aria-label="Agent setup checklist"><div className="journey-heading"><strong>{focus ? focus.name + '’s setup' : 'Your first agent'}</strong><span>{setup ? steps.filter(step => step.done).length + ' of 4 steps complete' : 'A simple path to your first conversation'}</span></div><div className="journey-steps">{steps.map((step, index) => <button key={step.label} onClick={step.action} disabled={!focus && index > 0} className={step.done ? 'is-done' : ''}><span className="journey-number">{step.done ? <StudioIcon name="check" size={16} /> : index + 1}</span><span><strong>{step.label}</strong><small>{step.hint}</small></span><StudioIcon name="arrow" size={15} /></button>)}</div></section>
+    <div className="studio-library-header"><div><h3>Your agents <span>{agents.length}</span></h3><p>Everything your assistants need, in one place.</p></div><div className="studio-library-controls"><label className="studio-search"><StudioIcon name="search" /><span className="sr-only">Search agents</span><input placeholder="Search agents…" value={query} onChange={event => setQuery(event.target.value)} />{query && <button className="studio-icon-button" aria-label="Clear search" onClick={() => setQuery('')}><StudioIcon name="close" size={14} /></button>}</label><label className="studio-sort"><span className="sr-only">Sort agents</span><select value={sort} onChange={event => setSort(event.target.value)}><option value="default">All agents</option><option value="name">Name A–Z</option><option value="selected">Selected first</option></select></label></div></div>
+    {(error || actionError || statusError) && <div className="studio-feedback" role="alert">{error || actionError || statusError}{error && <button className="btn btn-secondary" onClick={onRetry}>Try again</button>}</div>}
+    {loading ? <div className="studio-agent-grid" aria-label="Loading agents" aria-busy="true">{[0,1,2].map(index => <div key={index} className="studio-skeleton"><span /><span /><span /></div>)}</div> : <div className="studio-agent-grid">{visible.map((agent, index) => {
+      const selected = agent.id === activeAgent?.id; const state = readiness.find(value => value.agent_id === agent.id); const voice = voices.find(value => value.id === agent.voice_id);
+      return <article key={agent.id} className={'studio-agent-card agent-tone-' + index % 4 + (selected ? ' is-selected' : '')}>
+        <div className="studio-agent-top"><PersonaAvatar name={agent.name} role={agent.role} size={48} /><span className={'agent-state ' + (state?.published ? 'published' : '')}>{state?.published ? state.draft_changed ? 'Unpublished changes' : 'Widget published' : 'Draft agent'}</span><button className="studio-icon-button" aria-label={'Edit ' + agent.name} onClick={() => onEdit(agent)}><StudioIcon name="edit" size={17} /></button></div>
+        <div className="studio-agent-name"><h3>{agent.name}</h3><p>{agent.role}</p></div>
+        <div className="agent-greeting"><span>FIRST HELLO</span><p>{agent.greeting || 'Add a greeting to welcome your visitors.'}</p></div>
+        <button className="agent-knowledge-link" onClick={() => onKnowledge?.(agent.id)}><span className={'source-icon ' + (state?.indexed_documents ? 'connected' : '')}><StudioIcon name="book" size={18} /></span><span><strong>{state ? state.indexed_documents ? state.indexed_documents + ' knowledge ' + (state.indexed_documents === 1 ? 'source' : 'sources') : 'Connect knowledge' : 'Checking knowledge…'}</strong><small>{state?.indexed_documents ? 'Connected to this agent' : 'Add your FAQs, policies or documents'}</small></span><StudioIcon name="arrow" size={15} /></button>
+        <div className="agent-meta-row"><span><StudioIcon name="voice" size={14} />{voice?.name || agent.voice_name || 'Browser voice'}</span><span><StudioIcon name="globe" size={14} />{(agent.languages_supported || ['en']).length} {(agent.languages_supported || ['en']).length === 1 ? 'language' : 'languages'}</span></div>
+        <button className="agent-publish-link" onClick={() => onDeploy?.(agent)}>{state?.published ? 'Manage website widget' : 'Publish agent'}<StudioIcon name="arrow" size={14} /></button><details className="studio-agent-details"><summary>Configuration & actions</summary><p>{agent.system_prompt}</p><p><strong>Saved model:</strong> {agent.llm_model}. {mode === 'demo' ? 'Demo responses are active.' : 'Server credentials are required.'}</p><p>Provider voice settings are saved; this preview speaks with your browser voice. External tools are not executed.</p>{!agent.is_default && <button className="btn btn-danger btn-sm" onClick={async () => { if (!confirm('Delete agent "' + agent.name + '"?')) return; try { await onDelete(agent.id); } catch { setActionError('Could not delete this agent. Please try again.'); } }}>Delete agent</button>}</details>
+        <div className="studio-agent-actions"><button className="btn btn-primary talk-agent-button" aria-label={'Talk to ' + agent.name} onClick={() => onCall ? onCall(agent) : onTest(agent)}><IconMic size={16} />Talk to agent</button><button className="btn btn-secondary" onClick={() => onTest(agent)}>Test answers</button><button className="studio-icon-button" aria-label={selected ? agent.name + ' selected' : 'Select ' + agent.name} onClick={() => onSelect(agent)} title="Select agent"><StudioIcon name={selected ? 'check' : 'plus'} size={17} /></button></div>
+      </article>;
+    })}<button className="create-agent-tile" onClick={onCreate}><span><StudioIcon name="plus" size={26} /></span><strong>Your next great assistant</strong><p>Give it a name, a purpose,<br />and something worth knowing.</p><b>Create an agent <StudioIcon name="arrow" size={15} /></b></button></div>}
+    {!loading && !error && !visible.length && query && <div className="studio-empty"><h3>No agents match your search</h3><p>Try another name or clear your search.</p><button className="btn btn-secondary" onClick={() => setQuery('')}>Clear search</button></div>}
+    <div className="studio-page-note"><StudioIcon name="check" size={14} />Private workspace. Your agents and knowledge belong to you.<span>Configure · Connect · Test · Share</span></div>
   </>;
 }

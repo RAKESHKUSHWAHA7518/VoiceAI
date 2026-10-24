@@ -1,4 +1,5 @@
 export * from './base';
+export * from './agent.model';
 export * from './call.model';
 export * from './appointment.model';
 export * from './phone-number.model';

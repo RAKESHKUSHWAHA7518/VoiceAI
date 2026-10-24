@@ -75,6 +75,7 @@ export function CalendarWidget() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || data.error || "Booking failed. Please refresh the slots.");
       if (data.success && data.appointment) {
         setBookingSuccessMsg(`Confirmed: ${data.appointment.id} for ${data.appointment.customer_name}`);
         await fetchCalendarData();
@@ -131,7 +132,7 @@ export function CalendarWidget() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--studio-text)' }}>
-                In-Call Calendar & Appointments
+                Workspace Calendar & Appointments
               </h3>
               <span
                 style={{
@@ -148,7 +149,7 @@ export function CalendarWidget() {
               </span>
             </div>
             <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--studio-secondary)' }}>
-              Voice AI tools <code style={{ color: 'var(--studio-accent)' }}>check_availability</code> and <code style={{ color: 'var(--studio-accent)' }}>book_appointment</code> update this live schedule.
+              Manual bookings update this private schedule. Agent tool booking is not connected yet.
             </p>
           </div>
         </div>
@@ -287,7 +288,7 @@ export function CalendarWidget() {
 
           {appointments.length === 0 ? (
             <div style={{ color: 'var(--studio-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>
-              No appointments scheduled yet. Speak to your agent to test booking!
+              No appointments scheduled yet. Use Book Slot to add a private booking.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

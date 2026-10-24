@@ -1,352 +1,62 @@
-# VoiceAI - Real-Time Multimodal Voice Agent Platform
+# VoiceAI studio
 
-[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](https://www.typescriptlang.org/)
-[![FastAPI](https://img.shields.io/badge/Express-4.19-green.svg)](https://expressjs.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A voice agent portfolio project with private accounts, a React agent studio, knowledge retrieval, saved agent configurations and an embeddable conversation preview.
 
-**Sub-500ms voice-to-voice conversational AI platform** with barge-in interruption, streaming tool execution, WebRTC/SIP transport, and full observability.
+The default mode is a local demo. It does not make language-model requests. Live text generation can use the existing OpenAI adapter or a Groq model with a configured key. Browser speech recognition and speech synthesis provide a voice preview. Full streaming STT/TTS, production telephony and measured audible latency are not complete.
 
-## 🚀 Features
+## Run locally
 
-- **Sub-500ms Latency**: End-to-end voice-to-voice latency under 500ms (p95)
-- **Barge-In Interruption**: Instant interruption handling (<50ms) with context preservation
-- **Streaming Pipeline**: VAD → ASR → LLM → TTS with sentence-level chunking
-- **Streaming Tool Execution**: Parallel tool calling with filler audio masking latency
-- **Multi-Transport**: WebSocket, LiveKit WebRTC, SIP/Twilio PSTN
-- **Enterprise Guardrails**: PII redaction, prompt injection detection, hallucination checking
-- **Full Observability**: Langfuse integration, per-turn latency tracking, post-call evaluation
-- **Developer Playground**: Live config tuning, prompt engineering, test runner
+The previous Campaigns, Phone numbers, Evaluations and Human handoff screens are available again as clearly labeled workspace simulations. Live monitor, Inspector and Analytics use private workspace data. Open **All features** (`/features`) for the complete preservation register and remaining integration limits. See [feature preservation](docs/FEATURE_PRESERVATION.md).
 
-## 🏗️ Architecture
+Use Node.js 20 or later. Install backend and frontend dependencies with `npm ci` and `npm --prefix client ci`. Copy `.env.example` to `.env` and configure values locally.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           VoiceAI Architecture                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌────────┐ │
-│  │   Browser    │◄───►│   WebSocket  │◄───►│   Pipeline   │◄───►│ LiveKit│ │
-│  │  / WebRTC    │     │   / SIP      │     │  (VAD→ASR→   │     │ / SIP  │ │
-│  │  / Phone     │     │              │     │  LLM→TTS)    │     │        │ │
-│  └──────────────┘     └──────────────┘     └──────┬───────┘     └────────┘ │
-│                                                    │                        │
-│                          ┌─────────────────────────┼─────────────────────┐ │
-│                          │       Pipeline Stages   │                     │ │
-│                          ├─────────────────────────┼─────────────────────┤ │
-│                          │ VAD (Silero ONNX)       │ 30ms frames,        │ │
-│                          │                         │ dynamic EOS,        │ │
-│                          │                         │ barge-in detect     │ │
-│                          ├─────────────────────────┼─────────────────────┤ │
-│                          │ ASR (Deepgram/Whisper)  │ Streaming, interim, │ │
-│                          │                         │ speculative LLM     │ │
-│                          ├─────────────────────────┼─────────────────────┤ │
-│                          │ LLM (GPT-4o-mini/Groq)  │ Streaming, tools,   │ │
-│                          │                         │ sentence chunking,  │ │
-│                          │                         │ speculative exec    │ │
-│                          ├─────────────────────────┼─────────────────────┤ │
-│                          │ TTS (Cartesia/11Labs)   │ Streaming, 24k→16k, │ │
-│                          │                         │ fillers, fallbacks  │ │
-│                          └─────────────────────────┴─────────────────────┘ │
-│                                                    │                        │
-│                          ┌─────────────────────────┴─────────────────────┐ │
-│                          │           Cross-Cutting Concerns              │ │
-│                          ├───────────────────────────────────────────────┤ │
-│                          │ Guardrails: PII, Injection, Safety (<25ms)    │ │
-│                          │ Memory: Sliding window + Redis/Postgres       │ │
-│                          │ Observability: Latency profiler, Langfuse     │ │
-│                          │ Dashboard: Monitor/Playground/Inspector       │ │
-│                          └───────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-## ⚡ Performance
-
-| Stage | Budget (p95) | Achieved |
-|-------|-------------|----------|
-| VAD (end-of-speech) | 70ms | **34ms** ✅ |
-| ASR finalization | 300ms | **158ms** ✅ |
-| TTFT (LLM) | 250ms | **215ms** ✅ |
-| TTS First Chunk | 150ms | **112ms** ✅ |
-| **Total E2E** | **600ms** | **514ms** ✅ |
-
-**Load Test (50 concurrent users)**: 542ms p95 E2E, 0.2% error rate, 12.3 RPS
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 20+
-- Docker & Docker Compose
-- API Keys (see `.env.example`)
-
-### Quick Start
-
-```bash
-# 1. Clone and install
-git clone <repo-url>
-cd VoiceAI
-make install
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your API keys
-
-# 3. Start infrastructure
-docker compose up -d
-
-# 4. Run server
-make dev
-
-# 5. Open dashboard
-open http://localhost:8000
-```
-
-### Development
-
-```bash
-# Run tests
-make test
-
-# Run linting
-make lint
-
-# Type checking
-make typecheck
-
-# Run benchmarks
-make benchmark
-
-# Load test (50 concurrent users)
-make load-test
-```
-
-## 🏗️ Project Structure
-
-```
-voiceai/
-├── server/
-│   ├── src/
-│   │   ├── app.ts                 # Express & WebSocket entry point
-│   │   ├── audio/                 # Audio processing utilities (PCM, Float32, resample)
-│   │   ├── config/                # Environment & configuration management
-│   │   ├── controllers/           # API controllers (admin, health, metrics, playground, tools)
-│   │   ├── middleware/            # Express middleware (auth, errorHandler, rateLimiter, validation)
-│   │   ├── routes/                # REST API route declarations
-│   │   ├── services/              # Core pipeline services (vad, asr, llm, tts, tools, session)
-│   │   ├── telemetry/             # Latency tracking spans & Langfuse client
-│   │   ├── transport/             # WebSocket framing protocol
-│   │   ├── types/                 # TypeScript type definitions
-│   │   ├── utils/                 # Winston logging & helper utilities
-│   │   └── websocket/             # Real-time WebSocket connection & session handler
-│   └── tests/                     # Test suites (unit & integration tests, mocks, test setup)
-├── client/
-│   ├── browser/                   # Minimal HTML/JS browser test client (Web Audio + WS)
-│   └── src/                       # React + Vite developer dashboard
-├── docs/                          # Benchmark reports & technical documentation
-├── Dockerfile                     # Multi-stage production container build
-├── docker-compose.yml             # Local infrastructure (PostgreSQL, Redis, Langfuse)
-├── jest.config.js                 # Jest test configuration for server tests
-├── package.json                   # Root workspace scripts & backend dependencies
-├── tsconfig.json                  # TypeScript compiler settings & path aliases
-└── Makefile                       # Developer workflow automation
-```
-
-## 🔌 API Reference
-
-### WebSocket Protocol
-
-```javascript
-// Connect
-const ws = new WebSocket('ws://localhost:8000/ws');
-
-// Send audio (binary frames)
-ws.send(audioFrame);  // Binary frame: [0x01][seq:4][len:4][audio]
-
-// Send control (JSON frames)
-ws.send(controlFrame);  // Control frame: [0x02][seq:4][len:4][JSON]
-
-// Control types
-// start_speaking, stop_speaking, interrupt, flush_buffer, ping, pong
-```
-
-### REST API
-
-```
-GET  /health                    # Health check
-GET  /api/sessions              # List sessions
-POST /api/sessions              # Create session
-GET  /api/sessions/:id          # Get session
-GET  /api/sessions/:id/metrics  # Session metrics
-GET  /api/transcripts/:id       # Get transcripts
-POST /api/tools/execute         # Execute tool
-GET  /api/tools                 # List tools
-GET  /api/metrics/percentiles   # Latency percentiles
-GET  /api/playground/config     # Get playground config
-POST /api/playground/test       # Run test conversation
-```
-
-## 🎯 Dashboard (3 Tabs)
-
-| Tab | Features |
-|-----|----------|
-| **Monitor** | Live waveforms, latency metrics, transcript, barge-in events, tool calls |
-| **Playground** | Voice/LLM/VAD config editor, system prompt editor, test runner |
-| **Inspector** | Full transcript, tool call inspector, barge-in log, percentile detail |
-
-## 🔧 Configuration
-
-All configuration via `.env` file:
+For a zero-provider-cost run, set:
 
 ```env
-# Required
-DEEPGRAM_API_KEY=
-OPENAI_API_KEY=
-CARTESIA_API_KEY=
-
-# Optional fallbacks
-ELEVENLABS_API_KEY=
-GROQ_API_KEY=
-GEMINI_API_KEY=
-
-# Transport
-LIVEKIT_URL=
-LIVEKIT_API_KEY=
-LIVEKIT_API_SECRET=
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-
-# Database
-REDIS_URL=redis://localhost:6379
-POSTGRES_URL=postgresql://user:pass@localhost:5432/voiceai
-
-# Auth
-JWT_SECRET=your-secret
+VOICEAI_RUNTIME_MODE=demo
+VOICEAI_LEGACY_DEMO=false
+MONGODB_URI=
+REDIS_ENABLED=false
 ```
 
-## 🧪 Testing
+Start the backend with `npm run dev`, then the frontend with `npm run client:dev`. Open http://localhost:5173 and create your own account. Each account gets two editable starter agents. No shared demo login is required.
 
-```bash
-# Unit tests
-make test
+Accounts and agent configuration use the existing MongoDB layer when MONGODB_URI is configured, and local JSON files otherwise. One backend instance is supported. Local account and deployment files are ignored by Git. Keep all data and credentials out of public repositories and container images.
 
-# With coverage
-make test-coverage
+## Try the full development flow
 
-# Load test (50 concurrent users)
-make load-test
+1. Create an account and select or create an agent.
+2. Choose Connect knowledge on that agent. Paste a FAQ or upload a text-based PDF, connect the source and check passage matching.
+3. Choose Test this agent or Talk to agent. Demo responses are explicitly labeled. Real browser microphone acceptance remains a separate check.
+4. Choose Publish agent or Manage website widget on the agent card. For a local presentation, keep local preview enabled and open the widget preview.
+5. To embed it later, add the exact allowed website address and paste the generated script into that website. Visitors get isolated, short-lived conversation tokens. Text and browser voice controls are available.
+6. Disable the widget from the same panel to revoke visitor access.
 
-# Latency benchmark
-make benchmark
-```
+Publishing snapshots the agent configuration. Knowledge remains linked to the agent and is not versioned. Visitor limits are development controls stored in memory: 20 starts per deployment per UTC day, 10 turns per guest session and 10-minute access. Limits reset on restart. Do not expose paid public usage before durable budget controls and production validation are complete.
 
-## 📦 Deployment
+## Live language model testing
 
-### Docker Compose (Production)
+Set `VOICEAI_RUNTIME_MODE=live` on the server. Configure OPENAI_API_KEY for the existing OpenAI models, or GROQ_API_KEY and select a model prefixed with `groq/` in the agent editor. Failures are returned explicitly; live conversations do not substitute mock responses. External actions remain disabled in the new runtime.
 
-```bash
-docker compose -f docker-compose.yml up -d
-```
+Public live widget sessions stay disabled unless `VOICEAI_PUBLIC_LIVE=true` is deliberately enabled. Use the signed-in playground while validating providers. Keep keys on the server. Configuring a key does not establish that it works or has available credit.
 
-### Kubernetes
+## Container demo
 
-```yaml
-# k8s/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: voiceai
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: voiceai
-  template:
-    spec:
-      containers:
-      - name: voiceai
-        image: voiceai:latest
-        ports:
-        - containerPort: 8000
-        envFrom:
-        - secretRef:
-            name: voiceai-secrets
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "1000m"
-          limits:
-            memory: "2Gi"
-            cpu: "2000m"
-```
+`docker compose -f docker-compose.demo.yml up --build` runs a local browser demo at http://localhost:5173 with persistent local data and no provider keys. It deliberately uses development cookies over localhost HTTP. Production needs HTTPS and Secure cookies. The larger original Compose stack is retained for infrastructure experiments, not as proof of production readiness.
 
-## 📊 Monitoring
+## Validation
 
-- **Latency**: Per-turn breakdown (VAD/ASR/LLM/TTS)
-- **Quality**: Sentiment, goal completion, interruption rate
-- **Cost**: Per-minute tracking per provider
-- **Alerts**: P95 latency > 600ms, error rate > 1%
+- `npm run typecheck` checks backend TypeScript.
+- `npm run client:build` builds the studio and widget.
+- `npm test -- --runInBand --cacheDirectory .jest-cache` runs unit and HTTP integration tests. Local HTTP networking must be allowed.
+- `npm run benchmark` measures authenticated text streaming with AUTH_COOKIE and AGENT_ID set in your environment. It reports failures and never invents first-audio measurements. This is not a microphone or audible-latency benchmark.
 
-## 🤝 Contributing
+The old claims of sub-500 ms production latency and 50-user load performance are unverified. Historical reports in docs are retained as prior project material, not current validation evidence.
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+## Implementation status
 
-## 📄 License
+See [phase status](docs/IMPLEMENTATION_STATUS.md), [review and roadmap](docs/VOICEAI_PLATFORM_REVIEW_AND_BUILD_PLAN.md), and [free setup and costs](docs/FREE_START_AND_SERVICE_COSTS.md).
 
-MIT License - see [LICENSE](LICENSE) for details.
+For the polished small-audience presentation path, see [showcase release](docs/SHOWCASE_RELEASE.md) and [source inventory](docs/SOURCE_INVENTORY.md).
 
-## 🙏 Acknowledgments
-
-- [Deepgram](https://deepgram.com/) - Streaming ASR
-- [OpenAI](https://openai.com/) - LLM
-- [Cartesia](https://cartesia.ai/) - Streaming TTS
-- [ElevenLabs](https://elevenlabs.io/) - TTS fallback
-- [Groq](https://groq.com/) - Fast LLM inference
-- [LiveKit](https://livekit.io/) - WebRTC infrastructure
-- [Silero](https://github.com/snakers4/silero-vad) - VAD model
-- [Langfuse](https://langfuse.com/) - Observability
-
----
-
-**Built with ❤️ for real-time voice AI**
-
-## MongoDB Atlas storage
-
-Set `MONGODB_URI` in `.env` to your Atlas driver connection string. Optionally set
-`MONGODB_DB_NAME` to override the database in the URI; if neither specifies a database,
-the backend uses `voiceai`. The Atlas database user needs read/write access, and Atlas
-Network Access must permit the machine running the backend.
-
-On startup, the backend connects before accepting requests and imports existing local
-calls, appointments, phone numbers, custom voices, and knowledge documents/chunks once.
-The original JSON files remain available as a backup. Subsequent writes use MongoDB;
-recordings remain in `server/data/recordings`. `/health/ready` checks the Atlas connection.
-Leave `MONGODB_URI` empty to use JSON storage. Tests disable Atlas access automatically.
-Run `npm run db:check` to verify Atlas access and perform the same one-time import
-without starting the voice pipeline. Use the exact capitalization of an existing
-database name in `MONGODB_DB_NAME`.
-Run `npm run db:test` for a live audit of all six collections, model validation,
-indexes, migration markers, and knowledge relationships. It also creates, reads,
-updates, and deletes a temporary record per collection using an independent
-connection, with cleanup on failure. Existing records are read without modification.
-
-Storage reads use in-process caches; run one backend instance. Multiple instances or
-external database edits require a cache refresh/repository redesign.
-
-The native-driver models in `server/src/models` define record types, Zod runtime
-schemas, collection names, and indexes. Persistence validates imports, loaded
-documents, and writes through these models. Existing `{ _id, position, value }`
-documents remain compatible; indexes target fields within `value`.
-
-## Dashboard page URLs
-
-Each dashboard page has a shareable URL: `/agents`, `/campaigns`, `/knowledge`,
-`/evals`, `/hitl`, `/playground`, `/telephony`, `/analytics`, `/monitor`, and
-`/inspector`. `/` redirects to `/agents`. Unknown URLs show a page-not-found view
-with a link back to Agents Studio. Sidebar links and in-app actions use browser
-history, so Back, Forward, opening links in a new tab, and refreshing a page work.
-Vite and the supplied Nginx configuration serve `index.html` for frontend routes;
-other hosting providers must configure the same SPA fallback.
+Account mode intentionally gates shared legacy dashboards, raw recording links, custom tool execution, voice cloning and unauthenticated WebSockets. `VOICEAI_LEGACY_DEMO=true` is an explicit local simulator bypass and is ignored in production; do not expose it publicly. Existing simulator tests use this bypass, while separate integration tests exercise the private account boundary.

@@ -3,7 +3,8 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import config from '../config';
 import { OpenAILLM } from '../services/llm';
-import { getAllToolsMap } from '../services/tools';
+import { getAllToolsMap, createDemoTools } from '../services/tools';
+import { workspaceId } from '../middleware/workspace';
 import { ragEngine } from '../services/rag';
 
 const router = Router();
@@ -75,7 +76,7 @@ router.post(
       agent_name 
     } = req.body;
     
-    if (!text || text.trim().length === 0) {
+    if (typeof text !== 'string' || text.trim().length === 0) {
       return res.status(400).json({
         success: false,
         error: { code: 'VALIDATION_ERROR', message: 'Text is required' },
@@ -85,7 +86,11 @@ router.post(
     const startTime = Date.now();
     let reply = '';
     const executedToolCalls: any[] = [];
-    const toolsMap = getAllToolsMap();
+    const registeredTools = workspaceId(req) ? createDemoTools() : getAllToolsMap();
+    // An explicit empty selection grants no tools, including demo fallbacks.
+    const toolsMap = new Map(Array.from(registeredTools.entries()).filter(([name]) =>
+      Array.isArray(assigned_tools) && assigned_tools.includes(name)
+    ));
     let toolsList = Array.from(toolsMap.values());
     if (Array.isArray(assigned_tools) && assigned_tools.length > 0) {
       toolsList = toolsList.filter(t => assigned_tools.includes(t.name));
@@ -97,8 +102,8 @@ router.post(
     const effectiveTemp = typeof llm_temperature === 'number' ? llm_temperature : currentConfig.llm_temperature;
 
     // RAG Knowledge Base Retrieval (<25ms)
-    const targetAgentId = agent_id || 'all';
-    const ragMatches = ragEngine.search(targetAgentId, text, 2, 0.18);
+    const targetAgentId = agent_id || 'global';
+    const ragMatches = ragEngine.search(targetAgentId, text, 2, 0.18, !workspaceId(req));
     let promptWithRag = effectiveSystemPrompt;
     if (ragMatches.length > 0) {
       const ragSnippets = ragMatches

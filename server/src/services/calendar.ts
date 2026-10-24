@@ -1,3 +1,4 @@
+import { dataPath } from '../config/storage';
 import { AppointmentModel } from '../models/appointment.model';
 import type { AppointmentRecord } from '../models/appointment.model';
 export type { AppointmentRecord } from '../models/appointment.model';
@@ -12,7 +13,7 @@ import logger from '../utils/logger';
 import { PersistentStore, isMongoEnabled } from './database';
 
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = dataPath();
 const APPOINTMENTS_FILE = path.join(DATA_DIR, 'appointments.json');
 
 const DEFAULT_SLOTS = [

@@ -20,7 +20,7 @@ export const authenticate = (
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Authentication required') as any; // Will be caught by error handler
+    throw new AuthenticationError();
   }
 
   const token = authHeader.substring(7);
@@ -43,12 +43,12 @@ export const authenticate = (
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      throw new Error('Token expired') as any;
+      throw new AuthenticationError('Token expired');
     }
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new Error('Invalid token') as any;
+      throw new AuthenticationError('Invalid token');
     }
-    throw new Error('Invalid token') as any;
+    throw new AuthenticationError('Invalid token');
   }
 };
 
@@ -57,7 +57,7 @@ export const authorize = (...allowedRoles: string[]) => {
     const user = (req as any).user;
     
     if (!user) {
-      throw new Error('Authentication required') as any;
+      throw new AuthenticationError();
     }
     
     if (allowedRoles.length > 0 && !user.roles.some((role: string) => allowedRoles.includes(role))) {
@@ -110,7 +110,7 @@ export const requireSession = (
   const user = (req as any).user;
   
   if (!user?.sessionId) {
-    throw new Error('Session required') as any;
+    throw new AuthenticationError('Session required');
   }
   
   next();

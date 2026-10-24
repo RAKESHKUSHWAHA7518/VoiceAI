@@ -152,6 +152,7 @@ export function useWebSocket({
 
   useEffect(() => {
     isMountedRef.current = true;
+    if (!url) return;
 
     function connect() {
       if (!isMountedRef.current) return;

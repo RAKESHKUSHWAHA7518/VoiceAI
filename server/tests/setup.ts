@@ -3,6 +3,11 @@ import config from '../src/config';
 
 // Set test environment
 process.env.NODE_ENV = 'test';
+process.env.VOICEAI_RUNTIME_MODE = 'demo';
+process.env.VOICEAI_SPEECH_MODE = 'browser';
+// Existing simulator tests deliberately exercise the local legacy demo.
+// Account isolation is tested separately without this bypass.
+process.env.VOICEAI_LEGACY_DEMO = 'true';
 process.env.LOG_LEVEL = 'error';
 
 // Mock external services
@@ -247,7 +252,7 @@ jest.mock('../src/services/tools', () => {
     });
     const getAllToolsMap = () => mockToolsMap;
 
-    return { ToolRegistryImpl, CircuitBreakerImpl, ToolExecutorImpl, HallucinationChecker, StreamingToolExecutor, getAllToolsMap };
+    return { ToolRegistryImpl, CircuitBreakerImpl, ToolExecutorImpl, HallucinationChecker, StreamingToolExecutor, getAllToolsMap, createDemoTools: () => jest.requireActual('../src/services/tools').createDemoTools() };
   });
 
 jest.mock('ioredis', () => {

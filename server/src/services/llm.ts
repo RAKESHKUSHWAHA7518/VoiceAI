@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { LLMStreamChunk } from '../types';
 import { guardrailsEngine } from './guardrails';
+import { completeSSEFrames } from '../utils/sse';
 
 export class OpenAILLM {
   private client: any;
@@ -61,17 +62,20 @@ export class OpenAILLM {
     history: any[],
     userText: string,
     tools?: any[],
-    toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
+    toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } },
+    signal?: AbortSignal,
+    messagesOverride?: any[]
   ): AsyncGenerator<{
     content?: string;
     isToolCall: boolean;
     toolCallId?: string;
+    toolCallExtra?: any;
     toolName?: string;
     toolArgs?: string;
     toolArgsComplete: boolean;
     finishReason?: string;
   }> {
-    const messages = this.buildMessages(history, userText);
+    const messages = messagesOverride || this.buildMessages(history, userText);
     
     const requestBody: any = {
       model: this.model,
@@ -94,13 +98,17 @@ export class OpenAILLM {
     }
 
     const response = await this.client.post('/chat/completions', requestBody, {
-      responseType: 'stream',
+      responseType: 'stream', signal,
+    }).catch((error: any) => {
+      if (signal?.aborted) throw new Error('TURN_CANCELLED');
+      const status = error.response?.status;
+      throw new Error(status === 429 ? 'PROVIDER_RATE_LIMITED' : status === 401 || status === 403 ? 'PROVIDER_AUTH_FAILED' : status === 404 ? 'PROVIDER_MODEL_UNAVAILABLE' : 'PROVIDER_ERROR');
     });
 
     let toolCallBuffer: Record<number, any> = {};
     let emittedToolCalls = new Set<number>();
 
-    for await (const chunk of response.data) {
+    for await (const chunk of completeSSEFrames(response.data)) {
       const lines = chunk.toString().split('\n').filter((line: string) => line.startsWith('data: '));
       
       for (const line of lines) {
@@ -112,12 +120,12 @@ export class OpenAILLM {
           const choice = parsed.choices?.[0];
           if (!choice) continue;
 
-          const delta = choice.delta;
+          const delta = choice.delta || {};
           
           // Handle tool calls
           if (delta.tool_calls) {
             for (const tc of delta.tool_calls) {
-              const index = tc.index;
+              const index = tc.index ?? 0;
               if (!toolCallBuffer[index]) {
                 toolCallBuffer[index] = {
                   id: tc.id,
@@ -125,6 +133,7 @@ export class OpenAILLM {
                   function: { name: '', arguments: '' },
                 };
               }
+              if (tc.extra_content) toolCallBuffer[index].extra_content = tc.extra_content;
               if (tc.function?.name) {
                 toolCallBuffer[index].function.name += tc.function.name;
               }
@@ -132,21 +141,7 @@ export class OpenAILLM {
                 toolCallBuffer[index].function.arguments += tc.function.arguments;
               }
 
-              // Check if we can emit this tool call
-              const tcData = toolCallBuffer[index];
-              if (!emittedToolCalls.has(index) && 
-                  tcData.function.name && 
-                  this.isValidJSON(tcData.function.arguments)) {
-                emittedToolCalls.add(index);
-                yield {
-                  content: '',
-                  isToolCall: true,
-                  toolCallId: tcData.id,
-                  toolName: tcData.function.name,
-                  toolArgs: tcData.function.arguments,
-                  toolArgsComplete: true,
-                };
-              }
+              // Emit only after the provider finishes the tool call.
             }
           }
 
@@ -165,14 +160,12 @@ export class OpenAILLM {
             for (const [index, tcData] of Object.entries(toolCallBuffer)) {
               const idx = parseInt(index);
               if (!emittedToolCalls.has(idx) && tcData.function.name) {
-                let args = tcData.function.arguments;
-                if (!this.isValidJSON(args)) {
-                  args = this.fixJSON(args);
-                }
+                const args = tcData.function.arguments;
                 yield {
                   content: '',
                   isToolCall: true,
                   toolCallId: tcData.id,
+                  toolCallExtra: tcData.extra_content,
                   toolName: tcData.function.name,
                   toolArgs: args,
                   toolArgsComplete: true,

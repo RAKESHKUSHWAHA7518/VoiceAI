@@ -1,3 +1,4 @@
+import { workspaceEvals } from '../services/workspace_demos';
 // ============================================================================
 // VoiceAI - Automated Agent Testing & Batch Evals Routes
 // ============================================================================
@@ -12,7 +13,7 @@ const router = Router();
 router.get(
   '/suites',
   asyncHandler(async (req: Request, res: Response) => {
-    const suites = evalEngine.listSuites();
+    const suites = workspaceEvals(req).listSuites();
     res.json({
       success: true,
       suites,
@@ -24,7 +25,7 @@ router.get(
 router.get(
   '/suites/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const suite = evalEngine.getSuite(req.params.id);
+    const suite = workspaceEvals(req).getSuite(req.params.id);
     if (!suite) {
       return res.status(404).json({ success: false, error: 'Test suite not found' });
     }
@@ -36,7 +37,7 @@ router.get(
 router.get(
   '/runs',
   asyncHandler(async (req: Request, res: Response) => {
-    const runs = evalEngine.listRuns();
+    const runs = workspaceEvals(req).listRuns();
     res.json({
       success: true,
       count: runs.length,
@@ -49,7 +50,7 @@ router.get(
 router.get(
   '/runs/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const run = evalEngine.getRun(req.params.id);
+    const run = workspaceEvals(req).getRun(req.params.id);
     if (!run) {
       return res.status(404).json({ success: false, error: 'Run record not found' });
     }
@@ -66,7 +67,7 @@ router.post(
       return res.status(400).json({ success: false, error: 'suite_id is required' });
     }
 
-    const runRecord = await evalEngine.executeEvaluationRun({
+    const runRecord = await workspaceEvals(req).executeEvaluationRun({
       suite_id,
       agent_id: agent_id || 'agent_support',
       agent_name: agent_name || 'Maya',
