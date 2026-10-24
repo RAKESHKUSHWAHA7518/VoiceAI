@@ -1,6 +1,6 @@
 export interface ConversationSession { session_id: string; greeting: string; runtime_mode: 'demo' | 'live'; speech_output: string; recording_enabled?: boolean; token?: string }
 export interface ToolEvent { name: string; status: 'completed' | 'error'; result: string; timestamp: number }
-export interface CompletedTurn { tool_events?: ToolEvent[]; type: 'complete'; turn_id: string; output: string; runtime_mode: string; sources: Array<{ doc_id: string; title: string }>; metrics: { retrieval_ms: number; llm_ttft_ms: number | null; processing_ms: number; audible_latency_ms: null } }
+export interface CompletedTurn { end_call?: boolean; tool_events?: ToolEvent[]; type: 'complete'; turn_id: string; output: string; runtime_mode: string; sources: Array<{ doc_id: string; title: string }>; metrics: { retrieval_ms: number; llm_ttft_ms: number | null; processing_ms: number; audible_latency_ms: null } }
 async function responseError(response: Response) {
   const result = await response.json().catch(() => ({})) as { error?: { message?: string } };
   return new Error(result.error?.message || `Request failed (${response.status})`);

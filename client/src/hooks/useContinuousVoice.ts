@@ -2,7 +2,7 @@ import { DeepgramRecognition, CartesiaSynthesis } from '../utils/cloudSpeech';
 import { useEffect, useRef, useState } from 'react';
 import { ContinuousVoice, type VoiceState } from '../../../shared/continuousVoice';
 
-export function useContinuousVoice(language: string, onText: (text: string) => void, onInterrupt: () => void, cloud?: { sessionId: string; enabled: boolean; token?: string }, options?: { speakerMode?: boolean; silenceMs?: number; onPlayback?: (audio: HTMLAudioElement) => void; onAudioStarted?: () => void }) {
+export function useContinuousVoice(language: string, onText: (text: string) => void, onInterrupt: () => void, cloud?: { sessionId: string; enabled: boolean; token?: string }, options?: { speakerMode?: boolean; silenceMs?: number; onPlayback?: (audio: HTMLAudioElement) => void; onAudioStarted?: () => void; onReplyFinished?: () => void }) {
   const [state, setState] = useState<VoiceState>({ phase: 'idle', active: false, partial: '', error: '' });
   const cloudRef = useRef(cloud); cloudRef.current = cloud;
   const optionsRef = useRef(options); optionsRef.current = options;
@@ -15,7 +15,7 @@ export function useContinuousVoice(language: string, onText: (text: string) => v
     synthesis: { cancel: () => { synthesis.current?.cancel(); window.speechSynthesis?.cancel(); }, speak: speech => { if (cloudRef.current?.enabled) { synthesis.current!.speak(speech); return; } if (!window.speechSynthesis) throw new Error('Unsupported'); window.speechSynthesis.speak(speech); } },
     changed: value => { if (mounted.current) setState(value); },
     text: text => callbacks.current.onText(text), interrupt: () => callbacks.current.onInterrupt(),
-    playbackStarted: () => optionsRef.current?.onAudioStarted?.(),
+    playbackStarted: () => optionsRef.current?.onAudioStarted?.(), playbackFinished: () => optionsRef.current?.onReplyFinished?.(),
   }, language, optionsRef.current);
   useEffect(() => {
     if (controller.current && options?.speakerMode !== undefined) {

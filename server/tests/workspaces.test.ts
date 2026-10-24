@@ -448,3 +448,21 @@ test('registered streaming speech is available before turn completion and reject
   await request(app).delete('/api/conversations/' + opened.session_id).set('Cookie', owner.cookie).expect(200);
  } finally { abort.abort(); await iterator?.return(undefined as never); post.mockRestore(); process.env.VOICEAI_SPEECH_MODE = old.mode; config.apiKeys.cartesia = old.cartesia; }
 });
+
+test('end_call saves its goodbye and tool event before the client closes the session', async () => {
+ const owner = await register('end-call-owner@example.test');
+ const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+ const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({agent_id: agent.id}).expect(201)).body;
+ const base = '/api/conversations/' + opened.session_id;
+ const ordinary = await request(app).post(base + '/turn').set('Cookie', owner.cookie).send({text: 'I am done with the payment'}).expect(200);
+ expect(ordinary.text.trim().split('\n').map((line: string) => JSON.parse(line)).find((event: any) => event.type === 'complete').end_call).toBe(false);
+ const ended = await request(app).post(base + '/turn').set('Cookie', owner.cookie).send({text: 'Please end the call'}).expect(200);
+ const events = ended.text.trim().split('\n').map((line: string) => JSON.parse(line));
+ expect(events.find((event: any) => event.type === 'tool_result')).toMatchObject({name: 'end_call', status: 'completed'});
+ expect(events.find((event: any) => event.type === 'complete')).toMatchObject({end_call: true, output: expect.stringContaining('Goodbye')});
+ expect(findConversation(owner.user.workspace_id, opened.session_id)).toBeDefined();
+ const history = (await request(app).get('/api/conversations/history/' + opened.session_id).set('Cookie', owner.cookie).expect(200)).body.conversation;
+ expect(history.messages.at(-1).text).toContain('Goodbye'); expect(history.tool_events.at(-1).name).toBe('end_call');
+ await request(app).delete(base).set('Cookie', owner.cookie).expect(200);
+ expect(findConversation(owner.user.workspace_id, opened.session_id)).toBeUndefined();
+});

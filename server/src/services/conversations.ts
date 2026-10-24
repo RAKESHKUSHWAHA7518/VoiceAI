@@ -9,6 +9,7 @@ import { cloudinaryReady } from './cloudinary_media';
 import { saveConversationRecord, ConversationRecord } from './conversation_history';
 import logger from '../utils/logger';
 import { SentenceBuffer } from '../../../shared/streamingSpeech';
+import { wantsToEndCall, endCallTool } from '../../../shared/endCall';
 
 export const runtimeMode = () => process.env.VOICEAI_RUNTIME_MODE === 'live' ? 'live' : 'demo';
 interface Conversation {
@@ -74,8 +75,15 @@ export async function* conversationTurn(session: Conversation, text: string, abo
     const retrievalStart = performance.now();
     const sources = ragEngine.search(session.agent.id, text, 2, 0.15, false);
     const retrievalMs = performance.now() - retrievalStart;
-    const availableTools = session.tools_enabled ? conversationTools(session.workspace_id, session.agent) : [];
-    if (mode === 'demo') {
+    const availableTools = [...(session.tools_enabled ? conversationTools(session.workspace_id, session.agent) : []), endCallTool];
+    const ending = wantsToEndCall(text);
+    if (ending) {
+      const event = { name: 'end_call', status: 'completed' as const, result: JSON.stringify(endCallTool.execute()), timestamp: Date.now() };
+      toolEvents.push(event); yield { type: 'tool_result', ...event, turn_id: turnId };
+      output = 'Thank you for speaking with me. Goodbye!';
+      yield { type: 'delta', text: output, turn_id: turnId };
+      for (const event of speechEvents(output)) yield event;
+    } else if (mode === 'demo') {
       const command = text.match(/^\/tool\s+(\S+)\s*(.*)$/s);
       if (command) {
         let result: unknown; let status: 'completed' | 'error' = 'completed';
@@ -119,7 +127,7 @@ export async function* conversationTurn(session: Conversation, text: string, abo
         messages.push({ role: 'assistant', content: roundText || null, tool_calls: requested });
         for (const call of requested) {
           let result: unknown; let status: 'completed' | 'error' = 'completed';
-          try { if (!session.tools_enabled) throw new Error('TOOLS_DISABLED'); result = await executeConversationTool(session.workspace_id, session.agent, call.function.name, call.function.arguments, abort.signal); }
+          try { if (call.function.name === 'end_call') throw new Error('CALLER_END_INTENT_REQUIRED'); if (!session.tools_enabled) throw new Error('TOOLS_DISABLED'); result = await executeConversationTool(session.workspace_id, session.agent, call.function.name, call.function.arguments, abort.signal); }
           catch { if (abort.signal.aborted) throw new Error('TURN_CANCELLED'); status = 'error'; result = { error: 'Tool unavailable or arguments invalid. No external action occurred.' }; }
           const event = { name: call.function.name, status, result: JSON.stringify(result), timestamp: Date.now() };
           toolEvents.push(event); yield { type: 'tool_result', ...event, turn_id: turnId };
@@ -137,7 +145,7 @@ export async function* conversationTurn(session: Conversation, text: string, abo
     }
     session.history = [...session.history, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: output }].slice(-20);
     session.turns++; session.expires_at = Date.now() + MAX_AGE;
-    yield { type: 'complete', turn_id: turnId, output, tool_events: toolEvents, runtime_mode: mode, sources: sources.map(source => ({ doc_id: source.doc_id, title: source.title })), metrics: { retrieval_ms: retrievalMs, llm_ttft_ms: firstToken === null ? null : firstToken - start - retrievalMs, processing_ms: performance.now() - start, audible_latency_ms: null } };
+    yield { type: 'complete', turn_id: turnId, output, end_call: ending, tool_events: toolEvents, runtime_mode: mode, sources: sources.map(source => ({ doc_id: source.doc_id, title: source.title })), metrics: { retrieval_ms: retrievalMs, llm_ttft_ms: firstToken === null ? null : firstToken - start - retrievalMs, processing_ms: performance.now() - start, audible_latency_ms: null } };
   } catch (error) {
     speech.cancelled = true;
     if (session.archive && !(error instanceof Error && error.message === 'HISTORY_SAVE_FAILED')) {

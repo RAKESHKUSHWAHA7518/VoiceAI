@@ -5,6 +5,7 @@ import { openConversation, openDemoConversation, streamTurn, endConversation, ty
 import { useContinuousVoice } from '../../hooks/useContinuousVoice';
 import { useConversationRecording } from '../../hooks/useConversationRecording';
 import { SpeechQueue } from '../../../../shared/streamingSpeech';
+import { EndCallGate } from '../../../../shared/endCall';
 interface Props { isOpen: boolean; onClose: () => void; agent: Agent | null; onRunTest?: (input: string) => Promise<PlaygroundTest | undefined>; onViewAnalytics?: () => void; demo?: boolean; embedded?: boolean }
 export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onViewAnalytics, embedded = false }: Props) {
   const [prepared, setPrepared] = useState(!embedded);
@@ -18,11 +19,15 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   const [firstAudioMs, setFirstAudioMs] = useState<number | null>(null);
   const turnTiming = useRef<{ start: number; text: boolean; audio: boolean }>();
   const speechQueue = useRef<SpeechQueue>();
+  const finishRef = useRef<() => Promise<void>>(async () => {});
+  const finishing = useRef(false);
+  const endGate = useRef<EndCallGate>(); endGate.current ||= new EndCallGate(() => { void finishRef.current(); });
   const sessionRef = useRef<ConversationSession | null>(null); const mounted = useRef(false);
   const generation = useRef(0); const request = useRef<AbortController | null>(null);
   const dialog = useRef<HTMLDivElement>(null); const submitRef = useRef<(text: string) => void>(() => {});
   const [speakerMode, setSpeakerMode] = useState(true);
   const interrupt = () => {
+    endGate.current?.reset();
     generation.current++;
     request.current?.abort();
     request.current = null; speechQueue.current?.cancel(); speechQueue.current = undefined;
@@ -35,7 +40,7 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   };
   const recording = useConversationRecording(session, () => { voiceRef.current.pause(); setPhase('ended'); });
   const recordingRef = useRef(recording); recordingRef.current = recording;
-  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 600, onPlayback: audio => recordingRef.current.attachPlayback(audio), onAudioStarted: () => { const timing = turnTiming.current; if (timing && !timing.audio) { timing.audio = true; setFirstAudioMs(Math.round(performance.now() - timing.start)); } } });
+  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 600, onPlayback: audio => recordingRef.current.attachPlayback(audio), onReplyFinished: () => endGate.current?.playbackFinished(), onAudioStarted: () => { const timing = turnTiming.current; if (timing && !timing.audio) { timing.audio = true; setFirstAudioMs(Math.round(performance.now() - timing.start)); } } });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const stop = () => { voiceRef.current.pause(); interrupt(); };
   const submit = async (text: string) => {
@@ -54,7 +59,7 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
       });
       if (!mounted.current || generation.current !== token) return;
       speechQueue.current?.close();
-      setMessages(previous => [...previous, { role: 'assistant', text: result.output }]); setPartial(''); setElapsed(Math.round(performance.now() - start)); setPhase('ready'); if (!streamedSpeech) voiceRef.current.speak(result.output);
+      setMessages(previous => [...previous, { role: 'assistant', text: result.output }]); setPartial(''); setElapsed(Math.round(performance.now() - start)); setPhase('ready'); if (!streamedSpeech) voiceRef.current.speak(result.output); if (result.end_call) endGate.current?.request();
     } catch (err) { if (mounted.current && generation.current === token) { speechQueue.current?.cancel(); voiceRef.current.cancelReply(); setPhase('ready'); setPartial(''); setError(err instanceof Error ? err.message : 'Could not complete the message.'); voiceRef.current.recover(); } }
     finally { if (request.current === controller) request.current = null; }
   };
@@ -72,7 +77,8 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   }, [isOpen, agent?.id, demo, restart, prepared]);
   if (!isOpen || !agent) return null;
   const micClick = async () => { setError(''); if (!prepared) { setPrepared(true); return; } try { if (voice.active) { voice.pause(); recording.pause(); } else { if (!await recording.start()) return; if (mounted.current) voice.start(messages.length <= 1 ? session?.greeting : undefined); } } catch (err) { setError(err instanceof Error ? err.message : 'Microphone could not start.'); } };
-  const finishConversation = async () => { stop(); setPhase('ended'); try { await recording.finish(); if (sessionRef.current) { await endConversation(sessionRef.current.session_id, sessionRef.current.token); sessionRef.current = null; } } catch {} };
+  const finishConversation = async () => { if (finishing.current) return; finishing.current = true; stop(); setPhase('ended'); try { await recording.finish(); if (sessionRef.current) { await endConversation(sessionRef.current.session_id, sessionRef.current.token); sessionRef.current = null; } } catch { setError('Could not save and end the conversation. Retry saving, then click End conversation.'); setPhase('ready'); } finally { finishing.current = false; } };
+  finishRef.current = finishConversation;
   const requestClose = async () => { stop(); try { await recording.finish(); onClose(); } catch { setError('Recording could not be saved. Retry saving before closing.'); } };
   const status = !prepared ? 'Connect a test, then start the microphone' : phase === 'ended' ? 'Conversation ended' : voice.phase === 'starting' ? 'Connecting microphone…' : voice.phase === 'listening' ? 'Listening — speak naturally' : voice.phase === 'thinking' ? 'Preparing your answer…' : voice.phase === 'speaking' ? agent.name + (speakerMode ? ' is speaking' : ' is speaking — you can interrupt') : voice.phase === 'error' ? 'Conversation needs attention' : 'Start once, then speak naturally';
   return <div className={embedded ? 'agent-call-inline' : 'modal-overlay workflow-overlay'}><div className="voice-test-shell" role={embedded ? undefined : 'dialog'} aria-modal={embedded ? undefined : true} aria-labelledby="voice-test-title" ref={dialog} onKeyDown={event => {
@@ -103,6 +109,6 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
       {(firstTextMs !== null || firstAudioMs !== null || elapsed !== null) && <small className="voice-timing">{firstTextMs !== null && <>First text {firstTextMs} ms · </>}{firstAudioMs !== null && <>First audio {firstAudioMs} ms · </>}{elapsed !== null && <>Answer complete {elapsed} ms · </>}Measured from turn submission; excludes speech recognition.</small>}
     </section></div>
     {session?.recording_enabled && <p role="status" style={{ padding: '0 24px' }}>{recording.status === 'recording' ? '🔴 Recording both voices' : recording.status === 'saving' ? 'Saving recording… keep this window open' : recording.status === 'saved' ? 'Recording saved to History' : recording.status === 'paused' ? 'Recording paused' : 'Recording available when you start the microphone'}{recording.error && <span role="alert"> · {recording.error} <button className="btn btn-secondary" onClick={() => void recording.finish().catch(() => {})}>Retry saving</button></span>}</p>}
-    <footer className="workflow-footer"><p>{session?.speech_output === 'cloud' ? 'Live audio goes to Deepgram; reply text goes to Cartesia. Uses provider credits. ' : ''}{!prepared ? 'Connect the test to load voice and recording availability. ' : session?.recording_enabled ? 'Starting the microphone records your voice and the AI voice for your private conversation history (up to five minutes).' : 'Audio is not stored for browser-only voice.'}{demo ? ' Sign in to save your own conversations.' : ' Your transcript is private to your workspace.'}</p><div>{embedded && prepared && <button className="btn btn-primary" disabled={recording.status === 'saving'} onClick={async () => { try { stop(); setPhase('ended'); await recording.finish(); setRestart(value => value + 1); } catch {} }}>New test</button>}{onViewAnalytics && !demo && <button className="btn btn-secondary" onClick={onViewAnalytics}>View history</button>}<button className="btn btn-danger" disabled={!session || recording.status === 'saving' || phase === 'ended'} onClick={() => void finishConversation()}>End conversation</button></div></footer>
+    <footer className="workflow-footer"><p>{session?.speech_output === 'cloud' ? 'Live audio goes to Deepgram; reply text goes to Cartesia. Uses provider credits. ' : ''}{!prepared ? 'Connect the test to load voice and recording availability. ' : session?.recording_enabled ? 'Starting the microphone records your voice and the AI voice for your private conversation history (up to five minutes).' : 'Audio is not stored for browser-only voice.'}{demo ? ' Sign in to save your own conversations.' : ' Your transcript is private to your workspace.'}</p><div>{embedded && prepared && <button className="btn btn-primary" disabled={recording.status === 'saving'} onClick={async () => { try { stop(); setPhase('ended'); await recording.finish(); setRestart(value => value + 1); } catch {} }}>New test</button>}{!embedded && phase === 'ended' && <button className="btn btn-primary" disabled={recording.status === 'saving'} onClick={() => setRestart(value => value + 1)}>Start new conversation</button>}{onViewAnalytics && !demo && <button className="btn btn-secondary" onClick={onViewAnalytics}>View history</button>}<button className="btn btn-danger" disabled={!session || recording.status === 'saving' || phase === 'ended'} onClick={() => void finishConversation()}>End conversation</button></div></footer>
   </div></div>;
 }

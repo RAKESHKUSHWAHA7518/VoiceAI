@@ -9,6 +9,7 @@ export interface VoiceDependencies {
   text: (text: string) => void;
   interrupt: () => void;
   playbackStarted?: () => void;
+  playbackFinished?: () => void;
 }
 export interface VoiceOptions { silenceMs?: number; speakerMode?: boolean }
 export class ContinuousVoice {
@@ -143,7 +144,7 @@ export class ContinuousVoice {
     }
     speech.onstart = () => { if (token === this.playback) { this.update({ phase: 'speaking' }); this.deps.playbackStarted?.(); } };
     const done = () => { if (token !== this.playback || this.speech !== speech) return; clearTimeout(this.watchdog); this.speech = null; this.echoUntil = Date.now() + 800; this.update({ phase: this.state.active ? 'listening' : 'idle' }); };
-    speech.onend = done;
+    speech.onend = () => { if (token !== this.playback || this.speech !== speech) return; done(); this.deps.playbackFinished?.(); };
     speech.onerror = (event: any) => { if (token === this.playback) this.fail(event?.message || 'Voice playback failed. Check your audio output, then resume.'); };
     this.update({ phase: segments ? 'thinking' : 'speaking' });
     try { this.deps.synthesis.speak(speech); this.watchdog = setTimeout(() => { if (token === this.playback) this.fail('Voice playback timed out. Resume to try again.'); }, segments ? 150000 : Math.max(15000, text.length * 150)); }

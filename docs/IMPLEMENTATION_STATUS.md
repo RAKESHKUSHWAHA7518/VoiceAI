@@ -217,3 +217,9 @@ Live URL: https://voiceai-demo-swi9.onrender.com . Render Free Docker service sr
 Implemented provider end-of-speech forwarding, shorter fallback endpointing, 100ms microphone packets, server-authorized incremental speech sentences and bounded next-sentence prefetch. Removed the late interrupt-request race and scoped disconnect cancellation to its own turn. Added transient-noise suppression and distinct timeout errors. Private tester shows first-text/first-audio/completion timings from submission. Targeted regression suite: 42 tests passed; frontend/backend builds passed. This is sentence-level playback, not PCM-level streaming; no measured end-to-end latency target is claimed. See docs/VOICE_LATENCY.md.
 
 Additional stream-parser/provider checks passed (47 targeted tests total). Two real Chrome typed-input tests reached audible playback: first-audio timings were 9781ms and 4668ms; no end-to-end latency improvement percentage is claimed. Microphone/noise acceptance remains pending. Model first-text delay was the largest measured component.
+
+Voice iteration deployed as commit 4172b58 to https://voiceai-demo-swi9.onrender.com on 24 October 2026. Render reports successful live deployment. Final HTTPS liveness/readiness returned 200 with database ok; /history and /agents/new served HTML, and unauthenticated /api/auth/me remained 401. Hosted microphone acceptance is still pending.
+
+## End-call control — local only, 24 October 2026
+
+Added validated end_call intent, persisted tool event, goodbye playback completion gate and automatic recording-save/session-close flow in tester and website widget. Ambiguous task completion and negation do not end sessions. Save failures offer retry. 65 targeted tests pass; local Chrome confirmed automatic end after real goodbye playback. No push or deployment performed, per user instruction. See docs/END_CALL.md.
