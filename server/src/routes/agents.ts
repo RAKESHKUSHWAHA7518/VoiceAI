@@ -152,10 +152,11 @@ router.post('/:agentId/publish', asyncHandler(async (req: Request, res: Response
   if (!workspaceId(req)) return res.status(401).json({ success: false, error: { message: 'Sign in first' } });
   res.status(201).json({ success: true, version: await publishAgent(getAgentById(req.params.agentId)!, workspaceId(req)!) });
 }));
-router.get('/:agentId/deployments', (req, res) => res.json({ success: true, ...listAgentDeployments(req.params.agentId, workspaceId(req)!) }));
+router.get('/:agentId/deployments', (req, res) => res.json({ success: true, public_live_enabled: process.env.VOICEAI_PUBLIC_LIVE === 'true', ...listAgentDeployments(req.params.agentId, workspaceId(req)!) }));
 router.post('/:agentId/deployments', asyncHandler(async (req: Request, res: Response) => {
   try { res.status(201).json({ success: true, deployment: await createDeployment(req.params.agentId, workspaceId(req)!, req.body) }); }
   catch (error) {
+    if (error instanceof Error && error.message === 'PUBLIC_LIVE_DISABLED') return res.status(409).json({ success: false, error: { message: 'Public live AI is disabled on this server. Publish a demo preview, or explicitly enable public live access on the server.' } });
     if (error instanceof Error && error.message === 'INVALID_ORIGIN') return res.status(400).json({ success: false, error: { message: 'Use a full HTTPS origin with no path, such as https://example.com. HTTP is allowed only for localhost.' } });
     if (error instanceof Error && error.message === 'VERSION_NOT_FOUND') return res.status(404).json({ success: false, error: { message: 'Published version not found' } });
     throw error;

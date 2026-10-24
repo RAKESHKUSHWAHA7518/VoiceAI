@@ -1,3 +1,4 @@
+import { speechSegments } from '../../../shared/speechSegments';
 // Provider keys never leave the backend. The websocket ticket is single-use and session-bound.
 export class DeepgramRecognition {
  startupTimeout = 30000; connectionLabel = 'Microphone connected to Deepgram';
@@ -49,45 +50,31 @@ export class DeepgramRecognition {
 }
 export class CartesiaSynthesis {
  private request?: AbortController; private audio?: HTMLAudioElement; private url?: string; private generation = 0;
+ private releasePlayback?: () => void;
  constructor(private sessionId: () => string) {}
- cancel() { this.generation++; this.request?.abort(); this.audio?.pause(); this.audio = undefined; if (this.url) URL.revokeObjectURL(this.url); this.url = undefined; }
+ cancel() { this.generation++; this.request?.abort(); this.audio?.pause(); this.audio = undefined; this.releasePlayback?.(); this.releasePlayback = undefined; if (this.url) URL.revokeObjectURL(this.url); this.url = undefined; }
  speak(speech: SpeechSynthesisUtterance) {
   this.cancel(); const generation = this.generation; const request = new AbortController(); this.request = request;
   void (async () => {
    try {
-    const response = await fetch('/api/conversations/' + this.sessionId() + '/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: speech.text }), signal: request.signal });
-    if (!response.ok) { const error = await response.json(); throw new Error(error.error?.message || 'Cartesia voice failed.'); }
-    const blob = await response.blob(); if (generation !== this.generation) return;
-    this.url = URL.createObjectURL(blob); const audio = new Audio(this.url); this.audio = audio;
-    audio.onended = () => { if (generation === this.generation) { this.cancel(); speech.onend?.(new Event('end') as SpeechSynthesisEvent); } };
-    audio.onerror = () => {
-      if (generation === this.generation) {
-        this.cancel();
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          try {
-            window.speechSynthesis.cancel();
-            speech.onend = () => { if (generation === this.generation) this.cancel(); };
-            window.speechSynthesis.speak(speech);
-            return;
-          } catch {}
-        }
-        speech.onerror?.(new Event('error') as SpeechSynthesisErrorEvent);
-      }
-    };
-    await audio.play();
-   } catch {
-     if (generation === this.generation && !request.signal.aborted) {
-       this.cancel();
-       if (typeof window !== 'undefined' && window.speechSynthesis) {
-         try {
-           window.speechSynthesis.cancel();
-           speech.onend = () => { if (generation === this.generation) this.cancel(); };
-           window.speechSynthesis.speak(speech);
-           return;
-         } catch {}
-       }
-       speech.onerror?.(new Event('error') as SpeechSynthesisErrorEvent);
-     }
+    const chunks = speechSegments(speech.text);
+    for (let index = 0; index < chunks.length; index++) {
+     if (generation !== this.generation) return;
+     const response = await fetch('/api/conversations/' + this.sessionId() + '/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: speech.text, chunk_index: index }), signal: request.signal });
+     if (!response.ok) { const error = await response.json(); throw new Error(error.error?.message || 'Cartesia voice failed.'); }
+     const blob = await response.blob(); if (generation !== this.generation) return;
+     this.url = URL.createObjectURL(blob); const audio = new Audio(this.url); this.audio = audio;
+     await new Promise<void>((resolve, reject) => {
+      this.releasePlayback = resolve; audio.onended = () => resolve(); audio.onerror = () => reject(new Error('Audio playback failed. Check the browser sound setting.'));
+      audio.play().catch(reject);
+     });
+     if (generation !== this.generation) return;
+     this.releasePlayback = undefined; audio.onended = audio.onerror = null; this.audio = undefined;
+     URL.revokeObjectURL(this.url); this.url = undefined;
+    }
+    if (generation === this.generation) { this.cancel(); speech.onend?.(new Event('end') as SpeechSynthesisEvent); }
+   } catch (error) {
+    if (generation === this.generation && !request.signal.aborted) { this.cancel(); speech.onerror?.({ message: error instanceof Error ? error.message : 'Voice playback failed.' } as unknown as SpeechSynthesisErrorEvent); }
    }
   })();
  }

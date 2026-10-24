@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AgentRecord } from '../models/agent.model';
-import { getAllToolsMap, fetchLiveWeather } from './tools';
+import { createDemoTools, fetchLiveWeather } from './tools';
 
 interface Fixture { id: string; workspace_id: string; kind: string; name: string; value: string; notes: string }
 let fixtures: () => Fixture[] = () => [];
@@ -9,7 +9,8 @@ export function registerConversationFixtures(read: () => Fixture[]) { fixtures =
 export interface ConversationTool { name: string; description: string; parameters: any; execute: (args: any) => unknown }
 
 export function conversationTools(workspace: string, agent: AgentRecord): ConversationTool[] {
-  const allTools = getAllToolsMap();
+  // Only explicitly supported built-ins and workspace-owned fixtures are exposed.
+  const allTools = createDemoTools();
   const tools: ConversationTool[] = [...allTools.values()].map(tool => ({
     name: tool.name,
     description: tool.name === 'get_weather'
@@ -57,10 +58,7 @@ export function conversationTools(workspace: string, agent: AgentRecord): Conver
           return { mode: 'mock', external_request: false, result: tool.mock_response, arguments: args };
         }
       }
-      if (typeof tool.handler === 'function' && process.env.NODE_ENV !== 'test') {
-        return tool.handler(args);
-      }
-      return { mode: 'simulation', external_request: false, tool: tool.name, arguments: args, result: { status: 'simulated-only' }, message: 'Local demonstration only. No live weather lookup, booking, notification or transfer occurred.' };
+return { mode: 'simulation', external_request: false, tool: tool.name, arguments: args, result: { status: 'simulated-only' }, message: 'Local demonstration only. No live weather lookup, booking, notification or transfer occurred.' };
     }
   }));
 

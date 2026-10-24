@@ -124,7 +124,7 @@ export class ContinuousVoice {
     const token = this.playback; const speech = this.deps.utterance(text); this.speech = speech; speech.lang = this.language;
     const done = () => { if (token !== this.playback || this.speech !== speech) return; clearTimeout(this.watchdog); this.speech = null; this.echoUntil = Date.now() + 800; this.update({ phase: this.state.active ? 'listening' : 'idle' }); };
     speech.onend = done;
-    speech.onerror = () => { if (token === this.playback) this.fail('Voice playback failed. Check your audio output, then resume.'); };
+    speech.onerror = (event: any) => { if (token === this.playback) this.fail(event?.message || 'Voice playback failed. Check your audio output, then resume.'); };
     this.update({ phase: 'speaking' });
     try { this.deps.synthesis.speak(speech); this.watchdog = setTimeout(() => { if (token === this.playback) this.fail('Voice playback timed out. Resume to try again.'); }, Math.max(15000, text.length * 150)); }
     catch { this.fail('Voice playback is unavailable in this browser.'); }

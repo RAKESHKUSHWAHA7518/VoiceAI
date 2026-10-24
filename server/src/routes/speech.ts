@@ -1,3 +1,4 @@
+import { speechSegments } from '../../../shared/speechSegments';
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import axios from 'axios';
@@ -35,13 +36,16 @@ router.post('/:id/speak', asyncHandler(async (req: Request, res: Response) => {
  if (!session) return res.status(404).json({ error: { message: 'Conversation not found.' } });
  if (process.env.VOICEAI_SPEECH_MODE !== 'cloud' || !config.apiKeys.cartesia) return res.status(503).json({ error: { message: 'Cartesia speech is not configured.' } });
  const text = req.body.text;
- if (typeof text !== 'string' || !text.trim() || text.length > 2000 || !(text === session.agent.greeting || session.history.some(message => message.role === 'assistant' && message.content === text))) return res.status(400).json({ error: { message: 'Only a saved conversation reply or greeting of at most 2000 characters can be spoken.' } });
+ if (typeof text !== 'string' || !text.trim() || text.length > 10000 || !(text === session.agent.greeting || session.history.some(message => message.role === 'assistant' && message.content === text))) return res.status(400).json({ error: { message: 'Only a saved conversation reply or greeting of at most 10000 characters can be spoken.' } });
  const limits = budget(workspace);
- if (limits.speaking || limits.chars + text.length > 6000) return res.status(429).json({ error: { message: 'Voice generation limit reached. Please retry later.' } });
- limits.chars += text.length; limits.speaking = true;
+ const chunks = speechSegments(text); const index = req.body.chunk_index ?? 0;
+ if (!Number.isInteger(index) || index < 0 || index >= chunks.length) return res.status(400).json({ error: { message: 'Invalid speech segment.' } });
+ const spokenText = chunks[index];
+ if (limits.speaking || limits.chars + spokenText.length > 6000) return res.status(429).json({ error: { message: 'Voice generation limit reached. Please retry later.' } });
+ limits.chars += spokenText.length; limits.speaking = true;
  const abort = new AbortController(); const cancel = () => { if (!res.writableEnded) abort.abort(); }; res.on('close', cancel);
  try {
-  const result = await axios.post('https://api.cartesia.ai/tts/bytes', { model_id: process.env.CARTESIA_MODEL || 'sonic-3.6', transcript: text, voice: session.agent.voice_id, language: session.agent.default_language || 'en', output_format: { container: 'wav', encoding: 'pcm_s16le', sample_rate: 24000 } }, { headers: { Authorization: 'Bearer ' + config.apiKeys.cartesia, 'Cartesia-Version': '2026-08-14' }, responseType: 'arraybuffer', maxContentLength: 4000000, timeout: 20000, signal: abort.signal });
+  const result = await axios.post('https://api.cartesia.ai/tts/bytes', { model_id: process.env.CARTESIA_MODEL || 'sonic-3.6', transcript: spokenText, voice: session.agent.voice_id, language: session.agent.default_language || 'en', output_format: { container: 'wav', encoding: 'pcm_s16le', sample_rate: 24000 } }, { headers: { Authorization: 'Bearer ' + config.apiKeys.cartesia, 'Cartesia-Version': '2026-08-14' }, responseType: 'arraybuffer', maxContentLength: 4000000, timeout: 20000, signal: abort.signal });
   res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }).send(Buffer.from(result.data));
  } catch { if (!res.destroyed) res.status(502).json({ error: { message: 'Cartesia could not generate this voice. Check the selected Cartesia voice, credits and connection.' } }); }
  finally { limits.speaking = false; res.off('close', cancel); }

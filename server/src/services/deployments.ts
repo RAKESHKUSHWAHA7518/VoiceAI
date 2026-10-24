@@ -10,7 +10,7 @@ import { EventEmitter } from 'events';
 export const deploymentEvents = new EventEmitter();
 
 const versionSchema = z.object({ id: z.string(), agent_id: z.string(), workspace_id: z.string(), created_at: z.number(), snapshot: agentSchema });
-const deploymentSchema = z.object({ id: z.string(), agent_id: z.string(), workspace_id: z.string(), version_id: z.string(), allowed_origins: z.array(z.string()).min(1).max(10), active: z.boolean(), created_at: z.number() });
+const deploymentSchema = z.object({ id: z.string(), agent_id: z.string(), workspace_id: z.string(), version_id: z.string(), runtime_mode: z.enum(['demo', 'live']).optional(), allowed_origins: z.array(z.string()).min(1).max(10), active: z.boolean(), created_at: z.number() });
 type Version = z.infer<typeof versionSchema>;
 type Deployment = z.infer<typeof deploymentSchema>;
 const versionFile = dataPath('agent_versions.json');
@@ -33,7 +33,7 @@ export function publishAgent(agent: AgentRecord, workspace: string) {
 }
 export function listAgentDeployments(agent: string, workspace: string) { return { versions: versions.filter(version => version.agent_id === agent && version.workspace_id === workspace), deployments: deployments.filter(value => value.agent_id === agent && value.workspace_id === workspace) }; }
 export function createDeployment(agent: string, workspace: string, input: unknown) {
-  const data = z.object({ version_id: z.string(), allowed_origins: z.array(z.string().url()).min(1).max(10) }).parse(input);
+  const data = z.object({ version_id: z.string(), runtime_mode: z.enum(['demo', 'live']).default('demo'), allowed_origins: z.array(z.string().url()).min(1).max(10) }).parse(input);
   const origins = data.allowed_origins.map(value => {
     const url = new URL(value);
     if (url.username || url.password || url.pathname !== '/' || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) throw new Error('INVALID_ORIGIN');
@@ -41,7 +41,8 @@ export function createDeployment(agent: string, workspace: string, input: unknow
   });
   return edit(async () => {
     if (!versions.some(version => version.id === data.version_id && version.agent_id === agent && version.workspace_id === workspace)) throw new Error('VERSION_NOT_FOUND');
-    const deployment: Deployment = { id: crypto.randomUUID(), agent_id: agent, workspace_id: workspace, version_id: data.version_id, allowed_origins: [...new Set(origins)], active: true, created_at: Date.now() };
+    if (data.runtime_mode === 'live' && process.env.VOICEAI_PUBLIC_LIVE !== 'true') throw new Error('PUBLIC_LIVE_DISABLED');
+    const deployment: Deployment = { id: crypto.randomUUID(), agent_id: agent, workspace_id: workspace, version_id: data.version_id, runtime_mode: data.runtime_mode, allowed_origins: [...new Set(origins)], active: true, created_at: Date.now() };
     deployments.push(deployment);
     try { await deploymentStore.save(); return structuredClone(deployment); } catch (error) { deployments = deployments.filter(value => value.id !== deployment.id); throw error; }
   });

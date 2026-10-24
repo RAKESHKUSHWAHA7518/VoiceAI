@@ -20,6 +20,8 @@ import { platformAccess } from '../src/middleware/platformAccess';
 import { errorHandler } from '../src/middleware/errorHandler';
 import { accountForToken } from '../src/services/accounts';
 import conversations from '../src/routes/conversations';
+import { findConversation } from '../src/services/conversations';
+import { speechSegments } from '../../shared/speechSegments';
 import speechRoutes from '../src/routes/speech';
 import publicRoutes from '../src/routes/public';
 import workspaceTools, { privatePhoneRouter, privateCalendarRouter } from '../src/routes/workspace_tools';
@@ -261,4 +263,46 @@ test('cloud speech stays private, validates reply text and never returns provide
   await request(app).post('/api/conversations/' + session.session_id + '/speak').set('Cookie', other.cookie).send({ text: agent.greeting }).expect(404);
   await request(app).delete('/api/conversations/' + session.session_id).set('Cookie', owner.cookie).expect(200);
  } finally { post.mockRestore(); process.env.VOICEAI_SPEECH_MODE = old.mode || 'browser'; config.apiKeys.deepgram = old.deepgram; config.apiKeys.cartesia = old.cartesia; }
+});
+
+test('demo widgets work independently of private live mode; live publishing remains opt-in', async () => {
+ const owner = await register('widget-mode-owner@example.test'); const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+ const before = { runtime: process.env.VOICEAI_RUNTIME_MODE, public: process.env.VOICEAI_PUBLIC_LIVE };
+ process.env.VOICEAI_RUNTIME_MODE = 'live'; process.env.VOICEAI_PUBLIC_LIVE = 'false';
+ try {
+  const version = (await request(app).post('/api/agents/' + agent.id + '/publish').set('Cookie', owner.cookie).expect(201)).body.version;
+  const input = { version_id: version.id, allowed_origins: ['https://widget.example'] };
+  await request(app).post('/api/agents/' + agent.id + '/deployments').set('Cookie', owner.cookie).send({ ...input, runtime_mode: 'live' }).expect(409);
+  const deployment = (await request(app).post('/api/agents/' + agent.id + '/deployments').set('Cookie', owner.cookie).send(input).expect(201)).body.deployment;
+  expect(deployment.runtime_mode).toBe('demo');
+  const session = (await request(app).post('/api/public/deployments/' + deployment.id + '/sessions').set('Origin', 'https://widget.example').expect(201)).body;
+  expect(session.runtime_mode).toBe('demo');
+  const turn = await request(app).post('/api/public/sessions/' + session.session_id + '/turn').set('Authorization', 'Bearer ' + session.token).send({ text: 'Hello' }).expect(200);
+  expect(turn.text).toContain('"runtime_mode":"demo"');
+  process.env.VOICEAI_PUBLIC_LIVE = 'true';
+  const live = (await request(app).post('/api/agents/' + agent.id + '/deployments').set('Cookie', owner.cookie).send({ ...input, runtime_mode: 'live' }).expect(201)).body.deployment;
+  const liveSession = (await request(app).post('/api/public/deployments/' + live.id + '/sessions').set('Origin', 'https://widget.example').expect(201)).body;
+  expect(liveSession.runtime_mode).toBe('live');
+  process.env.VOICEAI_PUBLIC_LIVE = 'false';
+  await request(app).post('/api/public/sessions/' + liveSession.session_id + '/turn').set('Authorization', 'Bearer ' + liveSession.token).send({ text: 'Hello' }).expect(503);
+  process.env.VOICEAI_PUBLIC_LIVE = 'true';
+  await request(app).delete('/api/public/sessions/' + liveSession.session_id).set('Authorization', 'Bearer ' + liveSession.token).expect(200);
+  process.env.VOICEAI_PUBLIC_LIVE = 'false';
+  await request(app).delete('/api/public/sessions/' + session.session_id).set('Authorization', 'Bearer ' + session.token).expect(200);
+ } finally { process.env.VOICEAI_RUNTIME_MODE = before.runtime || 'demo'; process.env.VOICEAI_PUBLIC_LIVE = before.public || 'false'; }
+});
+test('saved replies above 2000 characters can be spoken in authorized bounded segments', async () => {
+ const owner = await register('speech-chunks-owner@example.test'); const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+ const config = require('../src/config').default; const before = { mode: process.env.VOICEAI_SPEECH_MODE, cartesia: config.apiKeys.cartesia };
+ process.env.VOICEAI_SPEECH_MODE = 'cloud'; config.apiKeys.cartesia = 'fake';
+ const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: Buffer.from('RIFF-audio') });
+ try {
+  const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({ agent_id: agent.id }).expect(201)).body;
+  const text = 'A longer spoken reply. '.repeat(140); findConversation(owner.user.workspace_id, opened.session_id)!.history.push({ role: 'assistant', content: text });
+  const chunks = speechSegments(text);
+  for (let index = 0; index < chunks.length; index++) await request(app).post('/api/conversations/' + opened.session_id + '/speak').set('Cookie', owner.cookie).send({ text, chunk_index: index }).expect(200);
+  expect(post.mock.calls.map(call => (call[1] as any).transcript)).toEqual(chunks);
+  await request(app).post('/api/conversations/' + opened.session_id + '/speak').set('Cookie', owner.cookie).send({ text, chunk_index: 999 }).expect(400);
+  await request(app).delete('/api/conversations/' + opened.session_id).set('Cookie', owner.cookie).expect(200);
+ } finally { post.mockRestore(); process.env.VOICEAI_SPEECH_MODE = before.mode || 'browser'; config.apiKeys.cartesia = before.cartesia; }
 });

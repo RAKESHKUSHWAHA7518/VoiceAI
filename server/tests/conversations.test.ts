@@ -1,3 +1,4 @@
+import * as toolRunner from '../src/services/conversation_tools';
 import { createConversation, findConversation, closeConversation, interruptConversation, conversationTurn } from '../src/services/conversations';
 import config from '../src/config';
 const mockStream = jest.fn();
@@ -95,4 +96,17 @@ test('a public live session refuses unsolicited model tool calls', async () => {
  const events = await run(findConversation('public-live', opened.session_id), 'test');
  expect(events.at(-1).tool_events[0].status).toBe('error');
  closeConversation('public-live', opened.session_id);
+});
+
+test('provider failure discards buffered tool calls without retrying or switching providers', async () => {
+ process.env.VOICEAI_RUNTIME_MODE = 'live'; config.apiKeys.openai = 'test-only'; config.apiKeys.gemini = 'other-provider-key';
+ const execute = jest.spyOn(toolRunner, 'executeConversationTool');
+ const beforeRequests = mockStream.mock.calls.length; const beforeConstructors = mockConstructor.mock.calls.length;
+ mockStream.mockImplementation(async function* () { yield { isToolCall: true, toolCallId: 'pending', toolName: 'check_booking', toolArgs: '{"booking_id":"DEMO"}' }; throw new Error('PROVIDER_ERROR'); });
+ const opened = createConversation('failed-tools', { ...agent, assigned_tools: ['check_booking'] }, { enableTools: true });
+ try {
+  await expect(run(findConversation('failed-tools', opened.session_id), 'Check booking')).rejects.toThrow('PROVIDER_ERROR');
+  expect(execute).not.toHaveBeenCalled(); expect(mockStream.mock.calls.length - beforeRequests).toBe(1); expect(mockConstructor.mock.calls.length - beforeConstructors).toBe(1);
+  expect(findConversation('failed-tools', opened.session_id)!.history).toEqual([]);
+ } finally { execute.mockRestore(); closeConversation('failed-tools', opened.session_id); }
 });

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { resolveDeployment, deploymentEvents } from '../services/deployments';
-import { createConversation, closeConversation, interruptConversation, runtimeMode } from '../services/conversations';
+import { createConversation, closeConversation, interruptConversation } from '../services/conversations';
 import { turnHandler } from './conversations';
 import { rateLimiter } from '../middleware/rateLimiter';
 
@@ -25,18 +25,18 @@ deploymentEvents.on('disabled', (deployment: string) => {
 });
 router.use(rateLimiter({ prefix: 'widget', windowMs: 60000, maxRequests: 60 }));
 router.post('/deployments/:id/sessions', rateLimiter({ prefix: 'widget-start', windowMs: 60000, maxRequests: 10 }), (req, res) => {
-  if (runtimeMode() === 'live' && process.env.VOICEAI_PUBLIC_LIVE !== 'true') return res.status(503).json({ success: false, error: { message: 'Public live conversations are disabled. Use the signed-in playground or demo mode.' } });
   for (const [id, guest] of guests) if (guest.expires < Date.now()) { closeConversation(guest.workspace, id); guests.delete(id); }
   const origin = req.get('origin');
   if (!origin || origin === 'null') return res.status(403).json({ success: false, error: { message: 'Open this widget from an allowed website.' } });
   const resolved = resolveDeployment(req.params.id, origin);
   if (!resolved) return res.status(403).json({ success: false, error: { message: 'This website is not allowed or the widget was disabled.' } });
+  if (resolved.deployment.runtime_mode === 'live' && process.env.VOICEAI_PUBLIC_LIVE !== 'true') return res.status(503).json({ success: false, error: { message: 'Public live AI is disabled. Ask the owner for a demo preview or use the signed-in playground.' } });
   const day = new Date().toISOString().slice(0, 10);
   for (const key of dailyStarts.keys()) if (!key.endsWith(day)) dailyStarts.delete(key);
   const key = `${req.params.id}:${day}`;
   if ((dailyStarts.get(key) || 0) >= 20) return res.status(429).json({ success: false, error: { message: 'This demo widget has reached its daily session limit.' } });
   try {
-    const session = createConversation(resolved.deployment.workspace_id, resolved.version.snapshot);
+    const session = createConversation(resolved.deployment.workspace_id, resolved.version.snapshot, { mode: resolved.deployment.runtime_mode || 'demo' });
     const token = crypto.randomBytes(32).toString('hex');
     guests.set(session.session_id, { hash: hash(token), expires: Date.now() + 10 * 60000, workspace: resolved.deployment.workspace_id, deployment: req.params.id, turns: 0 });
     dailyStarts.set(key, (dailyStarts.get(key) || 0) + 1);
@@ -48,6 +48,7 @@ function guestAccess(req: Request, res: Response, next: NextFunction) {
   const guest = guests.get(req.params.id);
   const token = req.get('authorization')?.replace(/^Bearer /, '');
   if (!guest || guest.expires < Date.now() || !token || token.length !== 64 || !crypto.timingSafeEqual(Buffer.from(hash(token)), Buffer.from(guest.hash)) || (guest.deployment !== 'demo' && !resolveDeployment(guest.deployment))) return res.status(401).json({ success: false, error: { message: 'Widget session expired or unavailable.' } });
+  if (guest.deployment !== 'demo' && resolveDeployment(guest.deployment)?.deployment.runtime_mode === 'live' && process.env.VOICEAI_PUBLIC_LIVE !== 'true') return res.status(503).json({ error: { message: 'Public live AI is disabled on this server.' } });
   (req as any).user = { workspaceId: guest.workspace, roles: [] };
   if (req.path.endsWith('/turn')) {
     if (guest.turns >= 10) return res.status(429).json({ success: false, error: { message: 'This preview is limited to ten messages.' } });

@@ -1,3 +1,4 @@
+const registry = require('../src/services/tools');
 import { conversationTools, executeConversationTool, registerConversationFixtures } from '../src/services/conversation_tools';
 const agent: any = { assigned_tools: ['check_booking'] };
 const signal = new AbortController().signal;
@@ -20,4 +21,15 @@ test('private fixtures cannot be resolved across workspaces or after deletion', 
 test('cancelled calls never execute', () => {
  const abort = new AbortController(); abort.abort();
  expect(() => executeConversationTool('a', agent, 'check_booking', '{"booking_id":"a"}', abort.signal)).toThrow('TURN_CANCELLED');
+});
+
+test('production conversations never execute legacy booking or transfer handlers', () => {
+ const previous = process.env.NODE_ENV; process.env.NODE_ENV = 'production';
+ const handler = jest.fn(() => { throw new Error('Legacy side effect must not run'); });
+ const registrySpy = jest.spyOn(registry, 'createDemoTools').mockReturnValue(new Map(['book_appointment', 'transfer_call'].map(name => [name, { name, description: 'legacy action', parameters: { type: 'object', properties: {} }, handler }])));
+ try {
+  const selected: any = { assigned_tools: ['book_appointment', 'transfer_call'] };
+  for (const name of selected.assigned_tools) expect(executeConversationTool('a', selected, name, '{}', signal)).toMatchObject({ mode: 'simulation', external_request: false });
+  expect(handler).not.toHaveBeenCalled();
+ } finally { registrySpy.mockRestore(); process.env.NODE_ENV = previous; }
 });
