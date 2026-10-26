@@ -223,3 +223,9 @@ Voice iteration deployed as commit 4172b58 to https://voiceai-demo-swi9.onrender
 ## End-call control — local only, 24 October 2026
 
 Added validated end_call intent, persisted tool event, goodbye playback completion gate and automatic recording-save/session-close flow in tester and website widget. Ambiguous task completion and negation do not end sessions. Save failures offer retry. 65 targeted tests pass; local Chrome confirmed automatic end after real goodbye playback. No push or deployment performed, per user instruction. See docs/END_CALL.md.
+
+## Fast voice profile — local build, 26 October 2026
+
+Added a recent-dialogue budget (12 messages / 12000 string characters, whole exchanges), concise spoken-answer instructions with accuracy exceptions, and request context metadata. Stored history and tool authorization are unchanged. VOICEAI_FAST_VOICE=false selects the baseline. Added an offline-by-default synthetic provider/model comparison command; live calls require --live and use existing credits. No live benchmark, push or deployment was performed. Details: docs/FAST_VOICE.md. Unit/profile, end-call and provider stream checks passed; final build and workspace regression verification are recorded after completion.
+
+Fast-profile validation completed locally: backend and frontend production builds pass; 53 distinct targeted checks passed across the profile, provider, end-call and workspace suites. One existing authentication check initially exceeded its time limit during concurrent work and passed with its setup test on a separate rerun. Benchmark dry-run and script syntax checks pass. No paid comparison was executed, so no latency reduction is claimed. Audio-byte streaming remains a subsequent phase; current playback still pipelines whole short sentences.
