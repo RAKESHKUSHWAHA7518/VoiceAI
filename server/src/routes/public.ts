@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { resolveDeployment, deploymentEvents } from '../services/deployments';
 import { createConversation, persistConversationStart, closeConversation, interruptConversation } from '../services/conversations';
-import { turnHandler } from './conversations';
+import { turnHandler, timingHandler } from './conversations';
 import { asyncHandler } from '../middleware/errorHandler';
 import { startRecording, uploadRecording, recordingBody } from './recordings';
 import { speakHandler } from './speech';
@@ -63,6 +63,7 @@ function guestAccess(req: Request, res: Response, next: NextFunction) {
 router.post('/sessions/:id/recording/start', guestAccess, startRecording);
 router.post('/sessions/:id/recording', guestAccess, recordingBody, uploadRecording);
 router.post('/sessions/:id/speak', guestAccess, (req, res, next) => { const guest = guests.get(req.params.id)!; const deployment = resolveDeployment(guest.deployment); if (!deployment || deployment.deployment.runtime_mode !== 'live') return res.status(403).json({ error: { message: 'Cloud voice is available only for live widgets.' } }); return speakHandler(req, res, next); });
+router.post('/sessions/:id/timing', guestAccess, timingHandler);
 router.post('/sessions/:id/turn', guestAccess, turnHandler);
 router.post('/sessions/:id/interrupt', guestAccess, (req, res) => { const guest = guests.get(req.params.id)!; interruptConversation(guest.workspace, req.params.id); res.json({ success: true }); });
 router.delete('/sessions/:id', guestAccess, (req, res) => { const guest = guests.get(req.params.id)!; closeConversation(guest.workspace, req.params.id); guests.delete(req.params.id); res.json({ success: true }); });

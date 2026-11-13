@@ -1,3 +1,4 @@
+import { Readable, PassThrough } from 'stream';
 import axios from 'axios';
 import express from 'express';
 import request from 'supertest';
@@ -248,7 +249,7 @@ test('cloud speech stays private, validates reply text and never returns provide
  const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
  const config = require('../src/config').default; const old = { mode: process.env.VOICEAI_SPEECH_MODE, deepgram: config.apiKeys.deepgram, cartesia: config.apiKeys.cartesia };
  process.env.VOICEAI_SPEECH_MODE = 'cloud'; config.apiKeys.deepgram = 'secret-deepgram'; config.apiKeys.cartesia = 'secret-cartesia';
- const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: Buffer.from('RIFF-test-audio') });
+ const post = jest.spyOn(axios, 'post').mockImplementation(async () => ({ data: Readable.from([Buffer.from('RIFF-test-audio')]) }));
  try {
   const session = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({ agent_id: agent.id }).expect(201)).body;
   expect(session.speech_output).toBe('cloud');
@@ -260,9 +261,39 @@ test('cloud speech stays private, validates reply text and never returns provide
   expect(post).not.toHaveBeenCalled();
   await request(app).post('/api/conversations/' + session.session_id + '/speak').set('Cookie', owner.cookie).send({ text: agent.greeting }).expect(200).expect('Content-Type', /audio\/wav/);
   expect(post.mock.calls[0][1]).toMatchObject({ transcript: agent.greeting, voice: agent.voice_id });
+  const upstream = new PassThrough(); let firstBeforeEnd = false;
+  post.mockImplementationOnce(async () => { setTimeout(() => upstream.write(Buffer.from([0, 0, 0, 1])), 30); return { data: upstream }; });
+  const safety = setTimeout(() => upstream.destroy(new Error('Test stream did not drain')), 3000);
+  try {
+   await request(app).post('/api/conversations/' + session.session_id + '/speak').set('Cookie', owner.cookie).send({ text: agent.greeting, audio_format: 'pcm' })
+    .buffer(true).parse((response, callback) => {
+     const chunks: Buffer[] = [];
+     response.on('data', chunk => { firstBeforeEnd = !upstream.writableEnded; chunks.push(chunk); upstream.end(); });
+     response.on('end', () => callback(null, Buffer.concat(chunks))); response.on('error', callback);
+    }).expect(200).expect('Content-Type', /audio\/pcm/);
+   expect(firstBeforeEnd).toBe(true);
+  } finally { clearTimeout(safety); upstream.destroy(); }
   await request(app).post('/api/conversations/' + session.session_id + '/speak').set('Cookie', other.cookie).send({ text: agent.greeting }).expect(404);
   await request(app).delete('/api/conversations/' + session.session_id).set('Cookie', owner.cookie).expect(200);
  } finally { post.mockRestore(); process.env.VOICEAI_SPEECH_MODE = old.mode || 'browser'; config.apiKeys.deepgram = old.deepgram; config.apiKeys.cartesia = old.cartesia; }
+});
+
+test('voice timing belongs to a completed turn, is private and survives later history saves', async () => {
+ const owner = await register('timing-owner@example.test'); const other = await register('timing-other@example.test');
+ const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
+ const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({ agent_id: agent.id })).body;
+ const url = '/api/conversations/' + opened.session_id;
+ const reply = await request(app).post(url + '/turn').set('Cookie', owner.cookie).send({ text: 'Hello' }).expect(200);
+ const complete = reply.text.trim().split('\n').map((line: string) => JSON.parse(line)).find((event: any) => event.type === 'complete');
+ const timing = { turn_id: complete.turn_id, first_audio_ms: 800, audio_clock: 'scheduled_pcm' };
+ await request(app).post(url + '/timing').set('Cookie', other.cookie).send(timing).expect(404);
+ await request(app).post(url + '/timing').set('Cookie', owner.cookie).send({ ...timing, first_audio_ms: -1 }).expect(400);
+ await request(app).post(url + '/timing').set('Cookie', owner.cookie).send(timing).expect(200);
+ await request(app).post(url + '/timing').set('Cookie', owner.cookie).send({ ...timing, first_audio_ms: 2 }).expect(200);
+ await request(app).post(url + '/turn').set('Cookie', owner.cookie).send({ text: 'Who are you?' }).expect(200);
+ const history = (await request(app).get('/api/conversations/history/' + opened.session_id).set('Cookie', owner.cookie)).body.conversation;
+ expect(history.voice_timings).toEqual([timing]);
+ await request(app).delete(url).set('Cookie', owner.cookie);
 });
 
 test('demo widgets work independently of private live mode; live publishing remains opt-in', async () => {
@@ -295,7 +326,7 @@ test('saved replies above 2000 characters can be spoken in authorized bounded se
  const owner = await register('speech-chunks-owner@example.test'); const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
  const config = require('../src/config').default; const before = { mode: process.env.VOICEAI_SPEECH_MODE, cartesia: config.apiKeys.cartesia };
  process.env.VOICEAI_SPEECH_MODE = 'cloud'; config.apiKeys.cartesia = 'fake';
- const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: Buffer.from('RIFF-audio') });
+ const post = jest.spyOn(axios, 'post').mockImplementation(async () => ({ data: Readable.from([Buffer.from('RIFF-audio')]) }));
  try {
   const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({ agent_id: agent.id }).expect(201)).body;
   const text = 'A longer spoken reply. '.repeat(140); findConversation(owner.user.workspace_id, opened.session_id)!.history.push({ role: 'assistant', content: text });
@@ -426,7 +457,7 @@ test('registered streaming speech is available before turn completion and reject
  const agent = (await request(app).get('/api/agents').set('Cookie', owner.cookie)).body.agents[0];
  const config = require('../src/config').default; const old = {mode: process.env.VOICEAI_SPEECH_MODE, cartesia: config.apiKeys.cartesia};
  process.env.VOICEAI_SPEECH_MODE = 'cloud'; config.apiKeys.cartesia = 'test-cartesia';
- const post = jest.spyOn(axios, 'post').mockResolvedValue({data: Buffer.from('RIFF-stream-test')});
+ const post = jest.spyOn(axios, 'post').mockImplementation(async () => ({ data: Readable.from([Buffer.from('RIFF-stream-test')]) }));
  let iterator: ReturnType<typeof conversationTurn> | undefined; const abort = new AbortController();
  try {
   const opened = (await request(app).post('/api/conversations').set('Cookie', owner.cookie).send({agent_id: agent.id}).expect(201)).body;

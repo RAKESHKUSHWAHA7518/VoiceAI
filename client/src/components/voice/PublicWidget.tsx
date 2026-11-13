@@ -1,3 +1,4 @@
+import { TurnTiming } from '../../../../shared/voiceTiming';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { streamTurn, endConversation } from '../../utils/conversation';
 import { useConversationRecording } from '../../hooks/useConversationRecording';
@@ -12,15 +13,16 @@ export function PublicWidget() {
   const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([]);
   const [input, setInput] = useState(''); const [partial, setPartial] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [readAloud, setReadAloud] = useState(true);
-  const submitRef = useRef<(text: string) => void>(() => {});
+  const submitRef = useRef<(text: string, speechEnd?: number) => void>(() => {});
   const generation = useRef(0); const alive = useRef(true);
   const speechQueue = useRef<SpeechQueue>();
+  const measured = useRef<TurnTiming>();
   const finishRef = useRef<() => Promise<void>>(async () => {});
   const finishing = useRef(false);
   const endGate = useRef<EndCallGate>(); endGate.current ||= new EndCallGate(() => { void finishRef.current(); });
   const recording = useConversationRecording(session, () => { voiceRef.current.pause(); setBusy(false); setEnded(true); });
   const recordingRef = useRef(recording); recordingRef.current = recording;
-  const voice = useContinuousVoice('en-US', text => submitRef.current(text), () => { generation.current++; endGate.current?.reset(); controller.current?.abort(); speechQueue.current?.cancel(); speechQueue.current = undefined; setBusy(false); setPartial(''); }, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud', token: session?.token }, { silenceMs: 600, onReplyFinished: () => endGate.current?.playbackFinished(), onPlayback: audio => recordingRef.current.attachPlayback(audio) });
+  const voice = useContinuousVoice('en-US', (text, speechEnd) => submitRef.current(text, speechEnd), () => { generation.current++; measured.current = undefined; endGate.current?.reset(); controller.current?.abort(); speechQueue.current?.cancel(); speechQueue.current = undefined; setBusy(false); setPartial(''); }, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud', token: session?.token }, { silenceMs: 600, onAudioStarted: () => measured.current?.audio(), onReplyFinished: () => endGate.current?.playbackFinished(), onStream: stream => recordingRef.current.attachStream(stream), onPlayback: audio => recordingRef.current.attachPlayback(audio) });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -44,25 +46,26 @@ export function PublicWidget() {
     window.addEventListener('pagehide', end);
     return () => { window.removeEventListener('message', receive); window.removeEventListener('pagehide', end); end(); };
   }, []);
-  const send = async (text: string) => {
+  const send = async (text: string, speechEnd?: number) => {
     if (!session || ended || !text.trim()) return;
     endGate.current?.reset(); controller.current?.abort(); speechQueue.current?.cancel(); speechQueue.current = undefined; const token = ++generation.current; voice.thinking(); setInput(''); setBusy(true); setError(''); setPartial('');
     setMessages(previous => [...previous, { role: 'user', text }]);
     const request = new AbortController(); controller.current = request; let pending = ''; let streamedSpeech = false;
+    const measurement = new TurnTiming(session, speechEnd, session.speech_output === 'cloud' && typeof AudioContext !== 'undefined'); measured.current = measurement;
     try {
-      const result = await streamTurn(session.session_id, text, delta => { if (token === generation.current && alive.current) { pending += delta; setPartial(pending); } }, request.signal, session.token, undefined, segment => {
+      const result = await streamTurn(session.session_id, text, delta => { if (token === generation.current && alive.current) { measurement.text(); pending += delta; setPartial(pending); } }, request.signal, session.token, undefined, segment => {
         if (token !== generation.current || !alive.current || !readAloud || session.speech_output !== 'cloud') return;
         if (!speechQueue.current) { speechQueue.current = new SpeechQueue(); streamedSpeech = true; voice.streamReply(speechQueue.current); }
         speechQueue.current.push(segment);
       });
       if (token !== generation.current || !alive.current) return;
-      setMessages(previous => [...previous, { role: 'assistant', text: result.output }]);
+      measurement.complete(result.turn_id); setMessages(previous => [...previous, { role: 'assistant', text: result.output }]);
       (speechQueue.current as SpeechQueue | undefined)?.close();
       if (readAloud && !streamedSpeech) voice.speak(result.output); else if (!streamedSpeech) voice.recover(); if (result.end_call) { endGate.current?.request(); if (!readAloud) endGate.current?.playbackFinished(); }
     } catch (err) { if (token === generation.current && !request.signal.aborted && alive.current) { (speechQueue.current as SpeechQueue | undefined)?.cancel(); voice.cancelReply(); setError(err instanceof Error ? err.message : 'The response failed.'); voice.recover(); } }
     finally { if (token === generation.current && alive.current) { setPartial(''); setBusy(false); } }
   };
-  submitRef.current = text => { void send(text); };
+  submitRef.current = (text, speechEnd) => { void send(text, speechEnd); };
   const submit = (event: FormEvent) => { event.preventDefault(); void send(input.trim()); };
   const finishConversation = async () => {
     if (finishing.current) return; finishing.current = true;

@@ -50,6 +50,7 @@ export class RAGEngine {
   });
   private chunksStore = new PersistentStore(KnowledgeChunkModel, CHUNKS_FILE, () => this.chunks, records => { this.chunks = records; });
   private isInitialized = false;
+  private indexed = new WeakSet<DocumentChunk>();
 
   constructor() {
     this.ensureStorage();
@@ -94,8 +95,8 @@ export class RAGEngine {
    */
   public tokenize(text: string): string[] {
     return text
-      .toLowerCase()
-      .replace(/[^a-z0-9_\-\s]/g, ' ')
+      .normalize('NFKC').toLowerCase()
+      .replace(/[^\p{L}\p{M}\p{N}_\-\s]/gu, ' ')
       .split(/\s+/)
       .filter((w) => w.length > 1 && !STOPWORDS.has(w));
   }
@@ -351,6 +352,12 @@ export class RAGEngine {
     const scored: Array<{ chunk: DocumentChunk; score: number }> = [];
 
     for (const chunk of candidates) {
+      // Refresh legacy English-only indexes once per loaded chunk, including Mongo records.
+      if (!this.indexed.has(chunk)) {
+        const vector = this.computeVector(this.tokenize(chunk.text));
+        chunk.term_frequencies = vector.tf; chunk.magnitude = vector.magnitude;
+        this.indexed.add(chunk);
+      }
       if (!chunk.term_frequencies || !chunk.magnitude) continue;
 
       // 1. Vector Cosine Similarity

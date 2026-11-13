@@ -11,13 +11,11 @@ client/vite.config.js
 *.tsbuildinfo
 
 # Environment and secrets
-.env
 server/data/accounts.json
 server/data/agents.json
 server/data/agent_versions.json
 server/data/deployments.json
 server/data/conversation_history.json
-.env.local
 .env.*.local
 *.pem
 
@@ -36,7 +34,6 @@ coverage/
 # OS / Editor
 .DS_Store
 Thumbs.db
-.vscode/
 .idea/
 
 # Python artifacts (legacy)
@@ -53,3 +50,4 @@ __pycache__/
 server/data/workspace_tools.json
 
 server/data/recordings.json
+config.bat

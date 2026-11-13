@@ -6,7 +6,7 @@ export interface VoiceDependencies {
   utterance: (text: string) => any;
   synthesis: { cancel(): void; speak(value: any): void };
   changed: (state: VoiceState) => void;
-  text: (text: string) => void;
+  text: (text: string, speechEnd?: number) => void;
   interrupt: () => void;
   playbackStarted?: () => void;
   playbackFinished?: () => void;
@@ -17,6 +17,7 @@ export class ContinuousVoice {
   private engine: any; private speech: any; private epoch = 0; private playback = 0;
   private startup?: ReturnType<typeof setTimeout>; private retry?: ReturnType<typeof setTimeout>;
   private endpoint?: ReturnType<typeof setTimeout>; private watchdog?: ReturnType<typeof setTimeout>;
+  private speechEnd?: number;
   private finals = ''; private latest = ''; private spoken = ''; private restarts = 0;
   private greeting = '';
   private connectedAt = 0; private echoUntil = 0;
@@ -34,7 +35,7 @@ export class ContinuousVoice {
   private clearTimers() { clearTimeout(this.startup); clearTimeout(this.retry); clearTimeout(this.endpoint); clearTimeout(this.watchdog); }
   private silence() { this.playback++; this.speech = null; clearTimeout(this.watchdog); this.deps.synthesis.cancel(); }
   private disconnect() { const old = this.engine; this.engine = null; if (old) { old.onstart = old.onend = old.onerror = old.onresult = old.onprogress = old.onutteranceend = null; try { old.abort(); } catch {} } }
-  pause() { this.epoch++; this.clearTimers(); this.disconnect(); this.silence(); this.finals = this.latest = ''; this.deps.interrupt(); this.update({ phase: 'paused', active: false, partial: '', detail: '' }); }
+  pause() { this.epoch++; this.clearTimers(); this.disconnect(); this.silence(); this.finals = this.latest = ''; this.speechEnd = undefined; this.deps.interrupt(); this.update({ phase: 'paused', active: false, partial: '', detail: '' }); }
   dispose() { this.pause(); }
   private fail(error: string) { this.pause(); this.update({ phase: 'error', error }); }
   start(greeting = '') {
@@ -72,19 +73,19 @@ export class ContinuousVoice {
           .replace(/\b(it's|its)\b/g, 'it is')
           .replace(/\b(don't|dont)\b/g, 'do not')
           .replace(/\b(can't|cant)\b/g, 'cannot')
-          .replace(/[^\p{L}\p{N}\s]/gu, '')
+          .replace(/[^\p{L}\p{M}\p{N}\s]/gu, '')
           .replace(/\s+/g, ' ')
           .trim();
         const isSpeaking = this.state.phase === 'speaking' || Date.now() < this.echoUntil;
         if (this.spoken && isSpeaking) {
           const spokenNorm = normalize(this.spoken);
           const incomingNorm = normalize(incoming);
-          if (spokenNorm.includes(incomingNorm)) return;
+          if (incomingNorm.split(' ').length >= 3 && spokenNorm.includes(incomingNorm)) return;
           const incomingWords = incomingNorm.split(' ').filter(Boolean);
           if (incomingWords.length > 0) {
             const spokenWords = new Set(spokenNorm.split(' ').filter(Boolean));
             const matches = incomingWords.filter(w => spokenWords.has(w)).length;
-            if (matches / incomingWords.length >= 0.5) return;
+            if (incomingWords.length >= 5 && matches === incomingWords.length && !/^(no|stop|wait|cancel|actually|नहीं|रुको)\b/iu.test(incomingNorm)) return;
           }
           if (this.speakerMode && this.state.phase === 'speaking') return;
         }
@@ -97,12 +98,13 @@ export class ContinuousVoice {
             if (!this.bargeCandidate || Date.now() - this.bargeLast > 500) this.bargeCandidate = Date.now();
             this.bargeLast = Date.now();
             if (words.length < 2 || Date.now() - this.bargeCandidate < 250) return;
-          } else if (words.length < 2 && !/^(stop|cancel|wait|no)$/i.test(incoming)) return;
+          } else if (words.length < 2 && !/^(stop|cancel|wait|no|yes|नहीं|हाँ|रुको)$/iu.test(incoming.replace(/[.!?।]+$/u, ''))) return;
           this.bargeCandidate = 0;
           this.silence();
           this.deps.interrupt();
           this.update({ phase: 'listening' });
         }
+        if (final && Number.isFinite(event.speechEnd)) this.speechEnd = event.speechEnd;
         this.finals += final; this.latest = interim; this.update({ partial: (this.finals + interim).trim() });
         clearTimeout(this.endpoint);
         // Send only finalized words; interim words are not safe to commit.
@@ -130,7 +132,7 @@ export class ContinuousVoice {
     clearTimeout(this.endpoint);
     const text = this.finals.trim(); this.finals = this.latest = '';
     if (!text || !this.state.active) return;
-    this.spoken = ''; this.update({ phase: 'thinking', partial: '' }); this.deps.text(text);
+    this.spoken = ''; this.update({ phase: 'thinking', partial: '' }); const speechEnd = this.speechEnd; this.speechEnd = undefined; if (speechEnd === undefined) this.deps.text(text); else this.deps.text(text, speechEnd);
   }
   thinking() { this.silence(); clearTimeout(this.endpoint); this.finals = this.latest = ''; this.spoken = ''; this.update({ phase: 'thinking', partial: '', error: '' }); }
   recover() { if (this.state.active) this.update({ phase: 'listening' }); }

@@ -1,5 +1,7 @@
 # VoiceAI implementation status
 
+Latest checkpoint, 26 October 2026: local PCM audio streaming, private timing in History, Unicode knowledge retrieval, refined headphone interruptions and honest/cancellable live weather are implemented. See [voice improvements](VOICE_IMPROVEMENTS.md) for validation, measured model comparison and remaining microphone acceptance. This checkpoint has not been deployed. Older dated sections below describe historical milestones.
+
 Updated 24 October 2026. The first usable private-workspace milestone is implemented. The complete production roadmap is not finished.
 
 ## What can be tested now

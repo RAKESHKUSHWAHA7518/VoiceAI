@@ -1,3 +1,4 @@
+import { TurnTiming } from '../../../../shared/voiceTiming';
 import { useState, useEffect, useRef } from 'react';
 import type { Agent, PlaygroundTest } from '../../types';
 import { IconMic } from '../common/Icons';
@@ -19,19 +20,20 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   const [firstAudioMs, setFirstAudioMs] = useState<number | null>(null);
   const turnTiming = useRef<{ start: number; text: boolean; audio: boolean }>();
   const speechQueue = useRef<SpeechQueue>();
+  const measured = useRef<TurnTiming>();
   const finishRef = useRef<() => Promise<void>>(async () => {});
   const finishing = useRef(false);
   const endGate = useRef<EndCallGate>(); endGate.current ||= new EndCallGate(() => { void finishRef.current(); });
   const sessionRef = useRef<ConversationSession | null>(null); const mounted = useRef(false);
   const generation = useRef(0); const request = useRef<AbortController | null>(null);
-  const dialog = useRef<HTMLDivElement>(null); const submitRef = useRef<(text: string) => void>(() => {});
+  const dialog = useRef<HTMLDivElement>(null); const submitRef = useRef<(text: string, speechEnd?: number) => void>(() => {});
   const [speakerMode, setSpeakerMode] = useState(true);
   const interrupt = () => {
     endGate.current?.reset();
     generation.current++;
     request.current?.abort();
     request.current = null; speechQueue.current?.cancel(); speechQueue.current = undefined;
-    turnTiming.current = undefined;
+    turnTiming.current = undefined; measured.current = undefined;
     voiceRef.current?.cancelReply();
     setPartial('');
     setPhase('ready');
@@ -40,30 +42,31 @@ export function LiveVoiceCallModal({ isOpen, onClose, agent, demo = false, onVie
   };
   const recording = useConversationRecording(session, () => { voiceRef.current.pause(); setPhase('ended'); });
   const recordingRef = useRef(recording); recordingRef.current = recording;
-  const voice = useContinuousVoice(agent?.default_language || 'en-US', text => submitRef.current(text), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 600, onPlayback: audio => recordingRef.current.attachPlayback(audio), onReplyFinished: () => endGate.current?.playbackFinished(), onAudioStarted: () => { const timing = turnTiming.current; if (timing && !timing.audio) { timing.audio = true; setFirstAudioMs(Math.round(performance.now() - timing.start)); } } });
+  const voice = useContinuousVoice(agent?.default_language || 'en-US', (text, speechEnd) => submitRef.current(text, speechEnd), interrupt, { sessionId: session?.session_id || '', enabled: session?.speech_output === 'cloud' }, { speakerMode, silenceMs: 600, onStream: stream => recordingRef.current.attachStream(stream), onPlayback: audio => recordingRef.current.attachPlayback(audio), onReplyFinished: () => endGate.current?.playbackFinished(), onAudioStarted: () => { measured.current?.audio(); const timing = turnTiming.current; if (timing && !timing.audio) { timing.audio = true; setFirstAudioMs(Math.round(performance.now() - timing.start)); } } });
   const voiceRef = useRef(voice); voiceRef.current = voice;
   const stop = () => { voiceRef.current.pause(); interrupt(); };
-  const submit = async (text: string) => {
+  const submit = async (text: string, speechEnd?: number) => {
     if (!text.trim() || !sessionRef.current || phase === 'ended') return;
     interrupt(); voiceRef.current.thinking(); const token = generation.current; const controller = new AbortController(); request.current = controller;
     setError(''); setInput(''); setPhase('thinking'); setElapsed(null); setFirstTextMs(null); setFirstAudioMs(null);
     setMessages(previous => [...previous, { role: 'user', text }]);
     let pending = ''; const start = performance.now();
     turnTiming.current = { start, text: false, audio: false };
+    const measurement = new TurnTiming(sessionRef.current!, speechEnd, sessionRef.current?.speech_output === 'cloud' && typeof AudioContext !== 'undefined'); measured.current = measurement;
     let streamedSpeech = false;
     try {
-      const result = await streamTurn(sessionRef.current.session_id, text, delta => { if (mounted.current && generation.current === token) { pending += delta; setPartial(pending); if (turnTiming.current && !turnTiming.current.text) { turnTiming.current.text = true; setFirstTextMs(Math.round(performance.now() - start)); } } }, controller.signal, sessionRef.current.token, undefined, segment => {
+      const result = await streamTurn(sessionRef.current.session_id, text, delta => { if (mounted.current && generation.current === token) { measurement.text(); pending += delta; setPartial(pending); if (turnTiming.current && !turnTiming.current.text) { turnTiming.current.text = true; setFirstTextMs(Math.round(performance.now() - start)); } } }, controller.signal, sessionRef.current.token, undefined, segment => {
         if (!mounted.current || generation.current !== token || sessionRef.current?.speech_output !== 'cloud') return;
         if (!speechQueue.current) { speechQueue.current = new SpeechQueue(); streamedSpeech = true; voiceRef.current.streamReply(speechQueue.current); }
         speechQueue.current.push(segment);
       });
       if (!mounted.current || generation.current !== token) return;
-      speechQueue.current?.close();
+      measurement.complete(result.turn_id); speechQueue.current?.close();
       setMessages(previous => [...previous, { role: 'assistant', text: result.output }]); setPartial(''); setElapsed(Math.round(performance.now() - start)); setPhase('ready'); if (!streamedSpeech) voiceRef.current.speak(result.output); if (result.end_call) endGate.current?.request();
     } catch (err) { if (mounted.current && generation.current === token) { speechQueue.current?.cancel(); voiceRef.current.cancelReply(); setPhase('ready'); setPartial(''); setError(err instanceof Error ? err.message : 'Could not complete the message.'); voiceRef.current.recover(); } }
     finally { if (request.current === controller) request.current = null; }
   };
-  submitRef.current = text => { void submit(text); };
+  submitRef.current = (text, speechEnd) => { void submit(text, speechEnd); };
   useEffect(() => {
     if (!isOpen || !agent || !prepared) return;
     mounted.current = true; const controller = new AbortController(); const previous = document.activeElement as HTMLElement | null;

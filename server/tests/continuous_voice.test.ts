@@ -71,6 +71,15 @@ test('manual interruption stops typed reply playback even when the microphone is
   const cancels = f.cancel.mock.calls.length; f.speeches[0].onend();
   expect(f.controller.state.phase).toBe('idle'); expect(f.cancel).toHaveBeenCalledTimes(cancels);
 });
+
+test('overlapping words in a correction and short finalized answers are not discarded as echo', () => {
+  const f = fixture(); f.controller.start(); f.engines[0].onstart();
+  f.controller.speak('Your booking is for Monday morning');
+  f.result('No my booking is for Tuesday'); jest.advanceTimersByTime(750);
+  expect(f.text).toHaveBeenLastCalledWith('No my booking is for Tuesday');
+  f.controller.speak('Please say yes or no'); f.result('No.'); jest.advanceTimersByTime(750);
+  expect(f.text).toHaveBeenLastCalledWith('No.');
+});
 test('suppresses recognizable playback echo and reconnects after normal silence', () => {
   const f = fixture(); f.controller.start(); f.engines[0].onstart(); f.controller.speak('Welcome to our hotel');
   f.result('Welcome to our hotel'); jest.advanceTimersByTime(750);

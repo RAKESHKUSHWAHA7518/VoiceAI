@@ -78,10 +78,18 @@ export function useConversationRecording(session: ConversationSession | null, on
     const value = capture.current; if (!value || value.context.state === 'closed') return;
     const source = value.context.createMediaElementSource(audio); source.connect(value.destination); source.connect(value.context.destination);
   };
+  const streams = useRef(new WeakSet<MediaStream>());
+  const attachStream = (stream: MediaStream) => {
+    const value = capture.current;
+    if (!value || value.context.state === 'closed' || streams.current.has(stream)) return;
+    streams.current.add(stream);
+    const source = value.context.createMediaStreamSource(stream); source.connect(value.destination);
+    stream.getTracks().forEach(track => track.addEventListener('ended', () => source.disconnect(), { once: true }));
+  };
   const pause = () => { const value = capture.current; if (value?.recorder.state === 'recording') { value.recorder.pause(); value.mic.getAudioTracks().forEach(track => { track.enabled = false; }); update('paused'); } };
   useEffect(() => { if (session?.session_id && capture.current?.session.session_id !== session.session_id) update('idle'); }, [session?.session_id]);
   const finishRef = useRef(finish); finishRef.current = finish;
   useEffect(() => { alive.current = true; return () => { alive.current = false; void finishRef.current().catch(() => {}); }; }, []);
   useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (capture.current && !capture.current.saved) { event.preventDefault(); event.returnValue = ''; } }; window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn); }, []);
-  return { status, error, start, pause, finish, attachPlayback };
+  return { status, error, start, pause, finish, attachPlayback, attachStream };
 }

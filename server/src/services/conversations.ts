@@ -63,11 +63,13 @@ export async function* conversationTurn(session: Conversation, text: string, abo
   const start = performance.now();
   const context = voiceRequestProfile(session.history, process.env.VOICEAI_FAST_VOICE !== 'false');
   let firstToken: number | null = null;
+  let modelStart: number | null = null; let firstSpeech: number | null = null;
   const mode = session.mode;
   const turnId = crypto.randomUUID();
   const speech = { turn_id: turnId, segments: [] as string[], cancelled: false }; session.speech = speech;
   const sentences = new SentenceBuffer();
   const speechEvents = (delta: string, finish = false) => sentences.push(delta, finish).map(value => {
+    firstSpeech ??= performance.now() - start;
     const segment_index = speech.segments.push(value) - 1;
     return { type: 'speech' as const, text: value, turn_id: turnId, segment_index };
   });
@@ -114,6 +116,7 @@ export async function* conversationTurn(session: Conversation, text: string, abo
         const requested: any[] = [];
         let roundText = '';
         // A failed stream fails this turn; never execute buffered calls or switch providers.
+        modelStart ??= performance.now();
         for await (const chunk of llm.streamChat(context.messages, text, availableTools, undefined, abort.signal, messages.length ? messages : undefined)) {
           if (abort.signal.aborted) throw new Error('TURN_CANCELLED');
           if (chunk.isToolCall) { if (++calls > 6) throw new Error('TOOL_CALL_LIMIT'); requested.push({ id: chunk.toolCallId || crypto.randomUUID(), type: 'function', ...(chunk.toolCallExtra ? { extra_content: chunk.toolCallExtra } : {}), function: { name: chunk.toolName, arguments: chunk.toolArgs || '{}' } }); }
@@ -142,7 +145,7 @@ export async function* conversationTurn(session: Conversation, text: string, abo
     if (abort.signal.aborted) throw new Error('TURN_CANCELLED');
     for (const event of speechEvents('', true)) yield event;
     if (session.archive) {
-      const archive: ConversationRecord = { ...session.archive, updated_at: Date.now(), processing_ms: performance.now() - start, turn_outcomes: [...(session.archive.turn_outcomes || []), { id: turnId, input: text, output, status: 'completed', timestamp: Date.now(), tool_events: toolEvents }], tool_events: [...(session.archive.tool_events || []), ...toolEvents], sources: sources.map(source => ({ doc_id: source.doc_id, title: source.title })), messages: [...session.archive.messages, { role: 'user', text, timestamp: Date.now() }, { role: 'assistant', text: output, timestamp: Date.now() }] };
+      const archive: ConversationRecord = { ...session.archive, updated_at: Date.now(), processing_ms: performance.now() - start, turn_outcomes: [...(session.archive.turn_outcomes || []), { id: turnId, input: text, output, status: 'completed', timestamp: Date.now(), timing: { retrieval_ms: retrievalMs, model_first_text_ms: firstToken === null || modelStart === null ? null : firstToken - modelStart, first_speech_segment_ms: firstSpeech }, tool_events: toolEvents }], tool_events: [...(session.archive.tool_events || []), ...toolEvents], sources: sources.map(source => ({ doc_id: source.doc_id, title: source.title })), messages: [...session.archive.messages, { role: 'user', text, timestamp: Date.now() }, { role: 'assistant', text: output, timestamp: Date.now() }] };
       try { await saveConversationRecord(archive); session.archive = archive; } catch { logger.error('Could not save conversation record', { session_id: session.id }); throw new Error('HISTORY_SAVE_FAILED'); }
     }
     session.history = [...session.history, { role: 'user' as const, content: text }, { role: 'assistant' as const, content: output }].slice(-20);

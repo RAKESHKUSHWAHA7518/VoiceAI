@@ -6,7 +6,7 @@ interface Fixture { id: string; workspace_id: string; kind: string; name: string
 let fixtures: () => Fixture[] = () => [];
 export function registerConversationFixtures(read: () => Fixture[]) { fixtures = read; }
 
-export interface ConversationTool { name: string; description: string; parameters: any; execute: (args: any) => unknown }
+export interface ConversationTool { name: string; description: string; parameters: any; execute: (args: any, signal?: AbortSignal) => unknown }
 
 export function conversationTools(workspace: string, agent: AgentRecord): ConversationTool[] {
   // Only explicitly supported built-ins and workspace-owned fixtures are exposed.
@@ -17,9 +17,9 @@ export function conversationTools(workspace: string, agent: AgentRecord): Conver
       ? 'Get current live real-time weather and temperature for any city or location.'
       : 'SIMULATION ONLY: ' + tool.description,
     parameters: { ...tool.parameters, additionalProperties: false },
-    execute: (args: any) => {
+    execute: (args: any, signal?: AbortSignal) => {
       if (process.env.NODE_ENV !== 'test' && tool.name === 'get_weather') {
-        return fetchLiveWeather(args.location);
+        return fetchLiveWeather(args.location, signal);
       }
       if (tool.name === 'get_weather') {
         return {
@@ -87,9 +87,10 @@ export function executeConversationTool(workspace: string, agent: AgentRecord, n
     shape[key] = validator;
   }
   const args = z.object(shape).strict().parse(JSON.parse(raw));
-  const result = tool.execute(args);
+  const result = tool.execute(args, signal);
   if (typeof result === 'object' && result !== null && 'then' in (result as any)) {
     return (result as Promise<any>).then(res => {
+      if (signal.aborted) throw new Error('TURN_CANCELLED');
       if (JSON.stringify(res).length > 16000) throw new Error('TOOL_RESULT_LIMIT');
       return res;
     });

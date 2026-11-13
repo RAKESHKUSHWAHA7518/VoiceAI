@@ -374,7 +374,9 @@ const weatherCodeMap: Record<number, string> = {
   99: 'Thunderstorm with heavy hail',
 };
 
-export async function fetchLiveWeather(location: string): Promise<any> {
+export async function fetchLiveWeather(location: string, signal?: AbortSignal): Promise<any> {
+  if (signal?.aborted) throw new Error('TURN_CANCELLED');
+  const requestSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000);
   const query = (location || '').trim();
   if (!query) {
     return { error: 'Location required for weather fetch' };
@@ -382,7 +384,7 @@ export async function fetchLiveWeather(location: string): Promise<any> {
   try {
     const geo = await axios.get('https://geocoding-api.open-meteo.com/v1/search', {
       params: { name: query, count: 1, language: 'en', format: 'json' },
-      timeout: 5000,
+      timeout: 5000, signal: requestSignal,
     });
     const results = geo.data?.results;
     if (results && results.length > 0) {
@@ -393,12 +395,12 @@ export async function fetchLiveWeather(location: string): Promise<any> {
           longitude: loc.longitude,
           current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
         },
-        timeout: 5000,
+        timeout: 5000, signal: requestSignal,
       });
       const cur = weatherRes.data?.current;
-      if (cur) {
-        const code = cur.weather_code ?? 0;
-        const condition = weatherCodeMap[code] || 'Clear sky';
+      if (cur && Number.isFinite(cur.temperature_2m)) {
+        const code = cur.weather_code;
+        const condition = weatherCodeMap[code] || 'Condition unavailable';
         const tempC = cur.temperature_2m;
         const tempF = Math.round((tempC * 9 / 5 + 32) * 10) / 10;
         const locName = `${loc.name}${loc.country ? ', ' + loc.country : ''}`;
@@ -409,22 +411,15 @@ export async function fetchLiveWeather(location: string): Promise<any> {
           condition,
           humidity: cur.relative_humidity_2m,
           wind_speed_kmh: cur.wind_speed_10m,
-          source: 'live_open_meteo',
+          mode: 'live', external_request: true, observed_at: cur.time, source: 'live_open_meteo',
         };
       }
     }
   } catch (err: any) {
-    // Fall back to graceful simulation if offline
+    if (signal?.aborted) throw new Error('TURN_CANCELLED');
+    throw new Error('WEATHER_UNAVAILABLE');
   }
-  return {
-    location: query,
-    temperature_c: 24,
-    temperature_f: 75.2,
-    condition: 'Partly cloudy',
-    humidity: 48,
-    wind_speed_kmh: 8.5,
-    source: 'simulated_fallback',
-  };
+  throw new Error('WEATHER_LOCATION_UNAVAILABLE');
 }
 
 function persistCustomTools(): void {

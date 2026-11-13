@@ -1,4 +1,5 @@
 import { speechSegments } from '../../../shared/speechSegments';
+import { PCMDecoder, PCMPlayback } from './pcmPlayback';
 // Provider keys never leave the backend. The websocket ticket is single-use and session-bound.
 export class DeepgramRecognition {
  startupTimeout = 30000; connectionLabel = 'Microphone connected to Deepgram';
@@ -11,7 +12,7 @@ export class DeepgramRecognition {
  onerror: ((event: { error: string; message?: string }) => void) | null = null;
  onresult: ((event: unknown) => void) | null = null;
  onutteranceend: (() => void) | null = null;
- private socket?: WebSocket; private recorder?: MediaRecorder; private stream?: MediaStream;
+ private captureStarted = 0; private socket?: WebSocket; private recorder?: MediaRecorder; private stream?: MediaStream;
  private aborter = new AbortController(); private ended = false;
  constructor(private sessionId: string) {}
  start() { void this.connect(); }
@@ -38,9 +39,9 @@ export class DeepgramRecognition {
      const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 32000 }); this.recorder = recorder;
      let pending = Promise.resolve();
      recorder.ondataavailable = event => { if (!event.data.size) return; pending = pending.then(async () => { const bytes = await event.data.arrayBuffer(); if (!this.ended && socket.readyState === WebSocket.OPEN) { if (socket.bufferedAmount > 1000000) { this.fail('Microphone upload cannot keep up. Check your connection.'); return; } socket.send(bytes); } }).catch(() => this.fail('Microphone audio could not be sent.')); };
-     recorder.onerror = () => this.fail('Microphone recording failed.'); recorder.start(100); this.progress('Microphone connected — audio is streaming to Deepgram'); this.onstart?.();
+     recorder.onerror = () => this.fail('Microphone recording failed.'); this.captureStarted = performance.now(); recorder.start(100); this.progress('Microphone connected — audio is streaming to Deepgram'); this.onstart?.();
     }
-    if (message.type === 'transcript' && message.text) { const result: any = [{ transcript: message.text }]; result.isFinal = message.final; this.onresult?.({ resultIndex: 0, results: [result] }); }
+    if (message.type === 'transcript' && message.text) { const result: any = [{ transcript: message.text }]; result.isFinal = message.final; this.onresult?.({ resultIndex: 0, results: [result], speechEnd: Number.isFinite(message.speech_end_seconds) ? this.captureStarted + message.speech_end_seconds * 1000 : undefined }); }
     if (message.type === 'transcript' && message.speech_final) this.onutteranceend?.();
    };
    socket.onerror = () => this.fail('The Deepgram stream could not connect. Check your connection and resume.');
@@ -53,24 +54,27 @@ export class DeepgramRecognition {
 export class CartesiaSynthesis {
  private request?: AbortController; private audio?: HTMLAudioElement; private url?: string; private generation = 0;
  private releasePlayback?: () => void;
- constructor(private sessionId: () => string, private token: () => string | undefined = () => undefined, private onPlayback: (audio: HTMLAudioElement) => void = () => {}) {}
- cancel() { this.generation++; this.request?.abort(); this.audio?.pause(); this.audio = undefined; this.releasePlayback?.(); this.releasePlayback = undefined; if (this.url) URL.revokeObjectURL(this.url); this.url = undefined; }
+ private context?: AudioContext; private pcm?: PCMPlayback;
+ prepare() { if (typeof AudioContext !== 'undefined') { this.context ||= new AudioContext(); void this.context.resume().catch(() => {}); } }
+ dispose() { this.cancel(); void this.context?.close().catch(() => {}); this.context = undefined; }
+ constructor(private sessionId: () => string, private token: () => string | undefined = () => undefined, private onPlayback: (audio: HTMLAudioElement) => void = () => {}, private onStream: (stream: MediaStream) => void = () => {}) {}
+ cancel() { this.pcm?.cancel(); this.pcm = undefined; this.generation++; this.request?.abort(); this.audio?.pause(); this.audio = undefined; this.releasePlayback?.(); this.releasePlayback = undefined; if (this.url) URL.revokeObjectURL(this.url); this.url = undefined; }
  speak(speech: SpeechSynthesisUtterance) {
-  this.cancel(); const generation = this.generation; const request = new AbortController(); this.request = request;
+  this.prepare(); this.cancel(); const generation = this.generation; const request = new AbortController(); this.request = request;
   void (async () => {
    try {
     const supplied = (speech as SpeechSynthesisUtterance & { segments?: AsyncIterable<import('../../../shared/streamingSpeech').SpeechChunk> }).segments;
     const chunks = speechSegments(speech.text);
     const source = supplied || (async function* () { for (let index = 0; index < chunks.length; index++) yield { text: chunks[index], chunk_index: index }; })();
     const iterator = source[Symbol.asyncIterator]();
-    const loadNext = async (): Promise<{ blob?: Blob; error?: unknown; done?: boolean }> => {
+    const loadNext = async (): Promise<{ blob?: Blob; response?: Response; error?: unknown; done?: boolean }> => {
      try {
       const item = await iterator.next();
       if (item.done || generation !== this.generation) return { done: true };
       const body = supplied ? { turn_id: (item.value as import('../../../shared/streamingSpeech').SpeechChunk).turn_id, segment_index: (item.value as import('../../../shared/streamingSpeech').SpeechChunk).segment_index } : { text: speech.text, chunk_index: (item.value as { chunk_index: number }).chunk_index };
-      const response = await fetch('/api/' + (this.token() ? 'public/sessions/' : 'conversations/') + this.sessionId() + '/speak', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.token() ? { Authorization: 'Bearer ' + this.token() } : {}) }, credentials: this.token() ? 'omit' : 'same-origin', body: JSON.stringify(body), signal: request.signal });
+      const response = await fetch('/api/' + (this.token() ? 'public/sessions/' : 'conversations/') + this.sessionId() + '/speak', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.token() ? { Authorization: 'Bearer ' + this.token() } : {}) }, credentials: this.token() ? 'omit' : 'same-origin', body: JSON.stringify({ ...body, ...(this.context ? { audio_format: 'pcm' } : {}) }), signal: request.signal });
       if (!response.ok) { const error = await response.json(); throw new Error(error.error?.message || 'Cartesia voice failed.'); }
-      return { blob: await response.blob() };
+      return this.context && response.headers.get('Content-Type')?.startsWith('audio/pcm') ? { response } : { blob: await response.blob() };
      } catch (error) { return { error }; }
     };
     let upcoming = loadNext();
@@ -78,7 +82,24 @@ export class CartesiaSynthesis {
      const item = await upcoming;
      if (generation !== this.generation) return;
      if (item.error) throw item.error;
-     if (item.done || !item.blob) break;
+     if (item.done) break;
+     if (item.response) {
+      const reader = item.response.body?.getReader(); if (!reader) throw new Error('Streaming audio is unavailable.');
+      const pcm = this.pcm ||= new PCMPlayback(this.context!, () => { if (generation === this.generation) speech.onstart?.(new Event('start') as SpeechSynthesisEvent); });
+      this.onStream(pcm.stream);
+      const decoder = new PCMDecoder();
+      try {
+       while (generation === this.generation) {
+        const chunk = await reader.read(); if (chunk.done) break;
+        const samples = decoder.decode(chunk.value);
+        for (let offset = 0; offset < samples.length && generation === this.generation; offset += 4800) await pcm.push(samples.subarray(offset, offset + 4800));
+       }
+       if (generation !== this.generation) return;
+       decoder.finish();
+      } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+      upcoming = loadNext(); continue;
+     }
+     if (!item.blob) break;
      // Prepare only one next segment while the current audio plays.
      upcoming = loadNext();
      this.url = URL.createObjectURL(item.blob); const audio = new Audio(this.url); this.audio = audio; this.onPlayback(audio);
@@ -91,6 +112,7 @@ export class CartesiaSynthesis {
      this.releasePlayback = undefined; audio.onended = audio.onerror = audio.onplaying = null; this.audio = undefined;
      URL.revokeObjectURL(this.url); this.url = undefined;
     }
+    if (generation === this.generation) await this.pcm?.finish();
     if (generation === this.generation) { this.cancel(); speech.onend?.(new Event('end') as SpeechSynthesisEvent); }
    } catch (error) {
     if (generation === this.generation && !request.signal.aborted) { this.cancel(); speech.onerror?.({ message: error instanceof Error ? error.message : 'Voice playback failed.' } as unknown as SpeechSynthesisErrorEvent); }

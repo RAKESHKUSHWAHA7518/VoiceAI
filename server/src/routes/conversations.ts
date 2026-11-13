@@ -4,7 +4,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { workspaceId } from '../middleware/workspace';
 import { getAgentById, ownsAgent } from './agents';
 import { createConversation, persistConversationStart, findConversation, closeConversation, interruptConversation, conversationTurn } from '../services/conversations';
-import { pagedHistory, historyRecord } from '../services/conversation_history';
+import { pagedHistory, historyRecord, voiceTimingSchema, saveVoiceTiming } from '../services/conversation_history';
 
 import { startRecording, uploadRecording, recordingBody, playRecording, deleteRecording } from './recordings';
 import { recordingSummary } from '../services/recordings';
@@ -54,6 +54,12 @@ export const turnHandler = asyncHandler(async (req: Request, res: Response) => {
     if (!res.destroyed) res.write(JSON.stringify({ type: 'error', code, message: code === 'HISTORY_SAVE_FAILED' ? 'The reply could not be saved to conversation history. Your previous context is unchanged. Please try again.' : code === 'PROVIDER_NOT_CONFIGURED' ? 'Configure a provider key and select its model, or use demo mode.' : code === 'PROVIDER_RATE_LIMITED' ? 'The model provider quota is exhausted or rate-limited. Check billing or select Google Gemini Flash in Agent settings.' : code === 'PROVIDER_AUTH_FAILED' ? 'The model provider rejected the server credentials. Check server configuration.' : code === 'PROVIDER_MODEL_UNAVAILABLE' ? 'This model is unavailable. Choose a model enabled for your provider account.' : code === 'TOOL_CALL_LIMIT' ? 'The tool-call limit was reached. Start a new conversation or simplify the request.' : code === 'TURN_TIMEOUT' ? 'The model response timed out. Please retry.' : code === 'TURN_CANCELLED' ? 'The caller interrupted this turn.' : 'The conversation could not complete. Please try again.' }) + '\n');
   } finally { res.off('close', cancel); res.end(); }
 });
+export const timingHandler = asyncHandler(async (req: Request, res: Response) => {
+  const timing = voiceTimingSchema.parse(req.body);
+  const saved = await saveVoiceTiming(workspaceId(req)!, req.params.id, timing);
+  res.status(saved ? 200 : 404).json({ success: saved });
+});
+router.post('/:id/timing', requireWorkspace, sameOrigin, timingHandler);
 router.post('/:id/turn', turnHandler);
 router.post('/:id/interrupt', (req, res) => res.status(interruptConversation(workspaceId(req)!, req.params.id) ? 200 : 404).json({ success: true }));
 router.delete('/:id', (req, res) => res.status(closeConversation(workspaceId(req)!, req.params.id) ? 200 : 404).json({ success: true }));

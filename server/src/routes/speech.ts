@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import axios from 'axios';
 import WebSocket, { WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
+import { Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 import config from '../config';
 import { findConversation } from '../services/conversations';
 import { requireWorkspace, sameOrigin, workspaceId } from '../middleware/workspace';
@@ -47,11 +49,20 @@ export const speakHandler = asyncHandler(async (req: Request, res: Response) => 
  if (limits.speaking || limits.chars + spokenText.length > 6000) return res.status(429).json({ error: { message: 'Voice generation limit reached. Please retry later.' } });
  limits.chars += spokenText.length; limits.speaking = true;
  const abort = new AbortController(); const cancel = () => { if (!res.writableEnded) abort.abort(); }; res.on('close', cancel);
+ const deadline = setTimeout(() => abort.abort(), 20000);
  try {
-  const result = await axios.post('https://api.cartesia.ai/tts/bytes', { model_id: process.env.CARTESIA_MODEL || 'sonic-3.6', transcript: spokenText, voice: session.agent.voice_id, language: session.agent.default_language || 'en', output_format: { container: 'wav', encoding: 'pcm_s16le', sample_rate: 24000 } }, { headers: { Authorization: 'Bearer ' + config.apiKeys.cartesia, 'Cartesia-Version': '2026-08-14' }, responseType: 'arraybuffer', maxContentLength: 4000000, timeout: 20000, signal: abort.signal });
-  res.set({ 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' }).send(Buffer.from(result.data));
- } catch { if (!res.destroyed) res.status(502).json({ error: { message: 'Cartesia could not generate this voice. Check the selected Cartesia voice, credits and connection.' } }); }
- finally { limits.speaking = false; res.off('close', cancel); }
+  const pcm = req.body.audio_format === 'pcm';
+  const result = await axios.post('https://api.cartesia.ai/tts/bytes', { model_id: process.env.CARTESIA_MODEL || 'sonic-3.6', transcript: spokenText, voice: session.agent.voice_id, language: session.agent.default_language || 'en', output_format: { container: pcm ? 'raw' : 'wav', encoding: 'pcm_s16le', sample_rate: 24000 } }, { headers: { Authorization: 'Bearer ' + config.apiKeys.cartesia, 'Cartesia-Version': '2026-08-14' }, responseType: 'stream', timeout: 20000, signal: abort.signal });
+  res.set({ 'Content-Type': pcm ? 'audio/pcm;rate=24000;encoding=s16le' : 'audio/wav', 'Cache-Control': 'no-store, no-transform', 'X-Accel-Buffering': 'no' });
+  let bytes = 0;
+  const bounded = new Transform({ transform(chunk, _encoding, callback) {
+   bytes += chunk.length;
+   if (bytes > 4000000 || (streamed && (session.speech?.cancelled || session.speech?.turn_id !== req.body.turn_id))) callback(new Error('Speech stream stopped'));
+   else callback(null, chunk);
+  } });
+  await pipeline(result.data, bounded, res, { signal: abort.signal });
+ } catch { if (!res.destroyed) { if (res.headersSent) res.destroy(); else res.status(502).json({ error: { message: 'Cartesia could not generate this voice. Check the selected Cartesia voice, credits and connection.' } }); } }
+ finally { clearTimeout(deadline); limits.speaking = false; res.off('close', cancel); }
 });
 router.post('/:id/speak', speakHandler);
 export default router;
@@ -77,7 +88,7 @@ export function handleSpeechUpgrade(req: IncomingMessage, socket: any, head: Buf
   const deadline = setTimeout(() => { send({ type: 'error', message: 'Five-minute speech limit reached. Resume to start a new session.' }); finish(); }, 300000);
   const keepalive = setInterval(() => { if (!findConversation(record.workspace, record.session)) { finish(); return; } if (upstream.readyState === WebSocket.OPEN) upstream.send(JSON.stringify({ type: 'KeepAlive' })); }, 5000);
   upstream.on('open', () => send({ type: 'ready' }));
-  upstream.on('message', data => { try { const message = JSON.parse(data.toString()); if (message.type === 'Results') send({ type: 'transcript', text: message.channel?.alternatives?.[0]?.transcript || '', final: !!message.is_final, speech_final: !!message.speech_final }); else if (message.type === 'Error') { send({ type: 'error', message: 'Deepgram could not transcribe this audio.' }); finish(); } } catch {} });
+  upstream.on('message', data => { try { const message = JSON.parse(data.toString()); if (message.type === 'Results') send({ type: 'transcript', text: message.channel?.alternatives?.[0]?.transcript || '', final: !!message.is_final, speech_final: !!message.speech_final, speech_end_seconds: message.channel?.alternatives?.[0]?.words?.at(-1)?.end }); else if (message.type === 'Error') { send({ type: 'error', message: 'Deepgram could not transcribe this audio.' }); finish(); } } catch {} });
   upstream.on('error', () => { send({ type: 'error', message: 'Deepgram connection failed. Check credits, language and microphone format.' }); finish(); });
   upstream.on('close', finish); client.on('close', finish); client.on('error', finish);
   client.on('message', (data, binary) => { if (upstream.readyState !== WebSocket.OPEN) return; if (!binary) { if (data.toString() === 'finalize') upstream.send(JSON.stringify({ type: 'Finalize' })); return; } bytes += Buffer.byteLength(data as Buffer); if (bytes > 12000000 || upstream.bufferedAmount > 1000000) { send({ type: 'error', message: 'Microphone stream exceeded its limit.' }); finish(); return; } upstream.send(data, { binary: true }); });

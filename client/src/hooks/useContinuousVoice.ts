@@ -2,11 +2,11 @@ import { DeepgramRecognition, CartesiaSynthesis } from '../utils/cloudSpeech';
 import { useEffect, useRef, useState } from 'react';
 import { ContinuousVoice, type VoiceState } from '../../../shared/continuousVoice';
 
-export function useContinuousVoice(language: string, onText: (text: string) => void, onInterrupt: () => void, cloud?: { sessionId: string; enabled: boolean; token?: string }, options?: { speakerMode?: boolean; silenceMs?: number; onPlayback?: (audio: HTMLAudioElement) => void; onAudioStarted?: () => void; onReplyFinished?: () => void }) {
+export function useContinuousVoice(language: string, onText: (text: string, speechEnd?: number) => void, onInterrupt: () => void, cloud?: { sessionId: string; enabled: boolean; token?: string }, options?: { speakerMode?: boolean; silenceMs?: number; onPlayback?: (audio: HTMLAudioElement) => void; onStream?: (stream: MediaStream) => void; onAudioStarted?: () => void; onReplyFinished?: () => void }) {
   const [state, setState] = useState<VoiceState>({ phase: 'idle', active: false, partial: '', error: '' });
   const cloudRef = useRef(cloud); cloudRef.current = cloud;
   const optionsRef = useRef(options); optionsRef.current = options;
-  const synthesis = useRef<CartesiaSynthesis>(); synthesis.current ||= new CartesiaSynthesis(() => cloudRef.current?.sessionId || '', () => cloudRef.current?.token, audio => optionsRef.current?.onPlayback?.(audio));
+  const synthesis = useRef<CartesiaSynthesis>(); synthesis.current ||= new CartesiaSynthesis(() => cloudRef.current?.sessionId || '', () => cloudRef.current?.token, audio => optionsRef.current?.onPlayback?.(audio), stream => optionsRef.current?.onStream?.(stream));
   const callbacks = useRef({ onText, onInterrupt }); callbacks.current = { onText, onInterrupt };
   const mounted = useRef(true); const controller = useRef<ContinuousVoice>();
   const get = () => controller.current ||= new ContinuousVoice({
@@ -14,7 +14,7 @@ export function useContinuousVoice(language: string, onText: (text: string) => v
     utterance: text => new SpeechSynthesisUtterance(text),
     synthesis: { cancel: () => { synthesis.current?.cancel(); window.speechSynthesis?.cancel(); }, speak: speech => { if (cloudRef.current?.enabled) { synthesis.current!.speak(speech); return; } if (!window.speechSynthesis) throw new Error('Unsupported'); window.speechSynthesis.speak(speech); } },
     changed: value => { if (mounted.current) setState(value); },
-    text: text => callbacks.current.onText(text), interrupt: () => callbacks.current.onInterrupt(),
+    text: (text, speechEnd) => callbacks.current.onText(text, speechEnd), interrupt: () => callbacks.current.onInterrupt(),
     playbackStarted: () => optionsRef.current?.onAudioStarted?.(), playbackFinished: () => optionsRef.current?.onReplyFinished?.(),
   }, language, optionsRef.current);
   useEffect(() => {
@@ -22,7 +22,7 @@ export function useContinuousVoice(language: string, onText: (text: string) => v
       controller.current.setSpeakerMode(options.speakerMode);
     }
   }, [options?.speakerMode]);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.dispose(); controller.current = undefined; }; }, [language, cloud?.sessionId, cloud?.enabled]);
-  return { ...state, start: (greeting?: string) => get().start(greeting), pause: () => controller.current?.pause(), thinking: () => get().thinking(), speak: (text: string) => get().speak(text), streamReply: (segments: AsyncIterable<import('../../../shared/streamingSpeech').SpeechChunk>) => get().speak('', segments), cancelReply: () => controller.current?.cancelReply(), recover: () => controller.current?.recover(), setSpeakerMode: (enabled: boolean) => controller.current?.setSpeakerMode(enabled) };
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.dispose(); synthesis.current?.dispose(); controller.current = undefined; }; }, [language, cloud?.sessionId, cloud?.enabled]);
+  return { ...state, start: (greeting?: string) => { if (cloudRef.current?.enabled) synthesis.current?.prepare(); get().start(greeting); }, pause: () => controller.current?.pause(), thinking: () => { if (cloudRef.current?.enabled) synthesis.current?.prepare(); get().thinking(); }, speak: (text: string) => get().speak(text), streamReply: (segments: AsyncIterable<import('../../../shared/streamingSpeech').SpeechChunk>) => get().speak('', segments), cancelReply: () => controller.current?.cancelReply(), recover: () => controller.current?.recover(), setSpeakerMode: (enabled: boolean) => controller.current?.setSpeakerMode(enabled) };
 }
 
